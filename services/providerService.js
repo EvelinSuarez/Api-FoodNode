@@ -1,0 +1,34 @@
+const providerRepository = require('../repositories/providerRepository');
+
+const createProvider = async (provider) => {
+    return providerRepository.createEmployee(provider);
+}
+
+const getAllProvider = async () => {
+    return providerRepository.getAllProvider();
+}
+
+const getProviderById = async (id) => {
+    return providerRepository.getProviderById(id);
+}
+
+const updateProvider = async (id, provider) => {
+    return providerRepository.updateProvider(id, provider);
+}
+
+const deleteProvider = async (id) => {
+    return providerRepository.deleteProvider(id);
+}
+
+const changeSateProvider = async (id, state) => {
+    return providerRepository.changeSateProvider(id, state);
+}
+
+module.exports = {
+    createProvider,
+    getAllProvider,
+    getProviderById,
+    updateProvider,
+    deleteProvider,
+    changeSateProvider,
+};
