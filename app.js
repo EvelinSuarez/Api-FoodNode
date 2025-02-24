@@ -3,10 +3,10 @@ const app = express();
 
 app.use(express.json());
 
-const categoryRoutes = require('./routes/categoryRoutes');
-const productRoutes = require('./routes/productRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
+const providerRoutes = require('./routes/providerRoutes');
 
-app.use('/categories', categoryRoutes);
-app.use('/products', productRoutes);
+app.use('/employee', employeeRoutes);
+app.use('/provider', providerRoutes);
 
 module.exports = app;

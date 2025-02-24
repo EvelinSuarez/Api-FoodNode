@@ -1,74 +1,74 @@
 const { validationResult } = require('express-validator');
-const employeeService = require('../services/employeeService');
+const providerService = require('../services/providerService');
 
-const createEmployee = async (req, res) => {
+const createProvider = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        const employee = await employeeService.createEmployee(req.body);
-        res.status(201).json(employee);
+        const provider = await providerService.createProvider(req.body);
+        res.status(201).json(provider);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const getAllEmployees = async (req, res) => {
+const getAllProvider = async (req, res) => {
     try {
-        const employee = await employeeService.getAllEmployeees();
-        res.status(200).json(employee);
+        const provider = await providerService.getAllProvider();
+        res.status(200).json(provider);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const getEmployeeById = async (req, res) => {
+const getProviderById = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        const employee = await employeeService.getEmployeeById(req.params.id);
-        res.status(200).json(employee);
+        const provider = await providerService.getProviderById(req.params.id);
+        res.status(200).json(provider);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const updateEmployee = async (req, res) => {
+const updateProvider = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        await employeeService.updateEmployee(req.params.id, req.body);
+        await providerService.updateProvider(req.params.id, req.body);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const deleteEmployee = async (req, res) => {
+const deleteProvider = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        await employeeService.deleteEmployee(req.params.id);
+        await providerService.deleteProvider(req.params.id);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const changeStateEmployee = async (req, res) => {
+const changeStateProvider = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        await employeeService.changeSateEmployee(req.params.id, req.body.state);
+        await providerService.changeStateProvider(req.params.id, req.body.state);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -76,10 +76,10 @@ const changeStateEmployee = async (req, res) => {
 }
 
 module.exports = {
-    createEmployee,
-    getAllEmployees,
-    getEmployeeById,
-    updateEmployee,
-    deleteEmployee,
-    changeStateEmployee,
+    createProvider,
+    getAllProvider,
+    getProviderById,
+    updateProvider,
+    deleteProvider,
+    changeStateProvider,
 };
