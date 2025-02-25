@@ -5,8 +5,12 @@ app.use(express.json());
 
 const employeeRoutes = require('./routes/employeeRoutes');
 const providerRoutes = require('./routes/providerRoutes');
+const customersRoutes = require('./routes/customersRoutes');
+
 
 app.use('/employee', employeeRoutes);
 app.use('/provider', providerRoutes);
+app.use('/customers', customersRoutes);
+
 
 module.exports = app;
