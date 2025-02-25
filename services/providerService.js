@@ -1,7 +1,7 @@
 const providerRepository = require('../repositories/providerRepository');
 
 const createProvider = async (provider) => {
-    return providerRepository.createEmployee(provider);
+    return providerRepository.createProvider(provider);
 }
 
 const getAllProvider = async () => {

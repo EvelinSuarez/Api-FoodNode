@@ -13,11 +13,11 @@ const Provider = sequelize.define('Provider', {
         allowNull: false 
     },
     document: { 
-        type: DataTypes.INTEGER(10), 
+        type: DataTypes.INTEGER(15), 
         allowNull: false 
     },
     cellPhone: { 
-        type: DataTypes.INTEGER(10), 
+        type: DataTypes.INTEGER(15), 
         allowNull: false 
     },
     company: { 

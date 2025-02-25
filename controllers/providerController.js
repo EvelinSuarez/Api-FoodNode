@@ -25,16 +25,25 @@ const getAllProvider = async (req, res) => {
 
 const getProviderById = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()})
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+    const id = parseInt(req.params.id,10);  // Convierte el ID a un número entero
+    if (isNaN(id)) {
+        return res.status(400).json({ message: "El ID debe ser un número válido" });
+    }
+
     try {
-        const provider = await providerService.getProviderById(req.params.id);
+        const provider = await providerService.getProviderById(id);
+        if (!provider) {
+            return res.status(404).json({ message: 'Proveedor no encontrado' });
+        }
         res.status(200).json(provider);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
+
 
 const updateProvider = async (req, res) => {
     const errors = validationResult(req);
@@ -51,16 +60,24 @@ const updateProvider = async (req, res) => {
 
 const deleteProvider = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()})
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+    const id = parseInt(req.params.id);  // Convierte el ID a un número entero
+    if (isNaN(id)) {
+        return res.status(400).json({ message: "El ID debe ser un número válido" });
+    }
+
     try {
-        await providerService.deleteProvider(req.params.id);
+        const result = await providerService.deleteProvider(id);
+        if (!result) {
+            return res.status(404).json({ message: 'Proveedor no encontrado' });
+        }
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
 
 const changeStateProvider = async (req, res) => {
     const errors = validationResult(req);
