@@ -16,7 +16,9 @@ const validateUniqueEmployeeName = async (fullName) => {
 }
 
 const employeeBaseValidation = [
-    body('fullName').isLength({ min: 3 }).withMessage('El nombre debe tener al menos 3 caracteres'),
+    body('fullName')
+        .isLength({ min: 3 }).withMessage('El nombre debe tener al menos 3 caracteres')
+        .matches(/^[a-zA-Z\s]+$/).withMessage('El nombre solo puede contener letras y espacios'),
     body('state').default(true).isBoolean().withMessage('El estado debe ser un booleano')
 ];
 
@@ -27,23 +29,23 @@ const createEmployeeValidation = [
 
 const updateEmployeeValidation = [
     ...employeeBaseValidation,
-    param('id').isInt().withMessage('El id debe ser un número entero'),
+    param('id').isInt({ min: 1 }).withMessage('El id debe ser un número entero positivo'),
     param('id').custom(validateEmployeeExistence)
 ];
 
 const deleteEmployeeValidation = [
-    param('id').isInt().withMessage('El id debe ser un número entero'),
+    param('id').isInt({ min: 1 }).withMessage('El id debe ser un número entero positivo'),
     param('id').custom(validateEmployeeExistence)
 ];
 
 const getEmployeeByIdValidation = [
-    param('id').isInt().withMessage('El id debe ser un número entero'),
+    param('id').isInt({ min: 1 }).withMessage('El id debe ser un número entero positivo'),
     param('id').custom(validateEmployeeExistence)
 ];
 
 const changeStateValidation = [
     body('state').isBoolean().withMessage('El estado debe ser un booleano'),
-    param('id').isInt().withMessage('El id debe ser un número entero'),
+    param('id').isInt({ min: 1 }).withMessage('El id debe ser un número entero positivo'),
     param('id').custom(validateEmployeeExistence)
 ];
 
