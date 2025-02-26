@@ -1,74 +1,74 @@
 const { validationResult } = require('express-validator');
-const employeeService = require('../services/employeeService');
+const customersService = require('../services/customersService');
 
-const createEmployee = async (req, res) => {
+const createCustomers = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        const employee = await employeeService.createEmployee(req.body);
-        res.status(201).json(employee);
+        const customers = await customersService.createCustomers(req.body);
+        res.status(201).json(customers);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const getAllEmployees = async (req, res) => {
+const getAllCustomers = async (req, res) => {
     try {
-        const employee = await employeeService.getAllEmployees();
-        res.status(200).json(employee);
+        const customers = await customersService.getAllCustomers();
+        res.status(200).json(customers);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const getEmployeeById = async (req, res) => {
+const getCustomersById = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        const employee = await employeeService.getEmployeeById(req.params.id);
-        res.status(200).json(employee);
+        const customers = await customersService.getCustomersById(req.params.id);
+        res.status(200).json(customers);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const updateEmployee = async (req, res) => {
+const updateCustomers = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        await employeeService.updateEmployee(req.params.id, req.body);
+        await customersService.updateCustomers(req.params.id, req.body);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const deleteEmployee = async (req, res) => {
+const deleteCustomers = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        await employeeService.deleteEmployee(req.params.id);
+        await customersService.deleteCustomers(req.params.id);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const changeStateEmployee = async (req, res) => {
+const changeStateCustomers = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        await employeeService.changeSateEmployee(req.params.id, req.body.state);
+        await customersService.changeStateCustomers(req.params.id, req.body.state);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -76,10 +76,10 @@ const changeStateEmployee = async (req, res) => {
 }
 
 module.exports = {
-    createEmployee,
-    getAllEmployees,
-    getEmployeeById,
-    updateEmployee,
-    deleteEmployee,
-    changeStateEmployee,
+    createCustomers,
+    getAllCustomers,
+    getCustomersById,
+    updateCustomers,
+    deleteCustomers,
+    changeStateCustomers,
 };
