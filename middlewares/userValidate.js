@@ -23,10 +23,10 @@ const validateUniqueUserEmail = async (email) => {
 };
 
 const createUserValidation = [
-    body('documentType').notEmpty().withMessage('El tipo de documento es obligatorio').isString().isLength({ max: 30 }),
+    body('document_type').notEmpty().withMessage('El tipo de documento es obligatorio').isString().isLength({ max: 30 }),
     body('document').notEmpty().withMessage('El número de documento es obligatorio').isString().isLength({ max: 30 }).custom(validateUniqueUserDocument),
     body('cellphone').notEmpty().withMessage('El número de celular es obligatorio').isString().isLength({ max: 15 }),
-    body('fullName').notEmpty().withMessage('El nombre completo es obligatorio').isString().isLength({ max: 60 }),
+    body('full_name').notEmpty().withMessage('El nombre completo es obligatorio').isString().isLength({ max: 60 }),
     body('email').notEmpty().withMessage('El correo electrónico es obligatorio').isEmail().isLength({ max: 255 }).custom(validateUniqueUserEmail),
     body('password').notEmpty().withMessage('La contraseña es obligatoria').isLength({ min: 10, max: 10 }).withMessage('La contraseña debe tener exactamente 10 caracteres'),
     body('idRole').optional().isInt().withMessage('El ID del rol debe ser un número entero'),
