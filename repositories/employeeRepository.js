@@ -8,20 +8,20 @@ const getAllEmployees = async () => {
     return Employee.findAll();
 }
 
-const getEmployeeById = async (id) => {
-    return Employee.findByPk(id);
+const getEmployeeById = async (idEmployee) => {
+    return Employee.findByPk(idEmployee);
 }
 
-const updateEmployee = async (id, employee) => {
-    return Employee.update(employee, { where: { id } });
+const updateEmployee = async (idEmployee, employee) => {
+    return Employee.update(employee, { where: { idEmployee } });
 }
 
-const deleteEmployee = async (id) => {
-    return Employee.destroy({ where: { id } });
+const deleteEmployee = async (idEmployee) => {
+    return Employee.destroy({ where: { idEmployee } });
 }
 
-const changeSateEmployee = async (id, state) => {
-    return Employee.update({ state }, { where: { id } });
+const changeSateEmployee = async (idEmployee, state) => {
+    return Employee.update({ state }, { where: { idEmployee } });
 }
 
 module.exports = {
