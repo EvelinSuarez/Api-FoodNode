@@ -1,27 +1,33 @@
 const Provider = require('../models/provider');
 
+// Crear un proveedor
 const createProvider = async (provider) => {
     return Provider.create(provider);
 }
 
+// Obtener todos los proveedores
 const getAllProvider = async () => {
     return Provider.findAll();
 }
 
-const getProviderById = async (id) => {
-    return Provider.findByPk(id);
+// Obtener un proveedor por ID
+const getProviderById = async (idProvider) => {  // Cambié 'id' por 'idProvider'
+    return Provider.findByPk(idProvider);  // Asegúrate de que aquí también sea 'idProvider'
 }
 
-const updateProvider = async (id, provider) => {
-    return Provider.update(provider, { where: { id } });
+// Actualizar un proveedor
+const updateProvider = async (idProvider, provider) => {  // Cambié 'id' por 'idProvider'
+    return Provider.update(provider, { where: { idProvider } });  // Asegúrate de que aquí también sea 'idProvider'
 }
 
-const deleteProvider = async (id) => {
-    return Provider.destroy({ where: { id } });
+// Eliminar un proveedor
+const deleteProvider = async (idProvider) => {  // Cambié 'id' por 'idProvider'
+    return Provider.destroy({ where: { idProvider } });  // Asegúrate de que aquí también sea 'idProvider'
 }
 
-const changeSateProvider = async (id, state) => {
-    return Provider.update({ state }, { where: { id } });
+// Cambiar el estado de un proveedor
+const changeStateProvider = async (idProvider, state) => {  // Cambié 'id' por 'idProvider'
+    return Provider.update({ state }, { where: { idProvider } });  // Asegúrate de que aquí también sea 'idProvider'
 }
 
 module.exports = {
@@ -30,5 +36,5 @@ module.exports = {
     getProviderById,
     updateProvider,
     deleteProvider,
-    changeSateProvider,
+    changeStateProvider,
 };

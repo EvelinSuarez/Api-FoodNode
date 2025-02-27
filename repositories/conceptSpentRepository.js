@@ -8,20 +8,20 @@ const getAllConceptSpents = async () => {
     return ConceptSpent.findAll();
 }
 
-const getConceptSpentById = async (id) => {
-    return ConceptSpent.findByPk(id);
+const getConceptSpentById = async (idExpenseType) => {
+    return ConceptSpent.findByPk(idExpenseType);
 }
 
-const updateConceptSpent = async (id, conceptSpent) => {
-    return ConceptSpent.update(conceptSpent, { where: { id } });
+const updateConceptSpent = async (idExpenseType, conceptSpent) => {
+    return ConceptSpent.update(conceptSpent, { where: { idExpenseType } });
 }
 
-const deleteConceptSpent = async (id) => {
-    return ConceptSpent.destroy({ where: { id } });
+const deleteConceptSpent = async (idExpenseType) => {
+    return ConceptSpent.destroy({ where: { idExpenseType } });
 }
 
-const changeStateConceptSpent = async (id, state) => {
-    return ConceptSpent.update({ state }, { where: { id } });
+const changeStateConceptSpent = async (idExpenseType, state) => {
+    return ConceptSpent.update({ state }, { where: { idExpenseType } });
 }
 
 module.exports = {

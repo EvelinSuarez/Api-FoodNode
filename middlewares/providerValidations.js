@@ -1,14 +1,21 @@
 const { body, param, validationResult } = require('express-validator');
 const Provider = require('../models/provider');
 
-const validateProviderExistence = async (id) => {
-    console.log(`Buscando proveedor con ID: ${id}`);
-    const provider = await Provider.findByPk(id);
-    console.log(`Proveedor encontrado: ${provider}`);
+const validateProviderExistence = async (idProvider) => {
+    console.log(`Buscando proveedor con ID: ${idProvider}`);
+    const provider = await Provider.findByPk(idProvider);
+    
+    if (provider) {
+        console.log(`Proveedor encontrado: ${JSON.stringify(provider.toJSON())}`);
+    } else {
+        console.log('Proveedor no encontrado');
+    }
+    
     if (!provider) {
         return Promise.reject('El proveedor no existe');
     }
 }
+
 
 const validateUniqueProviderNit = async (document) => {
     const provider = await Provider.findOne({ where: { document } });
@@ -40,10 +47,10 @@ const createProviderValidation = [
 
 // Validación para actualizar un proveedor
 const updateProviderValidation = [
-    ...providerBaseValidation,
-    param('idProvider').isInt({ min: 1 }).withMessage('El id debe ser un número entero positivo'),
+    param('idProvider')
+        .isInt({ min: 1 }).withMessage('El id debe ser un número entero positivo'),
     param('idProvider').custom(validateProviderExistence), // Verificar si el proveedor existe
-    body('document').custom(validateUniqueProviderNit) // Validación para evitar NIT duplicado en la edición
+    // Agregar aquí las validaciones para los otros campos del cuerpo si es necesario
 ];
 
 // Validación para eliminar un proveedor
