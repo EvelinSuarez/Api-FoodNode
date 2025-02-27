@@ -8,20 +8,20 @@ const getAllMonthlyOverallExpenses = async () => {
     return MonthlyOverallExpense.findAll();
 }
 
-const getMonthlyOverallExpenseById = async (id) => {
-    return MonthlyOverallExpense.findByPk(id);
+const getMonthlyOverallExpenseById = async (idOverallMonth) => {
+    return MonthlyOverallExpense.findByPk(idOverallMonth);
 }
 
-const updateMonthlyOverallExpense = async (id, monthlyOverallExpense) => {
-    return MonthlyOverallExpense.update(monthlyOverallExpense, { where: { id } });
+const updateMonthlyOverallExpense = async (idOverallMonth, monthlyOverallExpense) => {
+    return MonthlyOverallExpense.update(monthlyOverallExpense, { where: { idOverallMonth } });
 }
 
-const deleteMonthlyOverallExpense = async (id) => {
-    return MonthlyOverallExpense.destroy({ where: { id } });
+const deleteMonthlyOverallExpense = async (idOverallMonth) => {
+    return MonthlyOverallExpense.destroy({ where: { idOverallMonth } });
 }
 
-const changeStateMonthlyOverallExpense = async (id, state) => {
-    return MonthlyOverallExpense.update({ state }, { where: { id } });
+const changeStateMonthlyOverallExpense = async (idOverallMonth, state) => {
+    return MonthlyOverallExpense.update({ state }, { where: { idOverallMonth } });
 }
 
 module.exports = {
