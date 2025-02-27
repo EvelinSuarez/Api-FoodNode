@@ -20,8 +20,8 @@ const deleteCustomers = async (id) => {
     return customersRepository.deleteCustomers(id);
 }
 
-const changeSateCustomers = async (id, state) => {
-    return customersRepository.changeSateCustomers(id, state);
+const changeStateCustomers = async (id, state) => {
+    return customersRepository.changeStateCustomers(id, state);
 }
 
 module.exports = {
@@ -30,5 +30,5 @@ module.exports = {
     getCustomersById,
     updateCustomers,
     deleteCustomers,
-    changeSateCustomers,
+    changeStateCustomers,
 };
