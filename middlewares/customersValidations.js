@@ -2,16 +2,22 @@ const { body, param, validationResult } = require('express-validator');
 const Customers = require('../models/customers');
 
 const validateCustomersExistence = async (id) => {
-    const customer = await Customers.findByPk(id);
-    if (!customer) {
+    const customers = await Customers.findByPk(id);
+    if (!customers) {
         return Promise.reject('El cliente no existe');
     }
 };
 
 const validateUniqueCustomersName = async (fullName) => {
-    const customer = await Customers.findOne({ where: { fullName } });
-    if (customer) {
+    const customers = await Customers.findOne({ where: { fullName } });
+    if (customers) {
         return Promise.reject('El nombre del cliente ya está registrado');
+    }
+};
+const validateUniqueCustomersDistintive = async (distintive) => {
+    const customers = await Customers.findOne({ where: { distintive } });
+    if (customers) {
+        return Promise.reject('El distintivo del cliente ya está registrado');
     }
 };
 
@@ -21,8 +27,9 @@ const customersBaseValidation = [
         .isLength({ min: 3 }).withMessage('El nombre debe tener al menos 3 caracteres')
         .custom(validateUniqueCustomersName).withMessage('El nombre del cliente ya está registrado'),
     body('distintive')
-        .isInt().withMessage('El campo distintivo debe ser un número entero')
-        .notEmpty().withMessage('El campo distintivo es obligatorio'),
+        .isString().withMessage('El campo distintivo debe ser un número entero')
+        .notEmpty().withMessage('El campo distintivo es obligatorio')
+        .custom(validateUniqueCustomersDistintive).withMessage('El distintivo del cliente ya está registrado'),
     body('customerCategory')
         .isString().withMessage('La categoría del cliente debe ser una cadena de texto')
         .notEmpty().withMessage('La categoría del cliente es obligatoria'),
@@ -35,9 +42,6 @@ const customersBaseValidation = [
         .optional({ nullable: true }),
     body('address')
         .isString().withMessage('La dirección debe ser una cadena de texto')
-        .optional({ nullable: true }),
-    body('contractType')
-        .isString().withMessage('El tipo de contrato debe ser una cadena de texto')
         .optional({ nullable: true }),
     body('status')
         .isBoolean().withMessage('El estado debe ser un valor booleano')
