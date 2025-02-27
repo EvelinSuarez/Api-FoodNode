@@ -13,7 +13,7 @@ const authMiddleware = require('./middlewares/authMiddleware');
 
 
 
-app.use('/users', userRoutes);
+app.use('/users', userRoutes);          
 app.use('/api/auth', authRoutes);
 app.get('/api/protected', authMiddleware, (req, res) => {
     res.json({ message: 'Ruta protegida', user: req.user });
