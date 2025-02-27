@@ -28,13 +28,13 @@ const getProviderById = async (req, res) => {
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-    const id = parseInt(req.params.id,10);  // Convierte el ID a un número entero
-    if (isNaN(id)) {
+    const idProvider = parseInt(req.params.idProvider,10);  // Convierte el ID a un número entero
+    if (isNaN(idProvider)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
 
     try {
-        const provider = await providerService.getProviderById(id);
+        const provider = await providerService.getProviderById(idProvider);
         if (!provider) {
             return res.status(404).json({ message: 'Proveedor no encontrado' });
         }
@@ -47,29 +47,36 @@ const getProviderById = async (req, res) => {
 
 const updateProvider = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()})
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+
+    const idProvider = parseInt(req.params.idProvider, 10);
+    console.log(`Buscando proveedor con ID: ${idProvider}`);  // Verificando si el ID es correcto
+
     try {
-        await providerService.updateProvider(req.params.id, req.body);
+        const provider = await providerService.updateProvider(idProvider, req.body);
+        if (!provider) {
+            return res.status(404).json({ message: 'Proveedor no encontrado' });
+        }
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
 
 const deleteProvider = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-    const id = parseInt(req.params.id);  // Convierte el ID a un número entero
-    if (isNaN(id)) {
+    const idProvider = parseInt(req.params.idProvider);  // Convierte el ID a un número entero
+    if (isNaN(idProvider)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
 
     try {
-        const result = await providerService.deleteProvider(id);
+        const result = await providerService.deleteProvider(idProvider);
         if (!result) {
             return res.status(404).json({ message: 'Proveedor no encontrado' });
         }
@@ -85,7 +92,7 @@ const changeStateProvider = async (req, res) => {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        await providerService.changeStateProvider(req.params.id, req.body.state);
+        await providerService.changeStateProvider(req.params.idProvider, req.body.state);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });

@@ -8,20 +8,20 @@ const getAllCustomers = async () => {
     return Customers.findAll();
 }
 
-const getCustomersById = async (id) => {
-    return Customers.findByPk(id);
+const getCustomersById = async (idCustomers) => {
+    return Customers.findByPk(idCustomers);
 }
 
-const updateCustomers = async (id, customers) => {
-    return Customers.update(customers, { where: { id } });
+const updateCustomers = async (idCustomers, customers) => {
+    return Customers.update(customers, { where: { idCustomers } });
 }
 
-const deleteCustomers = async (id) => {
-    return Customers.destroy({ where: { id } });
+const deleteCustomers = async (idCustomers) => {
+    return Customers.destroy({ where: { idCustomers } });
 }
 
-const changeSateCustomers = async (id, state) => {
-    return Customers.update({ state }, { where: { id } });
+const changeStateCustomers = async (idCustomers, state) => {
+    return Customers.update({ state }, { where: { idCustomers } });
 }
 
 module.exports = {
@@ -30,5 +30,5 @@ module.exports = {
     getCustomersById,
     updateCustomers,
     deleteCustomers,
-    changeSateCustomers,
+    changeStateCustomers,
 };
