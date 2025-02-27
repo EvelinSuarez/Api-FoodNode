@@ -26,6 +26,10 @@ const monthlyOverallExpenseRoutes = require('./routes/monthlyOverallExpenseRoute
 const customersRoutes = require('./routes/customersRoutes');
 const aditionalServicesRoutes = require('./routes/aditionalServicesRoutes');
 const reservationsRoutes = require('./routes/reservationsRoutes');
+const roleRoutes = require('./routes/roleRoutes');
+const permissionRoutes = require('./routes/permissionRoutes');
+const privilegeRoutes = require('./routes/privilegeRoutes');
+
 
 app.use('/employee', employeeRoutes);
 app.use('/provider', providerRoutes);
@@ -35,6 +39,9 @@ app.use('/monthlyOverallExpense', monthlyOverallExpenseRoutes);
 app.use('/customers', customersRoutes);
 app.use('/aditionalServices', aditionalServicesRoutes);
 app.use('/reservations', reservationsRoutes);
+app.use('/role', roleRoutes);
+app.use('/permission', permissionRoutes);
+app.use('/privilege', privilegeRoutes);
 
 
 
