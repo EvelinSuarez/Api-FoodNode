@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const customersController = require('../controllers/customersController');
-const customersValidations = require('../middlewares/customersValidate');
+const customersValidations = require('../middlewares/customersValidations');
 
 router.get('/', customersController.getAllCustomers);
 router.get('/:id', customersValidations.getCustomersByIdValidation, customersController.getCustomersById);
