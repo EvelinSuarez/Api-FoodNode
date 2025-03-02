@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express'); 
 const app = express();
 require('dotenv').config(); // Cargar variables de entorno          
 // dotenv.config();
@@ -24,11 +24,11 @@ const purchaseRecordRoutes = require('./routes/purchaseRecordRoutes');
 const conceptSpentRoutes = require('./routes/conceptSpentRoutes');
 const monthlyOverallExpenseRoutes = require('./routes/monthlyOverallExpenseRoutes');
 const customersRoutes = require('./routes/customersRoutes');
+const roleRoutes = require('./routes/roleRoutes');
+const permissionRoutes = require('./routes/permissionRoutes');
+const privilegeRoutes = require('./routes/privilegeRoutes');
 const aditionalServicesRoutes = require('./routes/aditionalServicesRoutes');
 const reservationsRoutes = require('./routes/reservationsRoutes');
-/* const roleRoutes = require('./routes/roleRoutes');
-const permissionRoutes = require('./routes/permissionRoutes');
-const privilegeRoutes = require('./routes/privilegeRoutes'); */
 
 
 app.use('/employee', employeeRoutes);
@@ -37,13 +37,11 @@ app.use('/purchaseRecord', purchaseRecordRoutes);
 app.use('/conceptSpent', conceptSpentRoutes);
 app.use('/monthlyOverallExpense', monthlyOverallExpenseRoutes);
 app.use('/customers', customersRoutes);
+app.use('/role', roleRoutes);
+app.use('/permission', permissionRoutes);
+app.use('/privilege', privilegeRoutes);
 app.use('/aditionalServices', aditionalServicesRoutes);
 app.use('/reservations', reservationsRoutes);
-/* app.use('/role', roleRoutes);
-app.use('/permission', permissionRoutes);
-app.use('/privilege', privilegeRoutes); */
-
-
 
 
 module.exports = app;
