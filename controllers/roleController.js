@@ -1,5 +1,7 @@
 const { validationResult } = require('express-validator');
 const roleService = require('../services/roleService');
+const Role = require('../models/role');
+const Privilege = require('../models/privilege');
 
 const createRole = async (req, res) => {
     const errors = validationResult(req);
@@ -75,6 +77,30 @@ const changeRoleState = async (req, res) => {
     }
 };
 
+// 🔹 Nueva función para asignar privilegios a un rol
+const assignPrivileges = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    
+    try {
+        const { idRole } = req.params;
+        const { privilegeIds } = req.body; // Array de IDs de privilegios
+
+        const role = await Role.findByPk(idRole);
+        if (!role) return res.status(404).json({ message: "Rol no encontrado" });
+
+        const privileges = await Privilege.findAll({ where: { idPrivilege: privilegeIds } });
+
+        await role.setPrivileges(privileges); // Asigna los privilegios al rol
+
+        res.status(200).json({ message: "Privilegios asignados con éxito" });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createRole,
     getAllRoles,
@@ -82,4 +108,5 @@ module.exports = {
     updateRole,
     deleteRole,
     changeRoleState,
+    assignPrivileges, // Agregado aquí
 };

@@ -9,7 +9,7 @@ const Role = sequelize.define('Role', {
         allowNull: false 
     },
     roleName: {
-        type: DataTypes.STRING(50),
+        type: DataTypes.STRING(60),
         allowNull: false,
         unique: true
     },
