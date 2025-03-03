@@ -22,6 +22,11 @@ const permissionBaseValidation = [
     body('status').isBoolean().withMessage('El estado debe ser un booleano')
 ];
 
+const getPermissionByIdValidation = [
+    param('idPermission').isInt({ min: 1 }).withMessage('El id del permiso debe ser un número entero positivo'),
+    param('idPermission').custom(validatePermissionExistence)
+];
+
 const createPermissionValidation = [
     ...permissionBaseValidation,
     body('name').custom(validateUniquePermissionName)
@@ -46,6 +51,7 @@ const changePermissionStateValidation = [
 ];
 
 module.exports = {
+    getPermissionByIdValidation,
     createPermissionValidation,
     updatePermissionValidation,
     deletePermissionValidation,
