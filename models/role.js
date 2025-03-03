@@ -1,5 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const Permission = require('./permission');
+const Privilege = require('./rolePrivilege');
 
 const Role = sequelize.define('Role', {
     idRole: { 
@@ -17,7 +19,9 @@ const Role = sequelize.define('Role', {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     }
- 
-});
+}, { timestamps: false });
+
+Role.belongsToMany(Permission, { through: 'RolePermissionPrivilege', foreignKey: 'idRole', onDelete: 'CASCADE' });
+Role.belongsToMany(Privilege, { through: 'RolePermissionPrivilege', foreignKey: 'idRole', onDelete: 'CASCADE' });
 
 module.exports = Role;

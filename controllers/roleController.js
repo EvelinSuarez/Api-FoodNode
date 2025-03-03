@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const roleService = require('../services/roleService');
 const Role = require('../models/role');
-const Privilege = require('../models/privilege');
+const Privilege = require('../models/rolePrivilege');
 
 const createRole = async (req, res) => {
     const errors = validationResult(req);
@@ -39,6 +39,8 @@ const getRoleById = async (req, res) => {
 };
 
 const updateRole = async (req, res) => {
+    console.log("Params:", req.params);
+  console.log("Body:", req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
@@ -99,7 +101,7 @@ const assignPrivileges = async (req, res) => {
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-};
+}; 
 
 module.exports = {
     createRole,

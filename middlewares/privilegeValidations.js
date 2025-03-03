@@ -1,5 +1,5 @@
 const { body, param, validationResult } = require('express-validator');
-const Privilege = require('../models/privilege');
+const Privilege = require('../models/rolePrivilege');
 const Permission = require('../models/permission');
 
 const validatePrivilegeExistence = async (idPrivilege) => {
@@ -48,8 +48,14 @@ const deletePrivilegeValidation = [
     param('idPrivilege').custom(validatePrivilegeExistence)
 ];
 
+const getPrivilegeByIdValidation = [
+    param('idPrivilege').isInt({ min: 1 }).withMessage('El id del privilegio debe ser un número entero positivo'),
+    param('idPrivilege').custom(validatePrivilegeExistence)
+];
+
 module.exports = {
     createPrivilegeValidation,
     updatePrivilegeValidation,
-    deletePrivilegeValidation
+    deletePrivilegeValidation,
+    getPrivilegeByIdValidation
 };

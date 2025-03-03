@@ -31,7 +31,6 @@ const reservationsRoutes = require('./routes/reservationsRoutes');
 
 
 
-
 app.use('/employee', employeeRoutes);
 app.use('/provider', providerRoutes);
 app.use('/purchaseRecord', purchaseRecordRoutes);
