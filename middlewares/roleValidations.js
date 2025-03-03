@@ -38,6 +38,12 @@ const roleBaseValidation = [
     body('status').isBoolean().withMessage('El estado debe ser un booleano')
 ];
 
+const getRoleByIdValidation = [
+    param('idRole')
+        .isInt({ min: 1 }).withMessage('El id del rol debe ser un número entero positivo'),
+    param('idRole').custom(validateRoleExistence)
+];
+
 const createRoleValidation = [
     ...roleBaseValidation,
     body('roleName').custom(validateUniqueRoleName),
@@ -65,6 +71,7 @@ const changeRoleStateValidation = [
 ];
 
 module.exports = {
+    getRoleByIdValidation,
     createRoleValidation,
     updateRoleValidation,
     deleteRoleValidation,

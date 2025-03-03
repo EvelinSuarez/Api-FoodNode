@@ -3,6 +3,7 @@ const router = express.Router();
 const roleController = require('../controllers/roleController');
 const roleValidations = require('../middlewares/roleValidations');
 
+console.log(roleController);
 router.get('/', roleController.getAllRoles);
 router.get('/:idRole', roleValidations.getRoleByIdValidation, roleController.getRoleById);
 router.post('/', roleValidations.createRoleValidation, roleController.createRole);
