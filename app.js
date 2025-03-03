@@ -9,7 +9,7 @@ app.use(express.json());
 const userRoutes = require('./routes/userRoutes');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
-const authMiddleware = require('./middlewares/authMiddleware');
+const authMiddleware = require('./middlewares/authValidations');
 
 
 app.use('/users', userRoutes);          
@@ -28,9 +28,8 @@ const permissionRoutes = require('./routes/permissionRoutes');
 const privilegeRoutes = require('./routes/privilegeRoutes');
 const aditionalServicesRoutes = require('./routes/aditionalServicesRoutes');
 const reservationsRoutes = require('./routes/reservationsRoutes');
-const roleRoutes = require('./routes/roleRoutes');
-const permissionRoutes = require('./routes/permissionRoutes');
-const privilegeRoutes = require('./routes/privilegeRoutes');
+
+
 
 
 app.use('/employee', employeeRoutes);
@@ -44,9 +43,7 @@ app.use('/permission', permissionRoutes);
 app.use('/privilege', privilegeRoutes);
 app.use('/aditionalServices', aditionalServicesRoutes);
 app.use('/reservations', reservationsRoutes);
-app.use('/role', roleRoutes);
-app.use('/permission', permissionRoutes);
-app.use('/privilege', privilegeRoutes); 
+
 
 
 
