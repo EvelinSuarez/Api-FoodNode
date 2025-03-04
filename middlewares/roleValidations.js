@@ -1,7 +1,7 @@
 const { body, param, validationResult } = require('express-validator');
 const Role = require('../models/role');
 const User = require('../models/user');
-const RolePrivilege = require('../models/rolePrivilege');
+const RolePrivileges = require('../models/rolePrivileges');
 
 const validateRoleExistence = async (idRole) => {
     const role = await Role.findByPk(idRole);
@@ -18,7 +18,7 @@ const validateUniqueRoleName = async (roleName) => {
 };
 
 const validateRoleHasPrivileges = async (idRole) => {
-    const rolePrivileges = await RolePrivilege.findOne({ where: { idRole } });
+    const rolePrivileges = await RolePrivileges.findOne({ where: { idRole } });
     if (!rolePrivileges) {
         return Promise.reject('El rol debe tener al menos un permiso a un privilegio');
     }
