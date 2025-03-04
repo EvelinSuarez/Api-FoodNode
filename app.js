@@ -29,6 +29,7 @@ const permissionRoutes = require('./routes/permissionRoutes');
 const privilegeRoutes = require('./routes/privilegeRoutes');
 const aditionalServicesRoutes = require('./routes/aditionalServicesRoutes');
 const reservationsRoutes = require('./routes/reservationsRoutes');
+const supplierRoutes = require('./routes/supplierRoutes');
 
 
 
@@ -43,6 +44,7 @@ app.use('/permission', permissionRoutes);
 app.use('/privilege', privilegeRoutes);
 app.use('/aditionalServices', aditionalServicesRoutes);
 app.use('/reservations', reservationsRoutes);
+app.use('/supplier', supplierRoutes);
 
 
 module.exports = app;
