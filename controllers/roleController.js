@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const roleService = require('../services/roleService');
 const Role = require('../models/role');
-const Privilege = require('../models/privilege');
+const Privileges = require('../models/privileges');
 
 const createRole = async (req, res) => {
     const errors = validationResult(req);

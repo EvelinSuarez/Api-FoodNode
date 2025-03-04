@@ -1,27 +1,27 @@
-const Permission = require('../models/permission');
+const RolePrivileges = require('../models/permissions');
 
 const createPermission = async (permission) => {
-    return Permission.create(permission);
+    return Permissions.create(permission);
 };
 
 const getAllPermissions = async () => {
-    return Permission.findAll();
+    return Permissions.findAll();
 };
 
 const getPermissionById = async (idPermission) => {
-    return Permission.findByPk(idPermission);
+    return Permissions.findByPk(idPermission);
 };
 
 const updatePermission = async (idPermission, permission) => {
-    return Permission.update(permission, { where: { idPermission } });
+    return Permissions.update(permission, { where: { idPermission } });
 };
 
 const deletePermission = async (idPermission) => {
-    return Permission.destroy({ where: { idPermission } });
+    return Permissions.destroy({ where: { idPermission } });
 };
 
 const changePermissionState = async (idPermission, status) => {
-    return Permission.update({ status }, { where: { idPermission } });
+    return Permissions.update({ status }, { where: { idPermission } });
 };
 
 module.exports = {

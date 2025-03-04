@@ -1,9 +1,9 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Permission = require('./permissions');
+const Permissions = require('./permissions');
 const RolePrivileges = require('./rolePrivileges');
 
-const Privileges = sequelize.define('Privileges', {
+const Privileges = sequelize.define('privileges', {
     idPrivilege: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
@@ -19,7 +19,7 @@ const Privileges = sequelize.define('Privileges', {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: { 
-            model: Permission, 
+            model: Permissions, 
             key: 'idPermission' 
         }
     },
