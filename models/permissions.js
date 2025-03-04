@@ -1,18 +1,18 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Privilege = sequelize.define('rolePrivilege', {
-    idPrivilege: { 
+const Permission = sequelize.define('permission', {
+    idPermission: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
         autoIncrement: true, 
         allowNull: false 
     },
-    privilegeName: {
+    permissionName: {
         type: DataTypes.STRING(60),
         allowNull: false,
         unique: true
     }
 }, { timestamps: false });
 
-module.exports = Privilege;
+module.exports = Permission;
