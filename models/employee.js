@@ -20,6 +20,14 @@ const Employee = sequelize.define('Employee', {
         type: DataTypes.STRING(255), 
         allowNull: false 
     },
+    email: { 
+        type: DataTypes.STRING(255), 
+        allowNull: false 
+    },
+    cellPhone: { 
+        type: DataTypes.STRING(255), 
+        allowNull: false 
+    },
     dateOfEntry: { 
         type: DataTypes.DATE, 
         allowNull: false 
