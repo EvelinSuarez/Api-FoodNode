@@ -10,6 +10,7 @@ const createSupplier = async (req, res) => {
         const supplier = await supplierService.createSupplier(req.body);
         res.status(201).json(supplier);
     } catch (error) {
+        console.error("Error al crear proveedor:", error);
         res.status(400).json({ message: error.message });
     }
 }
