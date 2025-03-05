@@ -1,5 +1,5 @@
 const { body, param, validationResult } = require('express-validator');
-const Permission = require('../models/permission');
+const Permissions = require('../models/permissions');
 
 const validatePermissionExistence = async (idPermission) => {
     const permission = await Permission.findByPk(idPermission);

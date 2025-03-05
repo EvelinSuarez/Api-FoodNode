@@ -1,20 +1,22 @@
+
+
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const Permission = require('./permission');
+const Privilege = require('./rolePrivilege');
 
-
-const Role = sequelize.define('Role', {
-    idRole: { 
-        type: DataTypes.INTEGER, 
-        primaryKey: true, 
-        autoIncrement: true, 
-        allowNull: false 
+const Role = sequelize.define('role', {
+    idRole: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
     },
     roleName: {
-        type: DataTypes.STRING(60),
-        allowNull: false,
-        unique: true
+        type: DataTypes.STRING,
+        allowNull: false
     },
-    status: {
+    state: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     }

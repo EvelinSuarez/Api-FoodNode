@@ -1,12 +1,11 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Permission = sequelize.define('Permission', {
-    idPermission: { 
-        type: DataTypes.INTEGER, 
-        primaryKey: true, 
-        autoIncrement: true, 
-        allowNull: false 
+const Permissions = sequelize.define('permissions', {
+    idPermission: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
     },
     permissionName: {
         type: DataTypes.STRING(60),
@@ -15,4 +14,4 @@ const Permission = sequelize.define('Permission', {
     }
 }, { timestamps: false });
 
-module.exports = Permission;
+module.exports = Permissions;
