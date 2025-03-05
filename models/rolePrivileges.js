@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Role = require('./role');
-const Privileges = require('./Privileges');
+const Role = require('./role'); // Asegúrate de que la ruta es correcta
+const Privileges = require('./privileges');
 
 const RolePrivileges = sequelize.define('rolePrivileges', {
     idPrivilegedRole: {
@@ -31,6 +31,6 @@ const RolePrivileges = sequelize.define('rolePrivileges', {
 }, { timestamps: false });
 
 RolePrivileges.belongsTo(Role, { foreignKey: 'idRole', onDelete: 'CASCADE' });
-RolePrivileges.belongsTo(Privilege, { foreignKey: 'idPrivilege', onDelete: 'CASCADE' });
+Role.hasMany(RolePrivileges, { foreignKey: 'idRole', onDelete: 'CASCADE' });
 
 module.exports = RolePrivileges;
