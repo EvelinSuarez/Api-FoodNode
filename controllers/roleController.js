@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const roleService = require('../services/roleService');
 const Role = require('../models/role');
-const Privileges = require('../models/privileges');
+const Privileges = require('../models/Privileges');
 
 const createRole = async (req, res) => {
     const errors = validationResult(req);
@@ -52,6 +52,8 @@ const updateRole = async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 };
+
+
 
 const deleteRole = async (req, res) => {
     const errors = validationResult(req);
