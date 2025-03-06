@@ -1,6 +1,6 @@
 const { body, param, validationResult } = require("express-validator")
-const Supplier = require("../models/supplier")
-// const Product = require("../models/product") // Asumiendo que existe un modelo Producto
+const Supplier = require("../models/Supplier")
+const Product = require("../models/Product") // Asumiendo que existe un modelo Producto
 
 // Validaciones auxiliares
 const validateSupplierExistence = async (id) => {
@@ -35,8 +35,8 @@ const supplierBaseValidation = [
     .withMessage("El nombre del insumo debe tener al menos 3 caracteres")
     .matches(/^[a-zA-Z0-9\s]+$/)
     .withMessage("El nombre solo puede contener letras, números y espacios"),
-  body("gramaje").isInt({ min: 1 }).withMessage("El gramaje debe ser un número entero positivo"),
-  body("idProveedor").isInt({ min: 1 }).withMessage("El ID del proveedor debe ser un número entero positivo"),
+  body("Gramaje").isInt({ min: 1 }).withMessage("El gramaje debe ser un número entero positivo"),
+  body("IdProvider").isInt({ min: 1 }).withMessage("El ID del proveedor debe ser un número entero positivo"),
   body("state").default(true).isBoolean().withMessage("El estado debe ser un booleano"),
 ]
 
@@ -77,7 +77,7 @@ const getSupplierByIdValidation = [
 
 // Validación para cambiar estado
 const changeStateValidation = [
-  body("estado").isBoolean().withMessage("El estado debe ser un booleano"),
+  body("state").isBoolean().withMessage("El estado debe ser un booleano"),
   param("id").isInt({ min: 1 }).withMessage("El id debe ser un número entero positivo"),
   param("id").custom(validateSupplierExistence),
 ]
