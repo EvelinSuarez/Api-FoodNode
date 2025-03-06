@@ -14,7 +14,6 @@ app.use(express.json());
 
 
 const userRoutes = require('./routes/userRoutes');
-const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const authMiddleware = require('./middlewares/authMiddleware');
 const employeeRoutes = require('./routes/employeeRoutes');
