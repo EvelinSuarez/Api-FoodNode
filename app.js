@@ -29,6 +29,8 @@ const privilegeRoutes = require('./routes/privilegeRoutes');
 const aditionalServicesRoutes = require('./routes/aditionalServicesRoutes');
 const reservationsRoutes = require('./routes/reservationsRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
+const productRoutes = require('./routes/productRoutes');
+const specSheetRoutes = require('./routes/spechsheetRoutes');
 
 
 
@@ -49,6 +51,8 @@ app.use('/privilege', privilegeRoutes);
 app.use('/aditionalServices', aditionalServicesRoutes);
 app.use('/reservations', reservationsRoutes);
 app.use('/supplier', supplierRoutes);
+app.use('/product', productRoutes);
+app.use('/specSheet', specSheetRoutes);
 
 
 module.exports = app;

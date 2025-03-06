@@ -13,7 +13,7 @@ const Suppliers = sequelize.define('Supplier', {
         allowNull: false 
     },
     IdProvider: { 
-        type: DataTypes.INTEGER, 
+        type: DataTypes.INTEGER,
         allowNull: false 
     },
     state: { 
@@ -24,6 +24,8 @@ const Suppliers = sequelize.define('Supplier', {
         type: DataTypes.INTEGER, 
         allowNull: true 
     }
+}, {
+    timestamps: true
 });
 
 module.exports = Suppliers;
