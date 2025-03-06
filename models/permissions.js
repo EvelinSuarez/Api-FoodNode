@@ -11,6 +11,10 @@ const Permissions = sequelize.define('permissions', {
         type: DataTypes.STRING(60),
         allowNull: false,
         unique: true
+    },
+    state: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
     }
 }, { timestamps: false });
 
