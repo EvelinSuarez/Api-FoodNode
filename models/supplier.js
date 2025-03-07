@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Suppliers = sequelize.define('supplier', {
+const Supplier = sequelize.define('Supplier', {
     idSupplier: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
@@ -28,4 +28,4 @@ const Suppliers = sequelize.define('supplier', {
     timestamps: true
 });
 
-module.exports = Suppliers;
+module.exports = Supplier;

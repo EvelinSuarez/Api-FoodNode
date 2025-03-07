@@ -20,8 +20,8 @@ const deleteSupplier = async (idSupplier) => {
     return Supplier.destroy({ where: { idSupplier } });
 }
 
-const changeStateSupplier = async (idSupplier, state) => {
-    return Supplier.update({ state }, { where: { idSupplier } });
+const changeStateSupplier = async (idSupplier, status) => {
+    return Supplier.update({ status }, { where: { idSupplier } });
 }
 
 module.exports = {

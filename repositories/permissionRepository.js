@@ -1,4 +1,4 @@
-const RolePrivileges = require('../models/permissions');
+const Permissions = require('../models/permission');
 
 const createPermission = async (permission) => {
     return Permissions.create(permission);

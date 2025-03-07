@@ -10,7 +10,6 @@ const createSupplier = async (req, res) => {
         const supplier = await supplierService.createSupplier(req.body);
         res.status(201).json(supplier);
     } catch (error) {
-        console.error("Error al crear proveedor:", error);
         res.status(400).json({ message: error.message });
     }
 }
@@ -38,6 +37,7 @@ const getSupplierById = async (req, res) => {
 }
 
 const updateSupplier = async (req, res) => {
+    console.log("req.params:", req.params);
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
@@ -51,6 +51,7 @@ const updateSupplier = async (req, res) => {
 }
 
 const deleteSupplier = async (req, res) => {
+    console.log("req.params:", req.params);
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})

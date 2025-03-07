@@ -2,19 +2,19 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Product = require('./Product');
 
-const SpecSheet = sequelize.define('spechsheet', {
-    IdSpecsheet: { 
+const SpecSheet = sequelize.define('specSheets', {
+    idSpecsheet: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
         autoIncrement: true, 
         allowNull: false 
     },
-    IdProduct: {
+    idProduct: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: 'products',
-            key: 'IdProduct'
+            model: 'Products',
+            key: 'idProduct'
         }
     },
     startDate: { 
@@ -25,7 +25,7 @@ const SpecSheet = sequelize.define('spechsheet', {
         type: DataTypes.DATE, 
         allowNull: false 
     },
-    state: { 
+    status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     },
@@ -38,7 +38,7 @@ const SpecSheet = sequelize.define('spechsheet', {
 });
 
 // Establecer la relación con Product
-SpecSheet.belongsTo(Product, { foreignKey: 'IdProduct' });
-Product.hasMany(SpecSheet, { foreignKey: 'IdProduct' });
+SpecSheet.belongsTo(Product, { foreignKey: 'idProduct' });
+Product.hasMany(SpecSheet, { foreignKey: 'idProduct' });
 
 module.exports = SpecSheet;

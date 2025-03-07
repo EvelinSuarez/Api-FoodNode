@@ -1,7 +1,7 @@
 const { body, param, validationResult } = require("express-validator")
-const SpecSheet = require("../models/SpecSheet")
+const SpecSheet = require("../models/specSheet")
 const Product = require("../models/Product")
-const Supplier = require("../models/Supplier")
+const Supplier = require("../models/supplier")
 
 // Validaciones auxiliares
 const validateSpecSheetExistence = async (id) => {
@@ -18,10 +18,10 @@ const validateProductExistence = async (id) => {
   }
 }
 
-const validateUniqueSpecSheet = async (IdProduct, startDate, endDate) => {
+const validateUniqueSpecSheet = async (idProduct, startDate, endDate) => {
   const existingSpecSheet = await SpecSheet.findOne({
     where: { 
-      IdProduct,
+      idProduct,
       startDate,
       endDate
     }
@@ -31,9 +31,9 @@ const validateUniqueSpecSheet = async (IdProduct, startDate, endDate) => {
   }
 }
 
-const validateUniqueInsumos = async (IdProduct, insumos) => {
+const validateUniqueInsumos = async (idProduct, insumos) => {
   // Asumimos que 'insumos' es un array de IDs de insumos
-  const product = await Product.findByPk(IdProduct, {
+  const product = await Product.findByPk(idProduct, {
     include: [{ model: Supplier, as: 'Supplier' }]
   })
 
@@ -43,7 +43,7 @@ const validateUniqueInsumos = async (IdProduct, insumos) => {
 
   // Obtener todos los SpecSheets existentes para comparar
   const existingSpecSheets = await SpecSheet.findAll({
-    where: { IdProduct: { [require("sequelize").Op.ne]: IdProduct } },
+    where: { idProduct: { [require("sequelize").Op.ne]: idProduct } },
     include: [{ 
       model: Product,
       include: [{ model: Supplier, as: 'Supplier' }]
@@ -51,7 +51,7 @@ const validateUniqueInsumos = async (IdProduct, insumos) => {
   })
 
   for (let specSheet of existingSpecSheets) {
-    const existingInsumos = specSheet.Product.Supplier.map(s => s.IdSupplier)
+    const existingInsumos = specSheet.Product.Supplier.map(s => s.idSupplier)
     if (JSON.stringify(existingInsumos.sort()) === JSON.stringify(insumos.sort())) {
       return Promise.reject("Ya existe una ficha técnica con los mismos insumos para otro producto")
     }
@@ -60,7 +60,7 @@ const validateUniqueInsumos = async (IdProduct, insumos) => {
 
 // Validaciones base para fichas técnicas
 const specSheetBaseValidation = [
-  body("IdProduct")
+  body("idProduct")
     .isInt({ min: 1 })
     .withMessage("El ID del producto debe ser un número entero positivo")
     .custom(validateProductExistence),
@@ -76,7 +76,7 @@ const specSheetBaseValidation = [
       }
       return true
     }),
-  body("state")
+  body("status")
     .default(true)
     .isBoolean()
     .withMessage("El estado debe ser un booleano"),
@@ -93,7 +93,7 @@ const specSheetBaseValidation = [
 const createSpecSheetValidation = [
   ...specSheetBaseValidation,
   body().custom(async (value, { req }) => {
-    await validateUniqueSpecSheet(req.body.IdProduct, req.body.startDate, req.body.endDate)
+    await validateUniqueSpecSheet(req.body.idProduct, req.body.startDate, req.body.endDate)
   })
 ]
 
@@ -104,10 +104,10 @@ const updateSpecSheetValidation = [
   param("id").custom(validateSpecSheetExistence),
   body().custom(async (value, { req }) => {
     const specSheet = await SpecSheet.findByPk(req.params.id)
-    if (specSheet.IdProduct !== req.body.IdProduct || 
+    if (specSheet.idProduct !== req.body.idProduct || 
         specSheet.startDate.toISOString() !== new Date(req.body.startDate).toISOString() ||
         specSheet.endDate.toISOString() !== new Date(req.body.endDate).toISOString()) {
-      await validateUniqueSpecSheet(req.body.IdProduct, req.body.startDate, req.body.endDate)
+      await validateUniqueSpecSheet(req.body.idProduct, req.body.startDate, req.body.endDate)
     }
   })
 ]
@@ -126,7 +126,7 @@ const getSpecSheetByIdValidation = [
 
 // Validación para cambiar estado
 const changeStateValidation = [
-  body("state").isBoolean().withMessage("El estado debe ser un booleano"),
+  body("status").isBoolean().withMessage("El estado debe ser un booleano"),
   param("id").isInt({ min: 1 }).withMessage("El id debe ser un número entero positivo"),
   param("id").custom(validateSpecSheetExistence),
 ]
