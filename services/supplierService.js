@@ -20,8 +20,8 @@ const deleteSupplier = async (id) => {
     return supplierRepository.deleteSupplier(id);
 }
 
-const changeStateSupplier = async (id, state) => {
-    return supplierRepository.changeStateSupplier(id, state);
+const changeStateSupplier = async (id, status) => {
+    return supplierRepository.changeStateSupplier(id, status);
 }
 
 module.exports = {

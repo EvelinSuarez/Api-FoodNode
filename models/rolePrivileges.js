@@ -1,47 +1,7 @@
-/* const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-const Role = require('./role'); 
-const Privileges = require('./privileges');
-
-const RolePrivileges = sequelize.define('rolePrivileges', {
-    idPrivilegedRole: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-    },
-    idRole: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: Role,
-            key: 'idRole'
-        },
-        onDelete: 'CASCADE'
-    },
-    idPrivilege: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: Privileges,
-            key: 'idPrivilege'
-        },
-        onDelete: 'CASCADE'
-    }
-}, { timestamps: false });
-
-RolePrivileges.belongsTo(Role, { foreignKey: 'idRole', onDelete: 'CASCADE' });
-Role.hasMany(RolePrivileges, { foreignKey: 'idRole', onDelete: 'CASCADE' });
-RolePrivileges.belongsTo(Privileges, { foreignKey: 'idPrivilege', onDelete: 'CASCADE' });
-Privileges.hasMany(RolePrivileges, { foreignKey: 'idPrivilege', onDelete: 'CASCADE' });
-
-module.exports = RolePrivileges;  */
-
-
-
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Role = require('./role');
-const Privileges = require('./Privileges');
+const Privilege = require('./privileges');
 
 const RolePrivileges = sequelize.define('RolePrivileges', {
     idPrivilegedRole: {
@@ -61,7 +21,7 @@ const RolePrivileges = sequelize.define('RolePrivileges', {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: Privileges,
+            model: Privilege,
             key: 'idPrivilege'
         }
     }
@@ -70,7 +30,7 @@ const RolePrivileges = sequelize.define('RolePrivileges', {
 RolePrivileges.belongsTo(Role, { foreignKey: 'idRole' });
 Role.hasMany(RolePrivileges, { foreignKey: 'idRole' });
 
-RolePrivileges.belongsTo(Privileges, { foreignKey: 'idPrivilege' });
-Privileges.hasMany(RolePrivileges, { foreignKey: 'idPrivilege' });
+RolePrivileges.belongsTo(Privilege, { foreignKey: 'idPrivilege' });
+Privilege.hasMany(RolePrivileges, { foreignKey: 'idPrivilege' });
 
 module.exports = RolePrivileges;

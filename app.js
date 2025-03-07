@@ -30,6 +30,7 @@ const reservationsRoutes = require('./routes/reservationsRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
 const productRoutes = require('./routes/productRoutes');
 const specSheetRoutes = require('./routes/spechsheetRoutes');
+const rolePrivilegesRoutes = require("./routes/rolePrivilegesRoutes")
 
 
 
@@ -52,6 +53,7 @@ app.use('/reservations', reservationsRoutes);
 app.use('/supplier', supplierRoutes);
 app.use('/product', productRoutes);
 app.use('/specSheet', specSheetRoutes);
+app.use("/rolePrivileges", rolePrivilegesRoutes)
 
 
 module.exports = app;

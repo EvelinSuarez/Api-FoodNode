@@ -1,4 +1,4 @@
-const specSheetRepository = require('../repositories/spechsheetRepository');
+const specSheetRepository = require('../repositories/specSheetRepository');
 
 const createSpecSheet = async (specSheet) => {
     return specSheetRepository.createSpecSheet(specSheet);
@@ -20,8 +20,8 @@ const deleteSpecSheet = async (id) => {
     return specSheetRepository.deleteSpecSheet(id);
 }
 
-const changeStateSpecSheet = async (id, state) => {
-    return specSheetRepository.changeStateSpecSheet(id, state);
+const changeStateSpecSheet = async (id, status) => {
+    return specSheetRepository.changeStateSpecSheet(id, status);
 }
 
 const getSpecSheetsByProduct = async (idProduct) => {

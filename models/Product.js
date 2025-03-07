@@ -1,9 +1,9 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Supplier = require('./Supplier');
+const Supplier = require('./supplier');
 
-const Product = sequelize.define('product', {
-    IdProduct: { 
+const Product = sequelize.define('Product', {
+    idProduct: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
         autoIncrement: true, 
@@ -22,24 +22,25 @@ const Product = sequelize.define('product', {
         allowNull: false,
         comment: 'Tiempo total en minutos' 
     },
-    state: { 
+    status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     },
-    IdSupplier: {
+    idSupplier: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
             model: 'Suppliers',
-            key: 'IdSupplier'
+            key: 'idSupplier'
         }
     }
 }, {
     timestamps: true
+    
 });
 
 // Establecer la relación con Supplier
-Product.belongsTo(Supplier, { foreignKey: 'IdSupplier' });
-Supplier.hasMany(Product, { foreignKey: 'IdSupplier' });
+Product.belongsTo(Supplier, { foreignKey: 'idSupplier' });
+Supplier.hasMany(Product, { foreignKey: 'idSupplier' });
 
 module.exports = Product;
