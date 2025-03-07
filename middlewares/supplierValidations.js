@@ -1,14 +1,18 @@
 const { body, param, validationResult } = require("express-validator")
 const Supplier = require("../models/supplier")
-// const Product = require("../models/product") // Asumiendo que existe un modelo Producto
+const Product = require("../models/Product") // Asumiendo que existe un modelo Producto
 
 // Validaciones auxiliares
 const validateSupplierExistence = async (id) => {
-  const supplier = await Supplier.findByPk(id)
-  if (!supplier) {
-    return Promise.reject("El insumo no existe")
+  if (!id) {
+    return Promise.reject("El id es inválido");
   }
-}
+  const supplier = await Supplier.findByPk(id);
+  if (!supplier) {
+    return Promise.reject("El insumo no existe");
+  }
+};
+
 
 const validateUniqueSupplierName = async (supplierName) => {
   const existingSupplier = await Supplier.findOne({ where: { supplierName } })
@@ -35,9 +39,9 @@ const supplierBaseValidation = [
     .withMessage("El nombre del insumo debe tener al menos 3 caracteres")
     .matches(/^[a-zA-Z0-9\s]+$/)
     .withMessage("El nombre solo puede contener letras, números y espacios"),
-  body("Gramaje").isInt({ min: 1 }).withMessage("El gramaje debe ser un número entero positivo"),
+  body("gramaje").isInt({ min: 1 }).withMessage("El gramaje debe ser un número entero positivo"),
   body("idProvider").isInt({ min: 1 }).withMessage("El ID del proveedor debe ser un número entero positivo"),
-  body("state").default(true).isBoolean().withMessage("El estado debe ser un booleano"),
+  body("status").default(true).isBoolean().withMessage("El estado debe ser un booleano"),
 ]
 
 // Validación para crear insumo
@@ -77,7 +81,7 @@ const getSupplierByIdValidation = [
 
 // Validación para cambiar estado
 const changeStateValidation = [
-  body("estado").isBoolean().withMessage("El estado debe ser un booleano"),
+  body("status").isBoolean().withMessage("El estado debe ser un booleano"),
   param("id").isInt({ min: 1 }).withMessage("El id debe ser un número entero positivo"),
   param("id").custom(validateSupplierExistence),
 ]

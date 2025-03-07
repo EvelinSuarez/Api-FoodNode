@@ -14,7 +14,6 @@ app.use(express.json());
 
 
 const userRoutes = require('./routes/userRoutes');
-const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const authMiddleware = require('./middlewares/authValidations');
 
@@ -36,6 +35,9 @@ const privilegeRoutes = require('./routes/privilegeRoutes');
 const aditionalServicesRoutes = require('./routes/aditionalServicesRoutes');
 const reservationsRoutes = require('./routes/reservationsRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
+const productRoutes = require('./routes/productRoutes');
+const specSheetRoutes = require('./routes/spechsheetRoutes');
+const rolePrivilegesRoutes = require("./routes/rolePrivilegesRoutes")
 
 
 
@@ -56,6 +58,9 @@ app.use('/privilege', privilegeRoutes);
 app.use('/aditionalServices', aditionalServicesRoutes);
 app.use('/reservations', reservationsRoutes);
 app.use('/supplier', supplierRoutes);
+app.use('/product', productRoutes);
+app.use('/specSheet', specSheetRoutes);
+app.use("/rolePrivileges", rolePrivilegesRoutes)
 
 
 

@@ -1,8 +1,8 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Suppliers = sequelize.define('Supplier', {
-    IdSupplier: { 
+const Supplier = sequelize.define('Supplier', {
+    idSupplier: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
         autoIncrement: true, 
@@ -12,18 +12,20 @@ const Suppliers = sequelize.define('Supplier', {
         type: DataTypes.STRING(60), 
         allowNull: false 
     },
-    IdProvider: { 
-        type: DataTypes.INTEGER, 
+    idProvider: { 
+        type: DataTypes.INTEGER,
         allowNull: false 
     },
-    state: { 
+    status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     },
-    Gramaje: { 
+    gramaje: { 
         type: DataTypes.INTEGER, 
         allowNull: true 
     }
+}, {
+    timestamps: true
 });
 
-module.exports = Suppliers;
+module.exports = Supplier;

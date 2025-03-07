@@ -1,4 +1,4 @@
-const Privileges = require('../models/rolePrivileges');
+const Privilege = require('../models/Privileges');
 
 const createPrivilege = async (privilegeData) => {
     return await Privilege.create(privilegeData);
