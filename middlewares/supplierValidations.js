@@ -35,8 +35,8 @@ const supplierBaseValidation = [
     .withMessage("El nombre del insumo debe tener al menos 3 caracteres")
     .matches(/^[a-zA-Z0-9\s]+$/)
     .withMessage("El nombre solo puede contener letras, números y espacios"),
-  body("gramaje").isInt({ min: 1 }).withMessage("El gramaje debe ser un número entero positivo"),
-  body("idProveedor").isInt({ min: 1 }).withMessage("El ID del proveedor debe ser un número entero positivo"),
+  body("Gramaje").isInt({ min: 1 }).withMessage("El gramaje debe ser un número entero positivo"),
+  body("idProvider").isInt({ min: 1 }).withMessage("El ID del proveedor debe ser un número entero positivo"),
   body("state").default(true).isBoolean().withMessage("El estado debe ser un booleano"),
 ]
 

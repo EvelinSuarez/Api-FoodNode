@@ -2,14 +2,14 @@ const { body, param, validationResult } = require('express-validator');
 const Permissions = require('../models/permissions');
 
 const validatePermissionExistence = async (idPermission) => {
-    const permission = await Permission.findByPk(idPermission);
+    const permission = await Permissions.findByPk(idPermission);
     if (!permission) {
         return Promise.reject('El permiso no existe');
     }
 };
 
 const validateUniquePermissionName = async (name) => {
-    const permission = await Permission.findOne({ where: { name } });
+    const permission = await Permissions.findOne({ where: { name } });
     if (permission) {
         return Promise.reject('El nombre del permiso ya existe');
     }

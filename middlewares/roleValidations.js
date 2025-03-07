@@ -116,7 +116,7 @@ const roleBaseValidation = [
     body('roleName')
         .isLength({ min: 3, max: 20 }).withMessage('El nombre del rol debe tener entre 3 y 20 caracteres')
         .matches(/^[a-zA-Z0-9\s]+$/).withMessage('El nombre del rol solo puede contener letras, números y espacios'),
-    body('status').isBoolean().withMessage('El estado debe ser un booleano')
+    body('state').isBoolean().withMessage('El estado debe ser un booleano')
 ];
 
 const getRoleByIdValidation = [
