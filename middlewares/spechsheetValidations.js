@@ -1,5 +1,5 @@
 const { body, param, validationResult } = require("express-validator")
-const SpecSheet = require("../models/spechsheetModel")
+const SpecSheet = require("../models/SpecSheet")
 const Product = require("../models/Product")
 const Supplier = require("../models/Supplier")
 

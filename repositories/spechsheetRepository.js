@@ -1,4 +1,4 @@
-const SpecSheet = require('../models/spechsheetModel');
+const SpecSheet = require('../models/spechsheet');
 
 const createSpecSheet = async (specSheet) => {
     return SpecSheet.create(specSheet);

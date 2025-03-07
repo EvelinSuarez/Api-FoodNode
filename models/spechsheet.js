@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Product = require('./Product');
 
-const SpecSheet = sequelize.define('spechsheetModel', {
+const SpecSheet = sequelize.define('spechsheet', {
     IdSpecsheet: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
