@@ -3,8 +3,8 @@ const Reservations = require('../models/reservations');
 const { Op } = require('sequelize');
 
 // Validar si la reserva existe por ID
-const validateReservationsExistence = async (idReservations) => {
-    const reservations = await Reservations.findByPk(idReservations);
+const validateReservationsExistence = async (id) => {
+    const reservations = await Reservations.findByPk(id);
     if (!reservations) {
         return Promise.reject('La reserva no existe');
     }
