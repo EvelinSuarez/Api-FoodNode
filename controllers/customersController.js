@@ -44,6 +44,7 @@ const updateCustomers = async (req, res) => {
     try {
         await customersService.updateCustomers(req.params.id, req.body);
         res.status(204).end();
+        res.status(200).json({ message: 'Cliente actualizado correctamente' });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
@@ -74,7 +75,20 @@ const changeStateCustomers = async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 }
-
+// método para buscar clientes
+const searchCustomers = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+        const { searchTerm } = req.body;
+        const customers = await customersService.searchCustomers(searchTerm);
+        res.status(200).json(customers);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
 module.exports = {
     createCustomers,
     getAllCustomers,
@@ -82,4 +96,5 @@ module.exports = {
     updateCustomers,
     deleteCustomers,
     changeStateCustomers,
+    searchCustomers,
 };

@@ -15,12 +15,14 @@ const createAditionalServices = async (req, res) => {
 }
 
 const getAllAditionalServices = async (req, res) => {
+    
     try {
         const aditionalServices = await aditionalServicesService.getAllAditionalServices();
         res.status(200).json(aditionalServices);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
+
 }
 
 const getAditionalServicesById = async (req, res) => {
@@ -44,6 +46,7 @@ const updateAditionalServices = async (req, res) => {
     try {
         await aditionalServicesService.updateAditionalServices(req.params.id, req.body);
         res.status(204).end();
+        res.status(200).json({ message: 'Servicio adicional actualizado correctamente' });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }

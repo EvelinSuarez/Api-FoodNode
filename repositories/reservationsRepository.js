@@ -1,27 +1,50 @@
 const Reservations = require('../models/reservations');
+const Customers = require('../models/customers');
+const AditionalServices = require('../models/aditionalServices');
 
 const createReservations = async (reservations) => {
     return Reservations.create(reservations);
 }
 
 const getAllReservations = async () => {
-    return Reservations.findAll();
+    const reservations = await Reservations.findAll({
+        include: [
+            {
+                model: Customers,
+            },
+            {
+                model: AditionalServices,
+            }
+        ]
+    });
+    return reservations;
+    
 }
 
 const getReservationsById = async (id) => {
-    return Reservations.findByPk(id);
+    return Reservations.findByPk(id, {
+        include: [
+            {
+                model: Customers,
+            },
+            {
+                model: AditionalServices,
+            }
+        ]
+    });
+};
+
+
+const updateReservations = async (idReservations, reservations) => {
+    return Reservations.update(reservations, { where: { idReservations } });
 }
 
-const updateReservations = async (id, reservations) => {
-    return Reservations.update(reservations, { where: { id } });
+const deleteReservations = async (idReservations) => {
+    return Reservations.destroy({ where: { idReservations } });
 }
 
-const deleteReservations = async (id) => {
-    return Reservations.destroy({ where: { id } });
-}
-
-const changeSateReservations = async (id, state) => {
-    return Reservations.update({ state }, { where: { id } });
+const changeStateReservations = async (idReservations, state) => {
+    return Reservations.update({ state }, { where: { idReservations } });
 }
 
 module.exports = {
@@ -30,5 +53,5 @@ module.exports = {
     getReservationsById,
     updateReservations,
     deleteReservations,
-    changeSateReservations,
+    changeStateReservations,
 };

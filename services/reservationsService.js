@@ -20,8 +20,8 @@ const deleteReservations = async (id) => {
     return reservationsRepository.deleteReservations(id);
 }
 
-const changeSateReservations = async (id, state) => {
-    return reservationsRepository.changeSateReservations(id, state);
+const changeStateReservations = async (id, state) => {
+    return reservationsRepository.changeStateReservations(id, state);
 }
 
 module.exports = {
@@ -30,5 +30,5 @@ module.exports = {
     getReservationsById,
     updateReservations,
     deleteReservations,
-    changeSateReservations,
+    changeStateReservations,
 };

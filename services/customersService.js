@@ -24,6 +24,11 @@ const changeStateCustomers = async (id, state) => {
     return customersRepository.changeStateCustomers(id, state);
 }
 
+//  método para buscar clientes
+const searchCustomers = async (searchTerm) => {
+    return customersRepository.searchCustomers(searchTerm);
+};
+
 module.exports = {
     createCustomers,
     getAllCustomers,
@@ -31,4 +36,5 @@ module.exports = {
     updateCustomers,
     deleteCustomers,
     changeStateCustomers,
+    searchCustomers,
 };

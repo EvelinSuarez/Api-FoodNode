@@ -44,6 +44,7 @@ const updateReservations = async (req, res) => {
     try {
         await reservationsService.updateReservations(req.params.id, req.body);
         res.status(204).end();
+        res.status(200).json({ message: 'Reserva actualizada correctamente' });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
