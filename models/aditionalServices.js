@@ -6,7 +6,8 @@ const AditionalServices = sequelize.define('AditionalServices', {
         type: DataTypes.INTEGER, 
         primaryKey: true, 
         autoIncrement: true, 
-        allowNull: false 
+        allowNull: false,
+     
     },
     name: { 
         type: DataTypes.STRING(60), 
@@ -15,7 +16,11 @@ const AditionalServices = sequelize.define('AditionalServices', {
     status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
-    }
+    },
+    
+},{
+    tableName:'aditionalservices',
+
 });
 
 module.exports = AditionalServices; 

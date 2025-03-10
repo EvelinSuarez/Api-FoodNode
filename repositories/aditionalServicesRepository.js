@@ -12,16 +12,16 @@ const getAditionalServicesById = async (id) => {
     return AditionalServices.findByPk(id);
 }
 
-const updateAditionalServices = async (id, aditionalServices) => {
-    return AditionalServices.update(aditionalServices, { where: { id } });
+const updateAditionalServices = async (idAditionalServices, aditionalServices) => {
+    return AditionalServices.update(aditionalServices, { where: { idAditionalServices } });
 }
 
-const deleteAditionalServices = async (id) => {
-    return AditionalServices.destroy({ where: { id } });
+const deleteAditionalServices = async (idAditionalServices) => {
+    return AditionalServices.destroy({ where: { idAditionalServices } });
 }
 
-const changeSateAditionalServices = async (id, state) => {
-    return AditionalServices.update({ state }, { where: { id } });
+const changeStateAditionalServices = async (idAditionalServices, state) => {
+    return AditionalServices.update({ state }, { where: { idAditionalServices } });
 }
 
 module.exports = {
@@ -30,5 +30,5 @@ module.exports = {
     getAditionalServicesById, 
     updateAditionalServices,
     deleteAditionalServices,
-    changeSateAditionalServices,
+    changeStateAditionalServices,
 };

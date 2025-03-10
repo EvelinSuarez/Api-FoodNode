@@ -23,6 +23,25 @@ const deleteCustomers = async (idCustomers) => {
 const changeStateCustomers = async (idCustomers, state) => {
     return Customers.update({ state }, { where: { idCustomers } });
 }
+// Método para buscar clientes
+const searchCustomers = async (searchTerm) => {
+    try {
+        const customers = await Customers.findAll({
+            where: {
+                [Op.or]: [
+                    { fullName: { [Op.like]: `%${searchTerm}%` } }, // Busca por nombre
+                    { distintive: { [Op.like]: `%${searchTerm}%` } }, // Busca por distintivo
+                    { email: { [Op.like]: `%${searchTerm}%` } } // Busca por correo
+                ]
+            }
+        });
+
+        return customers; // Devuelve los resultados (puede ser un array vacío)
+    } catch (error) {
+        throw new Error(error.message); // Lanza errores de la base de datos
+    }
+};
+
 
 module.exports = {
     createCustomers,
@@ -31,4 +50,5 @@ module.exports = {
     updateCustomers,
     deleteCustomers,
     changeStateCustomers,
+    searchCustomers,
 };

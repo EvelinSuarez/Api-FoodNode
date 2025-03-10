@@ -8,20 +8,20 @@ const getAllAditionalServices = async () => {
     return aditionalServicesRepository.getAllAditionalServices();
 }
 
-const getAditionalServicesById = async (id) => {
-    return aditionalServicesRepository.getAditionalServicesById(id);
+const getAditionalServicesById = async (idAditionalServices) => {
+    return aditionalServicesRepository.getAditionalServicesById(idAditionalServices);
 }
 
 const updateAditionalServices = async (id, aditionalServices) => {
     return aditionalServicesRepository.updateAditionalServices(id, aditionalServices);
 }
 
-const deleteAditionalServices = async (id) => {
-    return aditionalServicesRepository.deleteAditionalServices(id);
+const deleteAditionalServices = async (idAditionalServices) => {
+    return aditionalServicesRepository.deleteAditionalServices(idAditionalServices);
 }
 
-const changeSateAditionalServices = async (id, state) => {
-    return aditionalServicesRepository.changeSateAditionalServices(id, state);
+const changeStateAditionalServices = async (id, state) => {
+    return aditionalServicesRepository.changeStateAditionalServices(id, state);
 }
 
 module.exports = {
@@ -30,5 +30,5 @@ module.exports = {
     getAditionalServicesById,
     updateAditionalServices,
     deleteAditionalServices,
-    changeSateAditionalServices,
+    changeStateAditionalServices,
 };
