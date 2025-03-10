@@ -1,6 +1,9 @@
+
+
+
+// models/privileges.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Permission = require('./permission');
 
 const Privilege = sequelize.define('privileges', {
     idPrivilege: {
@@ -8,22 +11,12 @@ const Privilege = sequelize.define('privileges', {
         primaryKey: true,
         autoIncrement: true,
     },
-    privilegeName: {
+    privilegename: {
         type: DataTypes.STRING(60),
         allowNull: false,
         unique: true
-    },
-    idPermission: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: Permission,
-            key: 'idPermission'
-        }
     }
+    // Se elimina idPermission de este modelo
 }, { timestamps: false });
-
-Privilege.belongsTo(Permission, { foreignKey: "idPermission" })
-Permission.hasMany(Privilege, { foreignKey: "idPermission" })
 
 module.exports = Privilege;

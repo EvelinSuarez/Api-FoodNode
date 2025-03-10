@@ -81,29 +81,54 @@ const changeRoleState = async (req, res) => {
     }
 };
 
-// 🔹 Nueva función para asignar privilegios a un rol
+// 🔹 Función actualizada para asignar privilegios con permisos a un rol
 const assignPrivileges = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-    
+        
     try {
         const { idRole } = req.params;
-        const { privilegeIds } = req.body; // Array de IDs de privilegios
-
+        const { privilegePermissions } = req.body; // Array de objetos {idPrivilege, idPermission}
+        
         const role = await Role.findByPk(idRole);
         if (!role) return res.status(404).json({ message: "Rol no encontrado" });
-
-        const privileges = await Privilege.findAll({ where: { idPrivilege: privilegeIds } });
-
-        await role.setPrivileges(privileges); // Asigna los privilegios al rol
-
-        res.status(200).json({ message: "Privilegios asignados con éxito" });
+        
+        // Eliminar asignaciones existentes para este rol
+        await rolePrivileges.destroy({ where: { idRole } });
+        
+        // Crear nuevas asignaciones
+        const rolePrivileges = [];
+        for (const item of privilegePermissions) {
+            const { idPrivilege, idPermission } = item;
+            
+            // Verificar que existan el privilegio y el permiso
+            const privilege = await Privilege.findByPk(idPrivilege);
+            const permission = await permission.findByPk(idPermission);
+            
+            if (!privilege || !permission) {
+                continue; // Saltamos esta asignación si no existe el privilegio o permiso
+            }
+            
+            // Crear la asignación
+            const rolePrivilege = await rolePrivileges.create({
+                idRole,
+                idPrivilege,
+                idPermission
+            });
+            
+            rolePrivileges.push(rolePrivilege);
+        }
+        
+        res.status(200).json({ 
+            message: "Privilegios y permisos asignados con éxito",
+            rolePrivileges
+        });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}; 
+};
 
 module.exports = {
     createRole,
