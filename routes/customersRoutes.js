@@ -9,5 +9,6 @@ router.post('/', customersValidations.createCustomersValidation, customersContro
 router.put('/:id', customersValidations.updateCustomersValidation, customersController.updateCustomers);
 router.delete('/:id', customersValidations.deleteCustomersValidation, customersController.deleteCustomers);
 router.patch('/:id', customersValidations.changeStateValidation, customersController.changeStateCustomers);
+router.post('/search', customersValidations.searchCustomersValidation, customersController.searchCustomers);
 
 module.exports = router;

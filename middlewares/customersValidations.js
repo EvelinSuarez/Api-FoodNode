@@ -1,6 +1,7 @@
 const { body, param, validationResult } = require('express-validator');
 const Customers = require('../models/customers');
 
+// Validar si el cliente existe
 const validateCustomersExistence = async (id) => {
     const customers = await Customers.findByPk(id);
     if (!customers) {
@@ -8,15 +9,18 @@ const validateCustomersExistence = async (id) => {
     }
 };
 
-const validateUniqueCustomersName = async (fullName) => {
+// Validar unicidad del nombre del cliente (excluyendo el ID actual en actualizaciones)
+const validateUniqueCustomersName = async (fullName, { req }) => {
     const customers = await Customers.findOne({ where: { fullName } });
-    if (customers) {
+    if (customers && customers.idCustomers !== parseInt(req.params.id)) {
         return Promise.reject('El nombre del cliente ya está registrado');
     }
 };
-const validateUniqueCustomersDistintive = async (distintive) => {
+
+// Validar unicidad del distintivo del cliente (excluyendo el ID actual en actualizaciones)
+const validateUniqueCustomersDistintive = async (distintive, { req }) => {
     const customers = await Customers.findOne({ where: { distintive } });
-    if (customers) {
+    if (customers && customers.idCustomers !== parseInt(req.params.id)) {
         return Promise.reject('El distintivo del cliente ya está registrado');
     }
 };
@@ -24,10 +28,10 @@ const validateUniqueCustomersDistintive = async (distintive) => {
 // Validaciones base para crear y actualizar clientes
 const customersBaseValidation = [
     body('fullName')
-        .isLength({ min: 3 }).withMessage('El nombre debe tener al menos 3 caracteres')
+        .isLength({ min: 5 }).withMessage('El nombre debe tener al menos 5 caracteres')
         .custom(validateUniqueCustomersName).withMessage('El nombre del cliente ya está registrado'),
     body('distintive')
-        .isString().withMessage('El campo distintivo debe ser un número entero')
+        .isString().withMessage('El campo distintivo debe ser una cadena de texto')
         .notEmpty().withMessage('El campo distintivo es obligatorio')
         .custom(validateUniqueCustomersDistintive).withMessage('El distintivo del cliente ya está registrado'),
     body('customerCategory')
@@ -45,7 +49,10 @@ const customersBaseValidation = [
         .optional({ nullable: true }),
     body('status')
         .isBoolean().withMessage('El estado debe ser un valor booleano')
-        .optional({ nullable: true })
+        .optional({ nullable: true }),
+    body('idRol')
+        .isInt().withMessage('El ID del rol debe ser un número entero')
+        .optional({ nullable: true }) // Opcional según la matriz
 ];
 
 // Validaciones para crear un cliente
@@ -61,7 +68,7 @@ const updateCustomersValidation = [
         .custom(validateCustomersExistence)
 ];
 
-// Validaciones para eliminar un cliente
+// Validaciones para eliminar un cliente (con confirmación)
 const deleteCustomersValidation = [
     param('id')
         .isInt().withMessage('El ID debe ser un número entero')
@@ -84,10 +91,20 @@ const changeStateValidation = [
         .custom(validateCustomersExistence)
 ];
 
+// Validaciones para buscar clientes
+const searchCustomersValidation = [
+    body('searchTerm')
+        .isString().withMessage('El término de búsqueda debe ser una cadena de texto')
+        .isLength({ max: 90 }).withMessage('El término de búsqueda no puede exceder los 90 caracteres')
+        .notEmpty().withMessage('El término de búsqueda es obligatorio') // Asegura que no esté vacío
+];
+
+
 module.exports = {
     createCustomersValidation,
     updateCustomersValidation,
     deleteCustomersValidation,
     getCustomersByIdValidation,
     changeStateValidation,
+    searchCustomersValidation, //validación para búsqueda
 };

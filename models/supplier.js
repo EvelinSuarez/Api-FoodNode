@@ -20,7 +20,7 @@ const Supplier = sequelize.define('Supplier', {
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     },
-    gramaje: { 
+    quantity: { 
         type: DataTypes.INTEGER, 
         allowNull: true 
     }

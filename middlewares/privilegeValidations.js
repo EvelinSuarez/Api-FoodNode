@@ -1,6 +1,8 @@
-const { body, param, validationResult } = require('express-validator');
+
+
+// middlewares/privilegeValidations.js
+const { body, param } = require('express-validator');
 const Privilege = require('../models/privileges');
-const Permission = require('../models/permission');
 
 const validatePrivilegeExistence = async (idPrivilege) => {
     const privilege = await Privilege.findByPk(idPrivilege);
@@ -10,31 +12,21 @@ const validatePrivilegeExistence = async (idPrivilege) => {
 };
 
 const validateUniquePrivilegeName = async (privilegeName) => {
-    const privilege = await Privilege.findOne({ where: { privilegeName } });
+    const privilege = await Privilege.findOne({ where: { privilegename: privilegeName } });
     if (privilege) {
         return Promise.reject('El nombre del privilegio ya existe');
     }
 };
 
-const validatePermissionExistence = async (idPermission) => {
-    const permission = await Permission.findByPk(idPermission);
-    if (!permission) {
-        return Promise.reject('El permiso asociado no existe');
-    }
-};
-
 const privilegeBaseValidation = [
-    body('privilegeName')
+    body('privilegename')
         .isLength({ min: 3, max: 50 }).withMessage('El nombre del privilegio debe tener entre 3 y 50 caracteres')
-        .matches(/^[a-zA-Z0-9\s]+$/).withMessage('El nombre del privilegio solo puede contener letras, números y espacios'),
-    body('idPermission')
-        .isInt({ min: 1 }).withMessage('El id del permiso debe ser un número entero positivo')
-        .custom(validatePermissionExistence)
+        .matches(/^[a-zA-Z0-9\s]+$/).withMessage('El nombre del privilegio solo puede contener letras, números y espacios')
 ];
 
 const createPrivilegeValidation = [
     ...privilegeBaseValidation,
-    body('privilegeName').custom(validateUniquePrivilegeName)
+    body('privilegename').custom(validateUniquePrivilegeName)
 ];
 
 const updatePrivilegeValidation = [

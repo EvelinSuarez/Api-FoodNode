@@ -1,8 +1,8 @@
 const { body, param, validationResult } = require('express-validator');
 const AditionalServices = require('../models/aditionalServices');
 
-const validateAditionalServicesExistence = async (id) => {
-    const aditionalServices = await AditionalServices.findByPk(id);
+const validateAditionalServicesExistence = async (idAditionalServices) => {
+    const aditionalServices = await AditionalServices.findByPk(idAditionalServices);
     if (!aditionalServices) {
         return Promise.reject('El servicio adicional no existe');
     }

@@ -1,7 +1,7 @@
 const { body, param, validationResult } = require('express-validator');
 const Role = require('../models/role');
 const User = require('../models/user');
-const RolePrivileges = require('../models/rolePrivileges');
+//const RolePrivileges = require('../models/rolePrivileges'); 
 
 const validateRoleExistence = async (idRole) => {
     const role = await Role.findByPk(idRole);
