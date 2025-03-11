@@ -20,8 +20,8 @@ const deleteEmployee = async (idEmployee) => {
     return Employee.destroy({ where: { idEmployee } });
 }
 
-const changeSateEmployee = async (idEmployee, state) => {
-    return Employee.update({ state }, { where: { idEmployee } });
+const changeSateEmployee = async (idEmployee, status) => {
+    return Employee.update({ status }, { where: { idEmployee } });
 }
 
 module.exports = {

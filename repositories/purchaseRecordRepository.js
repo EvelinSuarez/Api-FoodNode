@@ -20,8 +20,8 @@ const deletePurchaseRecord = async (id) => {
     return PurchaseRecord.destroy({ where: { id } });
 }
 
-const changeSatePurchaseRecord = async (id, state) => {
-    return PurchaseRecord.update({ state }, { where: { id } });
+const changeSatePurchaseRecord = async (id, status) => {
+    return PurchaseRecord.update({ status }, { where: { id } });
 }
 
 module.exports = {

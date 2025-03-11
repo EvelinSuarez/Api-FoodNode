@@ -28,7 +28,7 @@ const MonthlyOverallExpense = sequelize.define('MonthlyOverallExpense', {
         type: DataTypes.STRING(250), 
         allowNull: false 
     },
-    state: { 
+    status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     }

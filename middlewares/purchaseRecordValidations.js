@@ -58,7 +58,7 @@ const getPurchaseRecordByIdValidation = [
 
 // Validación para cambiar el estado de un registro de compra
 const changeStateValidation = [
-    body('state').isBoolean().withMessage('El estado debe ser un booleano'),
+    body('status').isBoolean().withMessage('El estado debe ser un booleano'),
     param('idPurchaseRecord').isInt().withMessage('El id debe ser un número entero'),
     param('idPurchaseRecord').custom(async (id) => {
         const purchaseRecord = await PurchaseRecord.findByPk(id);

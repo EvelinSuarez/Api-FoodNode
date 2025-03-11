@@ -20,8 +20,8 @@ const deleteEmployee = async (id) => {
     return employeeRepository.deleteEmployee(id);
 }
 
-const changeSateEmployee = async (id, state) => {
-    return employeeRepository.changeSateEmployee(id, state);
+const changeSateEmployee = async (id, status) => {
+    return employeeRepository.changeSateEmployee(id, status);
 }
 
 module.exports = {

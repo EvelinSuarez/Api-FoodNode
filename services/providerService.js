@@ -20,8 +20,8 @@ const deleteProvider = async (id) => {
     return providerRepository.deleteProvider(id);
 }
 
-const changeSateProvider = async (id, state) => {
-    return providerRepository.changeStateProvider(id, state);
+const changeSateProvider = async (id, status) => {
+    return providerRepository.changeStateProvider(id, status);
 }
 
 module.exports = {
