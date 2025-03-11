@@ -52,6 +52,7 @@ const updateAditionalServices = async (req, res) => {
     }
 }
 
+
 const deleteAditionalServices = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
@@ -59,9 +60,15 @@ const deleteAditionalServices = async (req, res) => {
     }
     try {
         await aditionalServicesService.deleteAditionalServices(req.params.id);
-        res.status(204).end();
+        res.status(200).json({ 
+            success: true,
+            message: "Servicio adicional eliminado exitosamente" 
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ 
+            success: false,
+            message: error.message 
+        });
     }
 }
 
