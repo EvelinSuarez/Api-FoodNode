@@ -1,10 +1,10 @@
 const { validationResult } = require('express-validator');
-const conceptSpentService = require('../services/conceptSpentService');  // Cambiar a servicio de conceptSpent
+const conceptSpentService = require('../services/conceptSpentService');
 
 const createConceptSpent = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()});
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
     try {
         const conceptSpent = await conceptSpentService.createConceptSpent(req.body);
@@ -12,68 +12,90 @@ const createConceptSpent = async (req, res) => {
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
 
 const getAllConceptSpents = async (req, res) => {
     try {
-        const conceptSpents = await conceptSpentService.getAllConceptSpents();  // Cambiar nombre de la función
+        const conceptSpents = await conceptSpentService.getAllConceptSpents();
         res.status(200).json(conceptSpents);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
 
 const getConceptSpentById = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()});
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+    const idExpenseType = parseInt(req.params.idExpenseType, 10);
+    if (isNaN(idExpenseType)) {
+        return res.status(400).json({ message: "El ID debe ser un número válido" });
+    }
+
     try {
-        const conceptSpent = await conceptSpentService.getConceptSpentById(req.params.id);  // Cambiar nombre de la función
+        const conceptSpent = await conceptSpentService.getConceptSpentById(idExpenseType);
+        if (!conceptSpent) {
+            return res.status(404).json({ message: 'Concepto de gasto no encontrado' });
+        }
         res.status(200).json(conceptSpent);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
 
 const updateConceptSpent = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()});
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+    const idExpenseType = parseInt(req.params.idExpenseType, 10);
+    console.log(`Buscando concepto de gasto con ID: ${idExpenseType}`);
+
     try {
-        await conceptSpentService.updateConceptSpent(req.params.id, req.body);  // Cambiar nombre de la función
+        const conceptSpent = await conceptSpentService.updateConceptSpent(idExpenseType, req.body);
+        if (!conceptSpent) {
+            return res.status(404).json({ message: 'Concepto de gasto no encontrado' });
+        }
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
 
 const deleteConceptSpent = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()});
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+    const idExpenseType = parseInt(req.params.idExpenseType, 10);
+    if (isNaN(idExpenseType)) {
+        return res.status(400).json({ message: "El ID debe ser un número válido" });
+    }
+
     try {
-        await conceptSpentService.deleteConceptSpent(req.params.id);  // Cambiar nombre de la función
+        const result = await conceptSpentService.deleteConceptSpent(idExpenseType);
+        if (!result) {
+            return res.status(404).json({ message: 'Concepto de gasto no encontrado' });
+        }
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
 
 const changeStateConceptSpent = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()});
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
     try {
-        await conceptSpentService.changeStateConceptSpent(req.params.id, req.body.state);  // Cambiar nombre de la función
+        await conceptSpentService.changeStateConceptSpent(req.params.idExpenseType, req.body.state);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-}
+};
 
 module.exports = {
     createConceptSpent,
