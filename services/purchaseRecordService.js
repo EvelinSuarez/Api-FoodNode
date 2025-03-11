@@ -20,8 +20,8 @@ const deletePurchaseRecord = async (id) => {
     return purchaseRecordRepository.deletePurchaseRecord(id);
 }
 
-const changeSatePurchaseRecord = async (id, state) => {
-    return purchaseRecordRepository.changeSatePurchaseRecord(id, state);
+const changeSatePurchaseRecord = async (id, status) => {
+    return purchaseRecordRepository.changeSatePurchaseRecord(id, status);
 }
 
 module.exports = {

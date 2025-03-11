@@ -31,7 +31,8 @@ const supplierRoutes = require('./routes/supplierRoutes');
 const productRoutes = require('./routes/productRoutes');
 const specSheetRoutes = require('./routes/spechsheetRoutes');
 const rolePrivilegesRoutes = require("./routes/rolePrivilegesRoutes")
-
+const registerPurchaseRoutes = require('./routes/registerPurchaseRoutes');
+const purchaseDetailRoutes = require('./routes/purchaseDetailRoutes');
 
 
 app.use('/users', userRoutes);
@@ -54,6 +55,8 @@ app.use('/supplier', supplierRoutes);
 app.use('/product', productRoutes);
 app.use('/specSheet', specSheetRoutes);
 app.use("/rolePrivileges", rolePrivilegesRoutes)
+app.use('/registerPurchase', registerPurchaseRoutes);
+app.use('/purchaseDetail', purchaseDetailRoutes);
 
 
 module.exports = app;

@@ -26,8 +26,8 @@ const deleteProvider = async (idProvider) => {  // Cambié 'id' por 'idProvider'
 }
 
 // Cambiar el estado de un proveedor
-const changeStateProvider = async (idProvider, state) => {  // Cambié 'id' por 'idProvider'
-    return Provider.update({ state }, { where: { idProvider } });  // Asegúrate de que aquí también sea 'idProvider'
+const changeStateProvider = async (idProvider, status) => {  // Cambié 'id' por 'idProvider'
+    return Provider.update({ status }, { where: { idProvider } });  // Asegúrate de que aquí también sea 'idProvider'
 }
 
 module.exports = {

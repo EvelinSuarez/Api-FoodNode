@@ -20,8 +20,8 @@ const deleteMonthlyOverallExpense = async (idOverallMonth) => {
     return MonthlyOverallExpense.destroy({ where: { idOverallMonth } });
 }
 
-const changeStateMonthlyOverallExpense = async (idOverallMonth, state) => {
-    return MonthlyOverallExpense.update({ state }, { where: { idOverallMonth } });
+const changeStateMonthlyOverallExpense = async (idOverallMonth, status) => {
+    return MonthlyOverallExpense.update({ status }, { where: { idOverallMonth } });
 }
 
 module.exports = {

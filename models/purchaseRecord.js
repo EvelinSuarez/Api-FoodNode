@@ -21,7 +21,7 @@ const PurchaseRecord = sequelize.define('PurchaseRecord', {
         type: DataTypes.DATE, 
         allowNull: false 
     },
-    state: { 
+    status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     }
