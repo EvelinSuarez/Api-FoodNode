@@ -31,7 +31,7 @@ const getPurchaseDetailById = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.idDetail, 10);
     if (isNaN(id)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
@@ -54,7 +54,7 @@ const updatePurchaseDetail = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.idDetail, 10);
     if (isNaN(id)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
@@ -77,13 +77,13 @@ const deletePurchaseDetail = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.idDetail, 10);
     if (isNaN(id)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
 
     try {
-        const deleted = await purchaseDetailService.deleteMurchaseDetail(id);
+        const deleted = await purchaseDetailService.deletePurchaseDetail(id);
         if (!deleted) {
             return res.status(404).json({ message: "detalle no encontrado" });
         }
@@ -100,22 +100,23 @@ const changeStatePurchaseDetail = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.idDetail, 10);
     if (isNaN(id)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
 
     try {
-        const updated = await purchaseDetailService.changeStatePurchaseDetail(id, req.body.state);
-        if (!updated) {
-            return res.status(404).json({ message: "detalle no encontrado" });
+        const updatedDetail = await purchaseDetailService.changeStatePurchaseDetail(id, req.body.status);
+        if (!updatedDetail) {
+            return res.status(404).json({ message: "Detalle no encontrado" });
         }
-        res.status(204).end();
+        res.status(200).json(updatedDetail); // Ahora devuelve el detalle actualizado
     } catch (error) {
         console.error("Error al cambiar estado del detalle:", error);
         res.status(500).json({ message: "Error interno del servidor" });
     }
 };
+
 
 module.exports = {
     createPurchaseDetail,

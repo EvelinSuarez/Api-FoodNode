@@ -21,7 +21,8 @@ const deletePurchaseDetail = async (idDetail) => {
 };
 
 const changeStatePurchaseDetail = async (idDetail, status) => {
-    return PurchaseDetail.update({ status }, { where: { idDetail } });
+    await PurchaseDetail.update({ status }, { where: { idDetail } });
+    return PurchaseDetail.findByPk(idDetail); // Devuelve el objeto actualizado
 };
 
 module.exports = {
