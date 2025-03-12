@@ -65,11 +65,12 @@ const getProviderByIdValidation = [
     param('idProvider').custom(validateProviderExistence) // Verificar si el proveedor existe
 ];
 
-// Validación para cambiar el estado de un proveedor
 const changeStateValidation = [
-    body('status').isBoolean().withMessage('El estado debe ser un booleano'),
-    param('idProvider').isInt({ min: 1 }).withMessage('El id debe ser un número entero positivo'),
-    param('idProvider').custom(validateProviderExistence) // Verificar si el proveedor existe
+    param('idProvider')
+        .isInt({ min: 1 }).withMessage('El ID del proveedor debe ser un número entero positivo')
+        .custom(validateProviderExistence),
+    body('status')
+        .isBoolean().withMessage('El estado debe ser un booleano'),
 ];
 
 module.exports = {

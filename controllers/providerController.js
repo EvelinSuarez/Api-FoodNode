@@ -86,18 +86,29 @@ const deleteProvider = async (req, res) => {
     }
 };
 
+
 const changeStateProvider = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()})
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+
+    const id = parseInt(req.params.idProvider, 10);
+    if (isNaN(id)) {
+        return res.status(400).json({ message: "El ID debe ser un número válido" });
+    }
+
     try {
-        await providerService.changeStateProvider(req.params.idProvider, req.body.state);
-        res.status(204).end();
+        const updatedProvider = await providerService.changeStateProvider(id, req.body.status);
+        if (!updatedProvider) {
+            return res.status(404).json({ message: "Proveedor no encontrado" });
+        }
+        res.status(200).json(updatedProvider); // Ahora devuelve el detalle actualizado
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error("Error al cambiar estado del proveedor:", error);
+        res.status(500).json({ message: "Error interno del servidor" });
     }
-}
+};
 
 module.exports = {
     createProvider,
