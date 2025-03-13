@@ -12,20 +12,10 @@ const Supplier = sequelize.define('Supplier', {
         type: DataTypes.STRING(60), 
         allowNull: false 
     },
-    idProvider: { 
-        type: DataTypes.INTEGER,
-        allowNull: false 
-    },
     status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     },
-    quantity: { 
-        type: DataTypes.INTEGER, 
-        allowNull: true 
-    }
-}, {
-    timestamps: true
 });
 
 module.exports = Supplier;
