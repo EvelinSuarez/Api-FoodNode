@@ -2,6 +2,7 @@ const { body, param, validationResult } = require('express-validator');
 const User = require('../models/user');
 
 const validateUserExistence = async (id) => {
+    
     const user = await User.findByPk(id);
     if (!user) {
         return Promise.reject('El usuario no existe');
@@ -51,7 +52,7 @@ const getUserByIdValidation = [
 ];
 
 const changeStateValidation = [
-    body('state').isBoolean().withMessage('El estado debe ser un valor booleano'),
+    body('status').isBoolean().withMessage('El estado debe ser un valor booleano'),
     param('id').isInt().withMessage('El ID debe ser un número entero'),
     param('id').custom(validateUserExistence),
 ];

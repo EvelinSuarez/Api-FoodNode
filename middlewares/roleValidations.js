@@ -35,7 +35,7 @@ const roleBaseValidation = [
     body('roleName')
         .isLength({ min: 3, max: 20 }).withMessage('El nombre del rol debe tener entre 3 y 20 caracteres')
         .matches(/^[a-zA-Z0-9\s]+$/).withMessage('El nombre del rol solo puede contener letras, números y espacios'),
-    body('state').isBoolean().withMessage('El estado debe ser un booleano')
+    body('status').isBoolean().withMessage('El estado debe ser un booleano')
 ];
 
 const getRoleByIdValidation = [
@@ -55,7 +55,7 @@ const updateRoleValidation = [
     param('idRole').isInt({ min: 1 }).withMessage('El id del rol debe ser un número entero positivo'),
     param('idRole').custom(validateRoleExistence),
     body('roleName').custom(validateUniqueRoleName),
-    body('privileges').isArray().optional() // 🔹 Ahora los permisos son opcionales
+    body('privilege').isArray().optional() // 🔹 Ahora los permisos son opcionales
 ];
 
 const deleteRoleValidation = [

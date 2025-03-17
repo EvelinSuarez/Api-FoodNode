@@ -4,7 +4,7 @@
 const { body, param } = require("express-validator");
 const RolePrivileges = require("../models/rolePrivileges");
 const Role = require("../models/role");
-const Privilege = require("../models/privileges");
+const Privilege = require("../models/privilege");
 const Permission = require("../models/permission");
 
 const validateRolePrivilegeExistence = async (idRolePrivilege) => {

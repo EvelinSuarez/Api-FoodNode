@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
-require('dotenv').config(); // Cargar variables de entorno          
-// dotenv.config();
+require('dotenv').config();         
+
     
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'], // Agrega los posibles orígenes de tu frontend
@@ -20,6 +20,7 @@ const authMiddleware = require('./middlewares/authValidations');
 
 app.use('/users', userRoutes);          
 app.use('/api/auth', authRoutes);
+
 app.get('/api/protected', authMiddleware, (req, res) => {
     res.json({ message: 'Ruta protegida', user: req.user });
 });
@@ -39,9 +40,8 @@ const productRoutes = require('./routes/productRoutes');
 const specSheetRoutes = require('./routes/spechsheetRoutes');
 const rolePrivilegesRoutes = require("./routes/rolePrivilegesRoutes")
 
-
-
-app.use('/users', userRoutes);
+    
+app.use('/user', userRoutes);
 app.use('/api/auth', authRoutes);
 app.get('/api/protected', authMiddleware, (req, res) => {
     res.json({ message: 'Ruta protegida', user: req.user });

@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const sequelize = require('../config/database');
 const Role = require('./role');
 
-const User = sequelize.define('User', {
+const User = sequelize.define('user', {
     idUsers: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
@@ -45,7 +45,7 @@ const User = sequelize.define('User', {
             key: 'idRole' 
         }
     },
-    state: { 
+    status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     }
@@ -64,8 +64,9 @@ const User = sequelize.define('User', {
             }
         }
     }
+    
+    
 });
-
 User.prototype.validatePassword = async function(password) {
     return await bcrypt.compare(password, this.password);
 };
