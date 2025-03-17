@@ -24,7 +24,7 @@ const Provider = sequelize.define('Provider', {
         type: DataTypes.STRING(250), 
         allowNull: false 
     },
-    state: { 
+    status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     }

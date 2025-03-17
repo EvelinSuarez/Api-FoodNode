@@ -17,11 +17,11 @@ const validateUniqueCustomersName = async (fullName, { req }) => {
     }
 };
 
-// Validar unicidad del distintivo del cliente (excluyendo el ID actual en actualizaciones)
-const validateUniqueCustomersDistintive = async (distintive, { req }) => {
-    const customers = await Customers.findOne({ where: { distintive } });
+// Validar unicidad del email del cliente (excluyendo el ID actual en actualizaciones)
+const validateUniqueCustomersDistintive = async (email, { req }) => {
+    const customers = await Customers.findOne({ where: { email } });
     if (customers && customers.idCustomers !== parseInt(req.params.id)) {
-        return Promise.reject('El distintivo del cliente ya está registrado');
+        return Promise.reject('El correo del cliente ya está registrado');
     }
 };
 
@@ -68,7 +68,7 @@ const updateCustomersValidation = [
         .custom(validateCustomersExistence)
 ];
 
-// Validaciones para eliminar un cliente (con confirmación)
+// Validaciones para eliminar un cliente 
 const deleteCustomersValidation = [
     param('id')
         .isInt().withMessage('El ID debe ser un número entero')

@@ -1,74 +1,74 @@
 const { body, param } = require('express-validator');
 const MonthlyOverallExpense = require('../models/monthlyOverallExpense');
-const ExpenseType = require('../models/conceptSpent');  // Asumimos que tienes un modelo para ExpenseType
+const ExpenseType = require('../models/conceptSpent'); // Modelo de tipo de gasto
 
-// Función para verificar si el tipo de gasto existe
-const validateExpenseTypeExistence = async (id) => {
-    const expenseType = await ExpenseType.findByPk(id);
+// Validación para verificar si el tipo de gasto existe
+const validateExpenseTypeExistence = async (idExpenseType) => {
+    const expenseType = await ExpenseType.findByPk(idExpenseType);
     if (!expenseType) {
         return Promise.reject('El tipo de gasto no existe');
     }
 };
 
-// Validación base para el registro de gasto mensual
+// Validación para verificar si el gasto mensual existe
+const validateMonthlyOverallExpenseExistence = async (idOverallMonth) => {
+    const expense = await MonthlyOverallExpense.findByPk(idOverallMonth);
+    if (!expense) {
+        return Promise.reject('El registro de gasto mensual no existe');
+    }
+};
+
+// Validaciones base para el gasto mensual
 const monthlyOverallExpenseBaseValidation = [
-    body('idExpenseType').isInt().withMessage('El id del tipo de gasto debe ser un número entero'),
-    body('dateOverallExp').isDate().withMessage('La fecha de gasto debe ser una fecha válida'),
-    body('valueExpense').isInt().withMessage('El valor del gasto debe ser un número entero'),
-    body('novelty_expense').isLength({ min: 1 }).withMessage('La novedad del gasto no puede estar vacía'),
-    body('state').isBoolean().withMessage('El estado debe ser un booleano'),
+    body('idExpenseType')
+        .isInt({ min: 1 }).withMessage('El id del tipo de gasto debe ser un número entero positivo')
+        .custom(validateExpenseTypeExistence), // Verifica si existe el tipo de gasto
+    body('dateOverallExp')
+        .optional()
+        .isISO8601().withMessage('La fecha de gasto debe ser válida (ISO 8601)'),
+    body('valueExpense')
+        .isInt({ min: 1 }).withMessage('El valor del gasto debe ser un número entero positivo'),
+    body('novelty_expense')
+        .isString().withMessage('La novedad del gasto debe ser un texto')
+        .isLength({ min: 1 }).withMessage('La novedad del gasto no puede estar vacía'),
+    body('state')
+        .isBoolean().withMessage('El estado debe ser un booleano'),
 ];
 
-// Validación para crear un nuevo registro de gasto mensual
+// Validación para crear un nuevo gasto mensual
 const createMonthlyOverallExpenseValidation = [
     ...monthlyOverallExpenseBaseValidation,
-    body('idExpenseType').custom(validateExpenseTypeExistence), // Verificar que el tipo de gasto exista
 ];
 
-// Validación para actualizar un registro de gasto mensual
+// Validación para actualizar un gasto mensual
 const updateMonthlyOverallExpenseValidation = [
+    param('idOverallMonth')
+        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .custom(validateMonthlyOverallExpenseExistence),
     ...monthlyOverallExpenseBaseValidation,
-    param('idOverallMonth').isInt().withMessage('El id debe ser un número entero'),
-    param('idOverallMonth').custom(async (id) => {
-        const monthlyOverallExpense = await MonthlyOverallExpense.findByPk(id);
-        if (!monthlyOverallExpense) {
-            return Promise.reject('El registro de gasto mensual no existe');
-        }
-    }),
 ];
 
-// Validación para eliminar un registro de gasto mensual
+// Validación para eliminar un gasto mensual
 const deleteMonthlyOverallExpenseValidation = [
-    param('idOverallMonth').isInt().withMessage('El id debe ser un número entero'),
-    param('idOverallMonth').custom(async (id) => {
-        const monthlyOverallExpense = await MonthlyOverallExpense.findByPk(id);
-        if (!monthlyOverallExpense) {
-            return Promise.reject('El registro de gasto mensual no existe');
-        }
-    }),
+    param('idOverallMonth')
+        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .custom(validateMonthlyOverallExpenseExistence),
 ];
 
-// Validación para obtener un registro de gasto mensual por id
+// Validación para obtener un gasto mensual por ID
 const getMonthlyOverallExpenseByIdValidation = [
-    param('idOverallMonth').isInt().withMessage('El id debe ser un número entero'),
-    param('idOverallMonth').custom(async (id) => {
-        const monthlyOverallExpense = await MonthlyOverallExpense.findByPk(id);
-        if (!monthlyOverallExpense) {
-            return Promise.reject('El registro de gasto mensual no existe');
-        }
-    }),
+    param('idOverallMonth')
+        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .custom(validateMonthlyOverallExpenseExistence),
 ];
 
-// Validación para cambiar el estado de un registro de gasto mensual
+// Validación para cambiar el estado de un gasto mensual
 const changeStateValidation = [
-    body('state').isBoolean().withMessage('El estado debe ser un booleano'),
-    param('idOverallMonth').isInt().withMessage('El id debe ser un número entero'),
-    param('idOverallMonth').custom(async (id) => {
-        const monthlyOverallExpense = await MonthlyOverallExpense.findByPk(id);
-        if (!monthlyOverallExpense) {
-            return Promise.reject('El registro de gasto mensual no existe');
-        }
-    }),
+    param('idOverallMonth')
+        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .custom(validateMonthlyOverallExpenseExistence),
+    body('state')
+        .isBoolean().withMessage('El estado debe ser un booleano'),
 ];
 
 module.exports = {

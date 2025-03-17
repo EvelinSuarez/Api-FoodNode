@@ -57,9 +57,15 @@ const deleteReservations = async (req, res) => {
     }
     try {
         await reservationsService.deleteReservations(req.params.id);
-        res.status(204).end();
+        res.status(200).json({ 
+            success: true,
+            message: "Reserva eliminada exitosamente" 
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ 
+            success: false,
+            message: error.message 
+        });
     }
 }
 

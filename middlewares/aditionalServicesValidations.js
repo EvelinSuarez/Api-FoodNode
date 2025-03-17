@@ -43,6 +43,7 @@ const deleteAditionalServicesValidation = [
     param('id')
         .isInt().withMessage('El ID debe ser un número entero')
         .custom(validateAditionalServicesExistence)
+        
 ];
 
 // Validaciones para obtener un servicio por ID

@@ -20,8 +20,8 @@ const deleteMonthlyOverallExpense = async (id) => {
     return monthlyOverallExpenseRepository.deleteMonthlyOverallExpense(id);
 }
 
-const changeStateMonthlyOverallExpense = async (id, state) => {
-    return monthlyOverallExpenseRepository.changeStateMonthlyOverallExpense(id, state);
+const changeStateMonthlyOverallExpense = async (id, status) => {
+    return monthlyOverallExpenseRepository.changeStateMonthlyOverallExpense(id, status);
 }
 
 module.exports = {

@@ -3,25 +3,32 @@ const Reservations = require('../models/reservations');
 const { Op } = require('sequelize');
 
 // Validar si la reserva existe por ID
-const validateReservationsExistence = async (idReservations) => {
-    const reservations = await Reservations.findByPk(idReservations);
+const validateReservationsExistence = async (id) => {
+    const reservations = await Reservations.findByPk(id);
     if (!reservations) {
         return Promise.reject('La reserva no existe');
     }
 };
 
-// Validar si ya existe una reserva con la misma fecha, hora y cliente
-const validateUniqueReservations = async ({ idCustomers, dateTime, idReservations }) => {
+const validateUniqueReservations = async (body, { req }) => {
+    const { idCustomers, dateTime } = body;
+    const idReservations = req.params.id || body.idReservations;
+
+    const whereClause = {
+        idCustomers,
+        dateTime
+    };
+
+    if (idReservations) {
+        whereClause.id = { [Op.ne]: idReservations }; // Asume que el PK se llama 'id'
+    }
+
     const existingReservations = await Reservations.findOne({
-        where: {
-            idCustomers,
-            dateTime,
-            idReservations: { [Op.ne]: idReservations } // Ignorar la reserva actual
-        }
+        where: whereClause
     });
 
     if (existingReservations) {
-        return Promise.reject('Ya existe una reserva para este cliente en esta fecha y hora');
+        throw new Error('Ya existe una reserva para este cliente en esta fecha y hora');
     }
 };
 
