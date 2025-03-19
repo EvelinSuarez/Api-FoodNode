@@ -9,38 +9,29 @@ const validateCustomersExistence = async (id) => {
     }
 };
 
-// Validar unicidad del nombre del cliente (excluyendo el ID actual en actualizaciones)
-const validateUniqueCustomersName = async (fullName, { req }) => {
-    const customers = await Customers.findOne({ where: { fullName } });
-    if (customers && customers.idCustomers !== parseInt(req.params.id)) {
-        return Promise.reject('El nombre del cliente ya está registrado');
-    }
-};
 
-// Validar unicidad del email del cliente (excluyendo el ID actual en actualizaciones)
-const validateUniqueCustomersDistintive = async (email, { req }) => {
-    const customers = await Customers.findOne({ where: { email } });
+// Validar unicidad del numero de celular del cliente (excluyendo el ID actual en actualizaciones)
+const validateUniqueCustomersCellphone = async (cellphone, { req }) => {
+    const customers = await Customers.findOne({ where: { cellphone } });
     if (customers && customers.idCustomers !== parseInt(req.params.id)) {
-        return Promise.reject('El correo del cliente ya está registrado');
+        return Promise.reject('El numero de celular del cliente ya está registrado');
     }
 };
 
 // Validaciones base para crear y actualizar clientes
 const customersBaseValidation = [
     body('fullName')
-        .isLength({ min: 5 }).withMessage('El nombre debe tener al menos 5 caracteres')
-        .custom(validateUniqueCustomersName).withMessage('El nombre del cliente ya está registrado'),
+        .isLength({ min: 5 }).withMessage('El nombre debe tener al menos 5 caracteres'),
     body('distintive')
         .isString().withMessage('El campo distintivo debe ser una cadena de texto')
-        .notEmpty().withMessage('El campo distintivo es obligatorio')
-        .custom(validateUniqueCustomersDistintive).withMessage('El distintivo del cliente ya está registrado'),
+        .notEmpty().withMessage('El campo distintivo es obligatorio'),
     body('customerCategory')
         .isString().withMessage('La categoría del cliente debe ser una cadena de texto')
         .notEmpty().withMessage('La categoría del cliente es obligatoria'),
     body('cellphone')
-        .isString().withMessage('El número de teléfono debe ser una cadena de texto')
+        .isString().withMessage('El número de teléfono debe ser entero')
         .isLength({ min: 10, max: 15 }).withMessage('El número de teléfono debe tener entre 10 y 15 caracteres')
-        .optional({ nullable: true }),
+        .custom(validateUniqueCustomersCellphone).withMessage('El numero de telefono del cliente ya está registrado'),
     body('email')
         .isEmail().withMessage('El correo electrónico no es válido')
         .optional({ nullable: true }),
@@ -50,9 +41,6 @@ const customersBaseValidation = [
     body('status')
         .isBoolean().withMessage('El estado debe ser un valor booleano')
         .optional({ nullable: true }),
-    body('idRol')
-        .isInt().withMessage('El ID del rol debe ser un número entero')
-        .optional({ nullable: true }) // Opcional según la matriz
 ];
 
 // Validaciones para crear un cliente
