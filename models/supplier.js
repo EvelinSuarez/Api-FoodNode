@@ -12,6 +12,10 @@ const Supplier = sequelize.define('Supplier', {
         type: DataTypes.STRING(60), 
         allowNull: false 
     },
+    measurementUnit: {    
+        type: DataTypes.STRING(20),
+        allowNull: false
+    },
     status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 

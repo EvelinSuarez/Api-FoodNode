@@ -1,6 +1,6 @@
 const { body, param, validationResult } = require("express-validator")
 const Product = require("../models/Product")
-const Supplier = require("../models/Supplier")
+const Supplier = require("../models/supplier")
 
 // Validaciones auxiliares
 const validateProductExistence = async (id) => {
@@ -20,7 +20,7 @@ const validateUniqueProductName = async (productName) => {
 const validateSupplierExists = async (idSupplier) => {
   const supplier = await Supplier.findByPk(idSupplier)
   if (!supplier) {
-    return Promise.reject("El proveedor seleccionado no existe")
+    return Promise.reject("El insumo seleccionado no existe")
   }
 }
 
@@ -39,13 +39,13 @@ const productBaseValidation = [
   body("totalTime")
     .isInt({ min: 1 })
     .withMessage("El tiempo total debe ser un número entero positivo"),
-  body("state")
+  body("status")
     .default(true)
     .isBoolean()
     .withMessage("El estado debe ser un booleano"),
-  body("IdSupplier")
+  body("idSupplier")
     .isInt({ min: 1 })
-    .withMessage("El ID del proveedor debe ser un número entero positivo")
+    .withMessage("El ID del insumo debe ser un número entero positivo")
     .custom(validateSupplierExists),
 ]
 
@@ -64,7 +64,7 @@ const updateProductValidation = [
     const product = await Product.findOne({
       where: {
         productName,
-        IdProduct: { [require("sequelize").Op.ne]: req.params.id },
+        idProduct: { [require("sequelize").Op.ne]: req.params.id },
       },
     })
 
@@ -88,7 +88,7 @@ const getProductByIdValidation = [
 
 // Validación para cambiar estado
 const changeStateValidation = [
-  body("estado").isBoolean().withMessage("El estado debe ser un booleano"),
+  body("status").isBoolean().withMessage("El estado debe ser un booleano"),
   param("id").isInt({ min: 1 }).withMessage("El id debe ser un número entero positivo"),
   param("id").custom(validateProductExistence),
 ]
@@ -103,11 +103,11 @@ const searchProductValidation = [
 ]
 
 // Validación para obtener productos por proveedor
-const getProductsBySupplierValidation = [
-  param("idSupplier").isInt({ min: 1 }).withMessage("El id del proveedor debe ser un número entero positivo"),
+ const getProductsBySupplierValidation = [
+  param("idSupplier").isInt({ min: 1 }).withMessage("El id del insumo debe ser un número entero positivo"),
   param("idSupplier").custom(validateSupplierExists),
 ]
-
+ 
 module.exports = {
   createProductValidation,
   updateProductValidation,
@@ -115,5 +115,5 @@ module.exports = {
   getProductByIdValidation,
   changeStateValidation,
   searchProductValidation,
-  getProductsBySupplierValidation,
+  getProductsBySupplierValidation 
 }
