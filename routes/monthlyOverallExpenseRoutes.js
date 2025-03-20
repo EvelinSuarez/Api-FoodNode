@@ -10,4 +10,9 @@ router.put('/:id', monthlyOverallExpenseValidations.updateMonthlyOverallExpenseV
 router.delete('/:id', monthlyOverallExpenseValidations.deleteMonthlyOverallExpenseValidation, monthlyOverallExpenseController.deleteMonthlyOverallExpense);
 router.patch('/:id', monthlyOverallExpenseValidations.changeStateValidation, monthlyOverallExpenseController.changeStateMonthlyOverallExpense);
 
+//Nuevas rutas
+router.get('/total/:year/:month', monthlyOverallExpenseController.getTotalExpenseByMonth);
+router.get('/total/:year/:month/:idExpenseType', monthlyOverallExpenseController.getTotalExpenseByTypeAndMonth);
+
+
 module.exports = router;

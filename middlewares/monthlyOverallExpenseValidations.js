@@ -1,4 +1,5 @@
-const { body, param } = require('express-validator');
+const { Op } = require('sequelize');
+const { body, param, validationResult } = require('express-validator');
 const MonthlyOverallExpense = require('../models/monthlyOverallExpense');
 const ExpenseType = require('../models/conceptSpent'); // Modelo de tipo de gasto
 
@@ -18,11 +19,40 @@ const validateMonthlyOverallExpenseExistence = async (idOverallMonth) => {
     }
 };
 
+// Validación para verificar si ya existe un gasto con el mismo idExpenseType en el mismo mes
+const validateUniqueExpenseTypeInMonth = async (value, { req }) => {
+    const { dateOverallExp, idExpenseType } = req.body;
+    
+    if (!dateOverallExp || !idExpenseType) {
+        return Promise.reject('La fecha y el tipo de gasto son obligatorios');
+    }
+
+    // Extraer año y mes de la fecha ingresada
+    const date = new Date(dateOverallExp);
+    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+    // Verificar si ya existe un registro con el mismo idExpenseType en el mismo mes
+    const existingExpense = await MonthlyOverallExpense.findOne({
+        where: {
+            idExpenseType,
+            dateOverallExp: {
+                [Op.between]: [startOfMonth, endOfMonth],
+            },
+        },
+    });
+
+    if (existingExpense) {
+        return Promise.reject('Ya existe un gasto con este tipo en el mismo mes');
+    }
+};
+
 // Validaciones base para el gasto mensual
 const monthlyOverallExpenseBaseValidation = [
     body('idExpenseType')
         .isInt({ min: 1 }).withMessage('El id del tipo de gasto debe ser un número entero positivo')
-        .custom(validateExpenseTypeExistence), // Verifica si existe el tipo de gasto
+        .custom(validateExpenseTypeExistence)
+        .custom(validateUniqueExpenseTypeInMonth), // Nueva validación
     body('dateOverallExp')
         .optional()
         .isISO8601().withMessage('La fecha de gasto debe ser válida (ISO 8601)'),
@@ -31,7 +61,7 @@ const monthlyOverallExpenseBaseValidation = [
     body('novelty_expense')
         .isString().withMessage('La novedad del gasto debe ser un texto')
         .isLength({ min: 1 }).withMessage('La novedad del gasto no puede estar vacía'),
-    body('state')
+    body('status')
         .isBoolean().withMessage('El estado debe ser un booleano'),
 ];
 
@@ -67,8 +97,26 @@ const changeStateValidation = [
     param('idOverallMonth')
         .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
         .custom(validateMonthlyOverallExpenseExistence),
-    body('state')
+    body('status')
         .isBoolean().withMessage('El estado debe ser un booleano'),
+];
+
+//Validaciones para los nuevos endpoints
+const getTotalExpenseByMonthValidation = [
+    param('year')
+        .isInt({ min: 2000, max: 2100 }).withMessage('El año debe ser un número entero entre 2000 y 2100'),
+    param('month')
+        .isInt({ min: 1, max: 12 }).withMessage('El mes debe ser un número entero entre 1 y 12'),
+];
+
+const getTotalExpenseByTypeAndMonthValidation = [
+    param('year')
+        .isInt({ min: 2000, max: 2100 }).withMessage('El año debe ser un número entero entre 2000 y 2100'),
+    param('month')
+        .isInt({ min: 1, max: 12 }).withMessage('El mes debe ser un número entero entre 1 y 12'),
+    param('idExpenseType')
+        .isInt({ min: 1 }).withMessage('El ID del tipo de gasto debe ser un número entero positivo')
+        .custom(validateExpenseTypeExistence),
 ];
 
 module.exports = {
@@ -77,4 +125,6 @@ module.exports = {
     deleteMonthlyOverallExpenseValidation,
     getMonthlyOverallExpenseByIdValidation,
     changeStateValidation,
+    getTotalExpenseByMonthValidation,
+    getTotalExpenseByTypeAndMonthValidation,
 };
