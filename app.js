@@ -33,7 +33,9 @@ const specSheetRoutes = require('./routes/spechsheetRoutes');
 const rolePrivilegesRoutes = require("./routes/rolePrivilegesRoutes")
 const registerPurchaseRoutes = require('./routes/registerPurchaseRoutes');
 const purchaseDetailRoutes = require('./routes/purchaseDetailRoutes');
-
+const productSheetRoutes = require('./routes/productSheetRoutes');
+const processRoutes = require('./routes/processRoutes');
+const processDetailRoutes = require('./routes/processDetailRoutes');
 
 app.use('/users', userRoutes);
 app.use('/api/auth', authRoutes);
@@ -54,9 +56,12 @@ app.use('/reservations', reservationsRoutes);
 app.use('/supplier', supplierRoutes);
 app.use('/product', productRoutes);
 app.use('/specSheet', specSheetRoutes);
-app.use("/rolePrivileges", rolePrivilegesRoutes)
+app.use('/rolePrivileges', rolePrivilegesRoutes)
 app.use('/registerPurchase', registerPurchaseRoutes);
 app.use('/purchaseDetail', purchaseDetailRoutes);
+app.use('/productSheet', productSheetRoutes);
+app.use('/process', processRoutes);
+app.use('/processDetail', processDetailRoutes);
 
 
 module.exports = app;
