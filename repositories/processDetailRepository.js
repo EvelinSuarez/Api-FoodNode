@@ -1,5 +1,6 @@
 const ProcessDetail = require('../models/processDetail');
 const Process = require('../models/process');
+const SpecSheet = require('../models/specSheet');
 const Employee = require('../models/employee');
 
 const createProcessDetail = async (processDetail) => {
@@ -10,6 +11,7 @@ const getAllProcessDetails = async () => {
     return ProcessDetail.findAll({
         include: [
             { model: Process },
+            { model: SpecSheet },
             { model: Employee }
         ]
     });
@@ -19,6 +21,7 @@ const getProcessDetailById = async (idProcessDetail) => {
     return ProcessDetail.findByPk(idProcessDetail, {
         include: [
             { model: Process },
+            { model: SpecSheet },
             { model: Employee }
         ]
     });
@@ -36,27 +39,51 @@ const deleteProcessDetail = async (idProcessDetail) => {
     });
 }
 
+const changeStateProcessDetail = async (idProcessDetail, status) => {
+    return ProcessDetail.update({ status }, { 
+        where: { idProcessDetail } 
+    });
+}
+
 const getProcessDetailsByProcess = async (idProcess) => {
     return ProcessDetail.findAll({ 
         where: { idProcess },
-        include: [{ model: Employee }]
+        include: [
+            { model: SpecSheet },
+            { model: Employee }
+        ]
+    });
+}
+
+const getProcessDetailsBySpecSheet = async (idSpecSheet) => {
+    return ProcessDetail.findAll({ 
+        where: { idSpecSheet },
+        include: [
+            { model: Process },
+            { model: Employee }
+        ]
     });
 }
 
 const getProcessDetailsByEmployee = async (idEmployee) => {
     return ProcessDetail.findAll({ 
         where: { idEmployee },
-        include: [{ model: Process }]
+        include: [
+            { model: Process },
+            { model: SpecSheet }
+        ]
     });
 }
 
 const getActiveProcessDetails = async () => {
     return ProcessDetail.findAll({
         where: {
+            status: true,
             endDate: null
         },
         include: [
             { model: Process },
+            { model: SpecSheet },
             { model: Employee }
         ]
     });
@@ -68,7 +95,9 @@ module.exports = {
     getProcessDetailById,
     updateProcessDetail,
     deleteProcessDetail,
+    changeStateProcessDetail,
     getProcessDetailsByProcess,
+    getProcessDetailsBySpecSheet,
     getProcessDetailsByEmployee,
     getActiveProcessDetails
 };

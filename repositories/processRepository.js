@@ -1,27 +1,15 @@
 const Process = require('../models/process');
-const SpecSheet = require('../models/specSheet');
-const ProcessDetail = require('../models/processDetail');
 
 const createProcess = async (process) => {
     return Process.create(process);
 }
 
 const getAllProcesses = async () => {
-    return Process.findAll({
-        include: [
-            { model: SpecSheet },
-            { model: ProcessDetail }
-        ]
-    });
+    return Process.findAll();
 }
 
 const getProcessById = async (idProcess) => {
-    return Process.findByPk(idProcess, {
-        include: [
-            { model: SpecSheet },
-            { model: ProcessDetail }
-        ]
-    });
+    return Process.findByPk(idProcess);
 }
 
 const updateProcess = async (idProcess, process) => {
@@ -36,17 +24,20 @@ const deleteProcess = async (idProcess) => {
     });
 }
 
-const getProcessesBySpecSheet = async (idSpecSheet) => {
-    return Process.findAll({ 
-        where: { idSpecSheet },
-        include: [{ model: ProcessDetail }]
+const changeStateProcess = async (idProcess, status) => {
+    return Process.update({ status }, { 
+        where: { idProcess } 
     });
 }
 
-const getProcessesByProcessDetail = async (idProcessDetail) => {
-    return Process.findAll({ 
-        where: { idProcessDetail },
-        include: [{ model: SpecSheet }]
+const searchProcesses = async (searchTerm) => {
+    return Process.findAll({
+        where: {
+            [require('sequelize').Op.or]: [
+                { processName: { [require('sequelize').Op.like]: `%${searchTerm}%` } },
+                { description: { [require('sequelize').Op.like]: `%${searchTerm}%` } }
+            ]
+        }
     });
 }
 
@@ -56,6 +47,6 @@ module.exports = {
     getProcessById,
     updateProcess,
     deleteProcess,
-    getProcessesBySpecSheet,
-    getProcessesByProcessDetail
+    changeStateProcess,
+    searchProcesses
 };

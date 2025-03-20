@@ -1,40 +1,27 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const SpecSheet = require('./specSheet');
-// Assuming ProcessDetail model exists
-const ProcessDetail = require('./processDetail');
 
-const Process = sequelize.define('Process', {
+const Process = sequelize.define('process', {
     idProcess: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
         autoIncrement: true, 
         allowNull: false 
     },
-    idSpecSheet: { 
-        type: DataTypes.INTEGER, 
-        allowNull: false,
-        references: {
-            model: 'specSheets',
-            key: 'idSpecsheet'
-        }
+    processName: { 
+        type: DataTypes.STRING(100), 
+        allowNull: false 
     },
-    idProcessDetail: { 
-        type: DataTypes.INTEGER, 
-        allowNull: false,
-        references: {
-            model: 'ProcessDetails',
-            key: 'idProcessDetail'
-        }
+    description: { 
+        type: DataTypes.STRING(255), 
+        allowNull: true 
+    },
+    status: { 
+        type: DataTypes.BOOLEAN, 
+        defaultValue: true 
     }
 }, {
     timestamps: true
 });
-
-// Establish relationships
-Process.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet' });
-Process.belongsTo(ProcessDetail, { foreignKey: 'idProcessDetail' });
-SpecSheet.hasMany(Process, { foreignKey: 'idSpecSheet' });
-ProcessDetail.hasMany(Process, { foreignKey: 'idProcessDetail' });
 
 module.exports = Process;

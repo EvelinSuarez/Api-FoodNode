@@ -9,11 +9,15 @@ router.get('/:id', processDetailValidations.getProcessDetailByIdValidation, proc
 router.post('/', processDetailValidations.createProcessDetailValidation, processDetailController.createProcessDetail);
 router.put('/:id', processDetailValidations.updateProcessDetailValidation, processDetailController.updateProcessDetail);
 router.delete('/:id', processDetailValidations.deleteProcessDetailValidation, processDetailController.deleteProcessDetail);
+router.patch('/:id', processDetailValidations.changeStateValidation, processDetailController.changeStateProcessDetail);
 
-// Additional routes for getting ProcessDetails by Process and Employee
+// Additional routes for getting ProcessDetails by related entities
 router.get('/process/:idProcess', 
     processDetailValidations.getProcessDetailsByProcessValidation, 
     processDetailController.getProcessDetailsByProcess);
+router.get('/specsheet/:idSpecSheet', 
+    processDetailValidations.getProcessDetailsBySpecSheetValidation, 
+    processDetailController.getProcessDetailsBySpecSheet);
 router.get('/employee/:idEmployee', 
     processDetailValidations.getProcessDetailsByEmployeeValidation, 
     processDetailController.getProcessDetailsByEmployee);

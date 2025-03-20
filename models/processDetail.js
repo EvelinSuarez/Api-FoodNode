@@ -1,8 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-// We'll handle the circular dependency by importing Process later
-// Assuming Employee model exists
-const Employee = require('./employee');
 
 const ProcessDetail = sequelize.define('ProcessDetail', {
     idProcessDetail: { 
@@ -17,6 +14,14 @@ const ProcessDetail = sequelize.define('ProcessDetail', {
         references: {
             model: 'Processes',
             key: 'idProcess'
+        }
+    },
+    idSpecSheet: { 
+        type: DataTypes.INTEGER, 
+        allowNull: false,
+        references: {
+            model: 'specSheets',
+            key: 'idSpecsheet'
         }
     },
     idEmployee: { 
@@ -34,21 +39,14 @@ const ProcessDetail = sequelize.define('ProcessDetail', {
     endDate: { 
         type: DataTypes.DATE, 
         allowNull: true 
+    },
+    status: { 
+        type: DataTypes.BOOLEAN, 
+        defaultValue: true 
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    tableName: 'ProcessDetails'
 });
 
-// Establish relationships with Employee
-ProcessDetail.belongsTo(Employee, { foreignKey: 'idEmployee' });
-Employee.hasMany(ProcessDetail, { foreignKey: 'idEmployee' });
-
-// Handle circular dependency
-// We'll set up the Process relationship after exporting
 module.exports = ProcessDetail;
-
-// Now import Process and set up the relationship
-// This avoids the circular dependency issue
-const Process = require('./process');
-ProcessDetail.belongsTo(Process, { foreignKey: 'idProcess' });
-Process.hasMany(ProcessDetail, { foreignKey: 'idProcess', as: 'Details' });

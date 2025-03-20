@@ -63,26 +63,26 @@ const deleteProcess = async (req, res) => {
     }
 }
 
-const getProcessesBySpecSheet = async (req, res) => {
+const changeStateProcess = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        const processes = await processService.getProcessesBySpecSheet(req.params.idSpecSheet);
-        res.status(200).json(processes);
+        await processService.changeStateProcess(req.params.id, req.body.status);
+        res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 }
 
-const getProcessesByProcessDetail = async (req, res) => {
+const searchProcesses = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
         return res.status(400).json({errors: errors.array()})
     }
     try {
-        const processes = await processService.getProcessesByProcessDetail(req.params.idProcessDetail);
+        const processes = await processService.searchProcesses(req.body.searchTerm);
         res.status(200).json(processes);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -95,6 +95,6 @@ module.exports = {
     getProcessById,
     updateProcess,
     deleteProcess,
-    getProcessesBySpecSheet,
-    getProcessesByProcessDetail
+    changeStateProcess,
+    searchProcesses
 };

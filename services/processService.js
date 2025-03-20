@@ -20,12 +20,12 @@ const deleteProcess = async (id) => {
     return processRepository.deleteProcess(id);
 }
 
-const getProcessesBySpecSheet = async (idSpecSheet) => {
-    return processRepository.getProcessesBySpecSheet(idSpecSheet);
+const changeStateProcess = async (id, status) => {
+    return processRepository.changeStateProcess(id, status);
 }
 
-const getProcessesByProcessDetail = async (idProcessDetail) => {
-    return processRepository.getProcessesByProcessDetail(idProcessDetail);
+const searchProcesses = async (searchTerm) => {
+    return processRepository.searchProcesses(searchTerm);
 }
 
 module.exports = {
@@ -34,6 +34,6 @@ module.exports = {
     getProcessById,
     updateProcess,
     deleteProcess,
-    getProcessesBySpecSheet,
-    getProcessesByProcessDetail
+    changeStateProcess,
+    searchProcesses
 };

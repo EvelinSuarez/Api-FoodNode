@@ -63,6 +63,19 @@ const deleteProcessDetail = async (req, res) => {
     }
 }
 
+const changeStateProcessDetail = async (req, res) => {
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        return res.status(400).json({errors: errors.array()})
+    }
+    try {
+        await processDetailService.changeStateProcessDetail(req.params.id, req.body.status);
+        res.status(204).end();
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+}
+
 const getProcessDetailsByProcess = async (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {
@@ -70,6 +83,19 @@ const getProcessDetailsByProcess = async (req, res) => {
     }
     try {
         const processDetails = await processDetailService.getProcessDetailsByProcess(req.params.idProcess);
+        res.status(200).json(processDetails);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+}
+
+const getProcessDetailsBySpecSheet = async (req, res) => {
+    const errors = validationResult(req);
+    if(!errors.isEmpty()) {
+        return res.status(400).json({errors: errors.array()})
+    }
+    try {
+        const processDetails = await processDetailService.getProcessDetailsBySpecSheet(req.params.idSpecSheet);
         res.status(200).json(processDetails);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -104,7 +130,9 @@ module.exports = {
     getProcessDetailById,
     updateProcessDetail,
     deleteProcessDetail,
+    changeStateProcessDetail,
     getProcessDetailsByProcess,
+    getProcessDetailsBySpecSheet,
     getProcessDetailsByEmployee,
     getActiveProcessDetails
 };

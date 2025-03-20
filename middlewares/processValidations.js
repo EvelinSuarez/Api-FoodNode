@@ -1,7 +1,5 @@
 const { body, param } = require("express-validator");
 const Process = require("../models/process");
-const SpecSheet = require("../models/specSheet");
-const ProcessDetail = require("../models/processDetail");
 
 // Auxiliary validations
 const validateProcessExistence = async (id) => {
@@ -14,56 +12,34 @@ const validateProcessExistence = async (id) => {
   }
 };
 
-const validateSpecSheetExistence = async (id) => {
-  if (!id) {
-    return Promise.reject("El id de la ficha técnica es inválido");
-  }
-  const specSheet = await SpecSheet.findByPk(id);
-  if (!specSheet) {
-    return Promise.reject("La ficha técnica no existe");
-  }
-};
-
-const validateProcessDetailExistence = async (id) => {
-  if (!id) {
-    return Promise.reject("El id del detalle de proceso es inválido");
-  }
-  const processDetail = await ProcessDetail.findByPk(id);
-  if (!processDetail) {
-    return Promise.reject("El detalle de proceso no existe");
-  }
-};
-
-const validateUniqueProcess = async (idSpecSheet, idProcessDetail) => {
-  const existingProcess = await Process.findOne({
-    where: { 
-      idSpecSheet,
-      idProcessDetail
-    }
-  });
+const validateUniqueProcessName = async (processName) => {
+  const existingProcess = await Process.findOne({ where: { processName } });
   if (existingProcess) {
-    return Promise.reject("Ya existe una relación entre esta ficha técnica y este detalle de proceso");
+    return Promise.reject("Ya existe un proceso con este nombre");
   }
 };
 
 // Base validations for Process
 const processBaseValidation = [
-  body("idSpecSheet")
-    .isInt({ min: 1 })
-    .withMessage("El ID de la ficha técnica debe ser un número entero positivo")
-    .custom(validateSpecSheetExistence),
-  body("idProcessDetail")
-    .isInt({ min: 1 })
-    .withMessage("El ID del detalle de proceso debe ser un número entero positivo")
-    .custom(validateProcessDetailExistence)
+  body("processName")
+    .isLength({ min: 10, max: 100 })
+    .withMessage("El nombre del proceso debe tener entre 10 y 100 caracteres")
+    .matches(/^[a-zA-Z0-9\s]+$/)
+    .withMessage("El nombre solo puede contener letras, números y espacios"),
+  body("description")
+    .optional()
+    .isLength({ max: 255 })
+    .withMessage("La descripción no puede exceder 255 caracteres"),
+  body("status")
+    .default(true)
+    .isBoolean()
+    .withMessage("El estado debe ser un booleano")
 ];
 
 // Validation for creating Process
 const createProcessValidation = [
   ...processBaseValidation,
-  body().custom(async (value) => {
-    await validateUniqueProcess(value.idSpecSheet, value.idProcessDetail);
-  })
+  body("processName").custom(validateUniqueProcessName)
 ];
 
 // Validation for updating Process
@@ -71,11 +47,15 @@ const updateProcessValidation = [
   ...processBaseValidation,
   param("id").isInt({ min: 1 }).withMessage("El id debe ser un número entero positivo"),
   param("id").custom(validateProcessExistence),
-  body().custom(async (value, { req }) => {
-    const process = await Process.findByPk(req.params.id);
-    if (process.idSpecSheet !== value.idSpecSheet || 
-        process.idProcessDetail !== value.idProcessDetail) {
-      await validateUniqueProcess(value.idSpecSheet, value.idProcessDetail);
+  body("processName").custom(async (processName, { req }) => {
+    const process = await Process.findOne({
+      where: {
+        processName,
+        idProcess: { [require("sequelize").Op.ne]: req.params.id }
+      }
+    });
+    if (process) {
+      return Promise.reject("Ya existe otro proceso con este nombre");
     }
   })
 ];
@@ -92,16 +72,20 @@ const getProcessByIdValidation = [
   param("id").custom(validateProcessExistence)
 ];
 
-// Validation for getting Processes by SpecSheet
-const getProcessesBySpecSheetValidation = [
-  param("idSpecSheet").isInt({ min: 1 }).withMessage("El id de la ficha técnica debe ser un número entero positivo"),
-  param("idSpecSheet").custom(validateSpecSheetExistence)
+// Validation for changing state
+const changeStateValidation = [
+  body("status").isBoolean().withMessage("El estado debe ser un booleano"),
+  param("id").isInt({ min: 1 }).withMessage("El id debe ser un número entero positivo"),
+  param("id").custom(validateProcessExistence)
 ];
 
-// Validation for getting Processes by ProcessDetail
-const getProcessesByProcessDetailValidation = [
-  param("idProcessDetail").isInt({ min: 1 }).withMessage("El id del detalle de proceso debe ser un número entero positivo"),
-  param("idProcessDetail").custom(validateProcessDetailExistence)
+// Validation for search
+const searchProcessValidation = [
+  body("searchTerm")
+    .isLength({ min: 1 })
+    .withMessage("El término de búsqueda no puede estar vacío")
+    .isLength({ max: 250 })
+    .withMessage("El término de búsqueda no puede exceder 250 caracteres")
 ];
 
 module.exports = {
@@ -109,6 +93,6 @@ module.exports = {
   updateProcessValidation,
   deleteProcessValidation,
   getProcessByIdValidation,
-  getProcessesBySpecSheetValidation,
-  getProcessesByProcessDetailValidation
+  changeStateValidation,
+  searchProcessValidation
 };

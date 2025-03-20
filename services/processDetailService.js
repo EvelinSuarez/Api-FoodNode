@@ -20,8 +20,16 @@ const deleteProcessDetail = async (id) => {
     return processDetailRepository.deleteProcessDetail(id);
 }
 
+const changeStateProcessDetail = async (id, status) => {
+    return processDetailRepository.changeStateProcessDetail(id, status);
+}
+
 const getProcessDetailsByProcess = async (idProcess) => {
     return processDetailRepository.getProcessDetailsByProcess(idProcess);
+}
+
+const getProcessDetailsBySpecSheet = async (idSpecSheet) => {
+    return processDetailRepository.getProcessDetailsBySpecSheet(idSpecSheet);
 }
 
 const getProcessDetailsByEmployee = async (idEmployee) => {
@@ -38,7 +46,9 @@ module.exports = {
     getProcessDetailById,
     updateProcessDetail,
     deleteProcessDetail,
+    changeStateProcessDetail,
     getProcessDetailsByProcess,
+    getProcessDetailsBySpecSheet,
     getProcessDetailsByEmployee,
     getActiveProcessDetails
 };

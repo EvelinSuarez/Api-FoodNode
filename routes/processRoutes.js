@@ -8,13 +8,7 @@ router.get('/:id', processValidations.getProcessByIdValidation, processControlle
 router.post('/', processValidations.createProcessValidation, processController.createProcess);
 router.put('/:id', processValidations.updateProcessValidation, processController.updateProcess);
 router.delete('/:id', processValidations.deleteProcessValidation, processController.deleteProcess);
-
-// Additional routes for getting Processes by SpecSheet and ProcessDetail
-router.get('/specsheet/:idSpecSheet', 
-    processValidations.getProcessesBySpecSheetValidation, 
-    processController.getProcessesBySpecSheet);
-router.get('/processdetail/:idProcessDetail', 
-    processValidations.getProcessesByProcessDetailValidation, 
-    processController.getProcessesByProcessDetail);
+router.patch('/:id', processValidations.changeStateValidation, processController.changeStateProcess);
+router.post('/search', processValidations.searchProcessValidation, processController.searchProcesses);
 
 module.exports = router;
