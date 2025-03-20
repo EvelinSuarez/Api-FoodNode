@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const monthlyOverallExpenseService = require('../services/monthlyOverallExpenseService'); 
+const monthlyOverallExpenseService = require('../services/monthlyOverallExpenseService');
 
 const createMonthlyOverallExpense = async (req, res) => {
     const errors = validationResult(req);
@@ -54,13 +54,13 @@ const updateMonthlyOverallExpense = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
+    const idOverallMonth = parseInt(req.params.idOverallMonth, 10);
+    if (isNaN(idOverallMonth)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
 
     try {
-        const updated = await monthlyOverallExpenseService.updateMonthlyOverallExpense(id, req.body);
+        const updated = await monthlyOverallExpenseService.updateMonthlyOverallExpense(idOverallMonth, req.body);
         if (!updated) {
             return res.status(404).json({ message: "Gasto mensual no encontrado" });
         }
@@ -117,6 +117,52 @@ const changeStateMonthlyOverallExpense = async (req, res) => {
     }
 };
 
+// Nuevos endpoints
+const getTotalExpenseByMonth = async (req, res) => {
+    try {
+        const { year, month } = req.params;
+
+        const parsedYear = parseInt(year, 10);
+        const parsedMonth = parseInt(month, 10);
+
+        if (isNaN(parsedYear) || isNaN(parsedMonth)) {
+            return res.status(400).json({ message: 'Año y mes deben ser números válidos.' });
+        }
+
+        const totalExpense = await monthlyOverallExpenseService.getTotalExpenseByMonth(parsedYear, parsedMonth);
+        res.status(200).json({ year: parsedYear, month: parsedMonth, totalExpense });
+    } catch (error) {
+        console.error("Error al obtener el total de gastos por mes:", error);
+        res.status(500).json({ message: "Error interno del servidor" });
+    }
+};
+
+const getTotalExpenseByTypeAndMonth = async (req, res) => {
+    try {
+        const { year, month, idExpenseType } = req.params;
+
+        const parsedYear = parseInt(year, 10);
+        const parsedMonth = parseInt(month, 10);
+        const parsedIdExpenseType = parseInt(idExpenseType, 10);
+
+        if (isNaN(parsedYear) || isNaN(parsedMonth) || isNaN(parsedIdExpenseType)) {
+            return res.status(400).json({ message: 'Año, mes e idExpenseType deben ser números válidos.' });
+        }
+
+        const totalExpense = await monthlyOverallExpenseService.getTotalExpenseByTypeAndMonth(parsedYear, parsedMonth, parsedIdExpenseType);
+        res.status(200).json({
+            year: parsedYear,
+            month: parsedMonth,
+            idExpenseType: parsedIdExpenseType,
+            totalExpense
+        });
+    } catch (error) {
+        console.error("Error al obtener el total de gastos por tipo y mes:", error);
+        res.status(500).json({ message: "Error interno del servidor" });
+    }
+};
+
+
 module.exports = {
     createMonthlyOverallExpense,
     getAllMonthlyOverallExpenses,
@@ -124,4 +170,6 @@ module.exports = {
     updateMonthlyOverallExpense,
     deleteMonthlyOverallExpense,
     changeStateMonthlyOverallExpense,
+    getTotalExpenseByMonth,
+    getTotalExpenseByTypeAndMonth, // Exporta la nueva función
 };

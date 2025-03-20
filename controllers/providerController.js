@@ -99,7 +99,7 @@ const changeStateProvider = async (req, res) => {
     }
 
     try {
-        const updatedProvider = await providerService.changeStateProvider(id, req.body.status);
+        const updatedProvider = await providerService.changeStgateProvider(id, req.body.status);
         if (!updatedProvider) {
             return res.status(404).json({ message: "Proveedor no encontrado" });
         }

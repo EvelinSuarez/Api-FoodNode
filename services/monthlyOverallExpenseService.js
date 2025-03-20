@@ -24,6 +24,16 @@ const changeStateMonthlyOverallExpense = async (id, status) => {
     return monthlyOverallExpenseRepository.changeStateMonthlyOverallExpense(id, status);
 }
 
+// Nuevas funciones para obtener el total de gastos
+const getTotalExpenseByMonth = async (year, month) => {
+    return monthlyOverallExpenseRepository.getTotalExpenseByMonth(year, month);
+};
+
+const getTotalExpenseByTypeAndMonth = async (year, month, idExpenseType) => {
+    return monthlyOverallExpenseRepository.getTotalExpenseByTypeAndMonth(year, month, idExpenseType);
+};
+
+
 module.exports = {
     createMonthlyOverallExpense,
     getAllMonthlyOverallExpenses,
@@ -31,4 +41,6 @@ module.exports = {
     updateMonthlyOverallExpense,
     deleteMonthlyOverallExpense,
     changeStateMonthlyOverallExpense,
+    getTotalExpenseByMonth,
+    getTotalExpenseByTypeAndMonth,
 };

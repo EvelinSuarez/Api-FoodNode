@@ -17,6 +17,11 @@ const ConceptSpent = sequelize.define('ConceptSpent', {
         type: DataTypes.STRING(250), 
         allowNull: false 
     },
+    isBimonthly: { 
+        type: DataTypes.BOOLEAN, 
+        defaultValue: false, 
+        allowNull: false 
+    },
     statusS: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 

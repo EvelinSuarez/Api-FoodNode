@@ -1,6 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Provider = require('./provider'); // Modelo de proveedor
+const Supplier = require('./supplier');
 
 const RegisterPurchase = sequelize.define('RegisterPurchase', {
     idPurchase: { 
@@ -14,6 +15,14 @@ const RegisterPurchase = sequelize.define('RegisterPurchase', {
         references: { 
             model: Provider, 
             key: 'idProvider' 
+        }
+    },
+    idSupplier: { 
+        type: DataTypes.INTEGER, 
+        allowNull: false, 
+        references: { 
+            model: Supplier, 
+            key: 'idSupplier' 
         }
     },
     purchaseDate: { 
@@ -33,5 +42,8 @@ const RegisterPurchase = sequelize.define('RegisterPurchase', {
 // Relaciones con otros modelos
 RegisterPurchase.belongsTo(Provider, { foreignKey: 'idProvider' });
 Provider.hasMany(RegisterPurchase, { foreignKey: 'idProvider' });
+
+RegisterPurchase.belongsTo(Supplier, { foreignKey: 'idSupplier' });
+Supplier.hasMany(RegisterPurchase, { foreignKey: 'idSupplier' });
 
 module.exports = RegisterPurchase;
