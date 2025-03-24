@@ -39,6 +39,11 @@ const supplierBaseValidation = [
     .withMessage("El nombre del insumo debe tener al menos 3 caracteres")
     .matches(/^[a-zA-Z0-9\s]+$/)
     .withMessage("El nombre solo puede contener letras, números y espacios"),
+    body("measurementUnit")
+    .isString()
+    .withMessage("La unidad de medida debe ser un texto")
+    .matches(/^(kg|g|mg|lb|oz|ton|gramos|kilogramos|miligramos|libras|onzas|toneladas)$/i)
+    .withMessage("La unidad de medida debe ser válida (kg, g, mg, lb, oz, ton, etc.)"),  
   body("status").default(true).isBoolean().withMessage("El estado debe ser un booleano"),
 ]
 

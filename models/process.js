@@ -1,25 +1,27 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Supplier = sequelize.define('Supplier', {
-    idSupplier: { 
+const Process = sequelize.define('process', {
+    idProcess: { 
         type: DataTypes.INTEGER, 
         primaryKey: true, 
         autoIncrement: true, 
         allowNull: false 
     },
-    supplierName: { 
-        type: DataTypes.STRING(60), 
+    processName: { 
+        type: DataTypes.STRING(100), 
         allowNull: false 
     },
-    measurementUnit: {    
-        type: DataTypes.STRING(20),
-        allowNull: false
+    description: { 
+        type: DataTypes.STRING(255), 
+        allowNull: true 
     },
     status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
-    },
+    }
+}, {
+    timestamps: true
 });
 
-module.exports = Supplier;
+module.exports = Process;
