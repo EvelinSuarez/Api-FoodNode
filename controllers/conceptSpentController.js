@@ -89,13 +89,21 @@ const changeStateConceptSpent = async (req, res) => {
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
+
+    const idExpenseType = parseInt(req.params.idExpenseType, 10);
+    if (isNaN(idExpenseType)) {
+        return res.status(400).json({message: "El Id debe ser un número valido"})
+    }
     try {
-        await conceptSpentService.changeStateConceptSpent(req.params.idExpenseType, req.body.state);
-        res.status(204).end();
+        await conceptSpentService.changeStateConceptSpent(idExpenseType, req.body.status);
+        const updateConceptSpent = await conceptSpentService.getConceptSpentById(idExpenseType);
+        res.status(200).json(updateConceptSpent);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
+
+
 
 module.exports = {
     createConceptSpent,

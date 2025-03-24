@@ -62,7 +62,9 @@ const updateEmployee = async (req, res) => {
         if (!employee) {
             return res.status(404).json({ message: 'Empleado no encontrado' });
         }
-        res.status(204).end();
+        // Devolvemos el empleado actualizado con un código 200 OK
+        const updatedEmployee = await employeeService.getEmployeeById(idEmployee);
+        res.status(200).json(updatedEmployee);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
@@ -102,8 +104,10 @@ const changeStateEmployee = async (req, res) => {
     }
 
     try {
-        await employeeService.changeSateEmployee(idEmployee, req.body.state);
-        res.status(204).end();
+        await employeeService.changeStateEmployee(idEmployee, req.body.status);
+        // Obtener el empleado actualizado
+        const updatedEmployee = await employeeService.getEmployeeById(idEmployee);
+        res.status(200).json(updatedEmployee); // Enviar el empleado actualizado
     } catch (error) {
         res.status(400).json({ message: error.message });
     }

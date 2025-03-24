@@ -20,8 +20,8 @@ const deleteConceptSpent = async (id) => {
     return conceptSpentRepository.deleteConceptSpent(id);
 }
 
-const changeStateConceptSpent = async (id, state) => {
-    return conceptSpentRepository.changeStateConceptSpent(id, state);
+const changeStateConceptSpent = async (id, status) => {
+    return conceptSpentRepository.changeStateConceptSpent(id, status);
 }
 
 module.exports = {
