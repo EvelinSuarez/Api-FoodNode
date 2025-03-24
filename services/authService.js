@@ -1,34 +1,43 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/user');
-const Role = require('../models/role');
-require('dotenv').config();
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/user");
+const Role = require("../models/role");
+require("dotenv").config();
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
+
+// 🔹 Verificar si el secreto se está cargando correctamente
+console.log("🔹 JWT_SECRET en authService:", JWT_SECRET);
 
 const login = async (email, password) => {
-    const user = await User.findOne({ 
-        where: { email }, 
-        include: { model: Role } // Solo incluye el rol, sin permisos
-    });
-    
-    if (!user) {
-        throw new Error('Usuario no encontrado');
-    }
+  const user = await User.findOne({
+    where: { email },
+    include: { model: Role,},
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-        throw new Error('Contraseña incorrecta');
-    }
+  });
 
-    // Verificar si el usuario tiene un rol antes de acceder a 'name'
-    const roleName = user.Role ? user.Role.name : 'Sin rol'; 
+  if (!user) {
+    throw new Error("Usuario no encontrado");
+  }
 
-    const token = jwt.sign(
-        { id: user.idUsers, email: user.email, role: roleName }, // Evita el error si no hay rol
-        process.env.JWT_SECRET, 
-        { expiresIn: '8h' }
-    );
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    throw new Error("Contraseña incorrecta");
+  }
 
-    return token;
+  const token = jwt.sign(
+    { id: user.idUsers, email: user.email, role: user.idRole },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+
+  console.log("🔹 Token generado:", token);
+
+  return {
+    user: { idUsers: user.idUsers, email: user.email, role: user.idRole },
+    token,
+  };
 };
 
 module.exports = { login };

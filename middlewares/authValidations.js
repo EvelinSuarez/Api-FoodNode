@@ -7,6 +7,7 @@ require('dotenv').config();
 const authMiddleware = () => {
     return async (req, res, next) => {
         const token = req.header('Authorization');
+        console.log("🔍 Token recibido:", token);
 
         if (!token) {
             return res.status(401).json({ message: 'Acceso denegado. No hay token.' });
@@ -29,7 +30,7 @@ const authMiddleware = () => {
 
             next();
         } catch (error) {
-            res.status(400).json({ message: 'Token no válido.' });
+            res.status(400).json({ message: 'No tiene permisos' });
         }
     };
 };
