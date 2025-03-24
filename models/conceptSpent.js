@@ -22,7 +22,7 @@ const ConceptSpent = sequelize.define('ConceptSpent', {
         defaultValue: false, 
         allowNull: false 
     },
-    statusS: { 
+    status: { 
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     }

@@ -8,20 +8,19 @@ const getAllRegisterPurchases = async () => {
     return registerPurchaseRepository.getAllRegisterPurchases();
 };
 
-const getRegisterPurchaseById = async (id) => {
-    return registerPurchaseRepository.getRegisterPurchaseById(id);
+const getRegisterPurchaseById = async (idPurchase) => {
+    return registerPurchaseRepository.getRegisterPurchaseById(idPurchase);
 };
 
-const updateRegisterPurchase = async (id, registerPurchase) => {
-    return registerPurchaseRepository.updateRegisterPurchase(id, registerPurchase);
+const updateRegisterPurchase = async (idPurchase, registerPurchase) => {
+    return registerPurchaseRepository.updateRegisterPurchase(idPurchase, registerPurchase);
 };
 
-const deleteRegisterPurchase = async (id) => {
-    return registerPurchaseRepository.deleteRegisterPurchase(id);
+const deleteRegisterPurchase = async (idPurchase) => {
+    return registerPurchaseRepository.deleteRegisterPurchase(idPurchase);
 };
-
-const changeStateRegisterPurchase = async (id, status) => {
-    return registerPurchaseRepository.changeStateRegisterPurchase(id, status);
+const changeStateRegisterPurchase = async (idPurchase, status) => {
+    return registerPurchaseRepository.changeStateRegisterPurchase(idPurchase, status);
 }
 
 module.exports = {

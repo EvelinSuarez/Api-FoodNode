@@ -26,12 +26,12 @@ const getAllRegisterPurchases = async (req, res) => {
 };
 
 const getRegisterPurchaseById = async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
+    const idPurchase = parseInt(req.params.idPurchase, 10);
+    if (isNaN(idPurchase)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
     try {
-        const registerPurchase = await registerPurchaseService.getRegisterPurchaseById(id);
+        const registerPurchase = await registerPurchaseService.getRegisterPurchaseById(idPurchase);
         if (!registerPurchase) {
             return res.status(404).json({ message: "Compra no encontrada" });
         }
@@ -43,16 +43,16 @@ const getRegisterPurchaseById = async (req, res) => {
 };
 
 const updateRegisterPurchase = async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
+    const idPurchase = parseInt(req.params.idPurchase, 10);
+    if (isNaN(idPurchase)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
     try {
-        const updated = await registerPurchaseService.updateRegisterPurchase(id, req.body);
+        const updated = await registerPurchaseService.updateRegisterPurchase(idPurchase, req.body);
         if (!updated) {
             return res.status(404).json({ message: "Compra no encontrada" });
         }
-        res.status(204).end();
+        res.status(200).json({ message: "Compra actualizada exitosamente" }); // Código 200 y mensaje
     } catch (error) {
         console.error("Error al actualizar compra:", error);
         res.status(500).json({ message: "Error interno del servidor" });
@@ -60,35 +60,34 @@ const updateRegisterPurchase = async (req, res) => {
 };
 
 const deleteRegisterPurchase = async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
+    const idPurchase = parseInt(req.params.idPurchase, 10);
+    if (isNaN(idPurchase)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
     try {
-        const deleted = await registerPurchaseService.deleteRegisterPurchase(id);
+        const deleted = await registerPurchaseService.deleteRegisterPurchase(idPurchase);
         if (!deleted) {
             return res.status(404).json({ message: "Compra no encontrada" });
         }
-        res.status(204).end();
+        res.status(200).json({ message: "Compra eliminada exitosamente" }); // Código 200 y mensaje
     } catch (error) {
         console.error("Error al eliminar compra:", error);
         res.status(500).json({ message: "Error interno del servidor" });
     }
 };
-
 const changeStateRegisterPurchase = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
+    const idPurchase = parseInt(req.params.idPurchase, 10);
+    if (isNaN(idPurchase)) {
         return res.status(400).json({ message: "El ID debe ser un número válido" });
     }
 
     try {
-        const updated = await registerPurchaseService.changeStateRegisterPurchase(id, req.body.state);
+        const updated = await registerPurchaseService.changeStateRegisterPurchase(idPurchase, req.body.state);
         if (!updated) {
             return res.status(404).json({ message: "Compra registrada no encontrada" });
         }
