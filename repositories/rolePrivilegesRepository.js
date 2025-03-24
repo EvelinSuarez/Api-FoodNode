@@ -4,7 +4,7 @@
 // repositories/rolePrivilegesRepository.js
 const RolePrivileges = require("../models/rolePrivileges");
 const Role = require("../models/role");
-const Privilege = require("../models/privileges");
+const Privilege = require("../models/privilege");
 const Permission = require("../models/permission");
 
 const getAllRolePrivileges = async () => {
@@ -18,11 +18,12 @@ const getAllRolePrivileges = async () => {
 };
 
 const getRolePrivilegeById = async (idRolePrivilege) => {
-  return RolePrivileges.findByPk(idRolePrivilege, {
+  return await RolePrivileges.findAll({
+    where: { idRole: idRolePrivilege },
     include: [
-      { model: Role },
-      { model: Privilege },
-      { model: Permission }
+      { model: Role, as: "role" },
+      { model: Privilege, as: "privilege" },
+      { model: Permission, as: "permission" }
     ]
   });
 };

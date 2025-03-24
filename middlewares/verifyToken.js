@@ -10,7 +10,6 @@ const verifyToken = (req, res, next) => {
 
   // Extraer solo el token sin el "Bearer "
   const token = authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : authHeader;
-  console.log(token);
   
 
   try {
@@ -19,6 +18,7 @@ const verifyToken = (req, res, next) => {
     next();
   } catch (error) {
     res.status(400).json({ message: "No tiene permisos" });
+    console.log(error);
   }
 };
 

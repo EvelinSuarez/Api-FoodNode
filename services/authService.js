@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
 
 // 🔹 Verificar si el secreto se está cargando correctamente
-console.log("🔹 JWT_SECRET en authService:", JWT_SECRET);
+// console.log("🔹 JWT_SECRET en authService:", JWT_SECRET);
 
 const login = async (email, password) => {
   const user = await User.findOne({
@@ -32,7 +32,7 @@ const login = async (email, password) => {
     { expiresIn: JWT_EXPIRES_IN }
   );
 
-  console.log("🔹 Token generado:", token);
+  //console.log("🔹 Token generado:", token);
 
   return {
     user: { idUsers: user.idUsers, email: user.email, role: user.idRole },
