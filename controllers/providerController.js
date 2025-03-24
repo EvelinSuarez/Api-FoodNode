@@ -99,16 +99,15 @@ const changeStateProvider = async (req, res) => {
     }
 
     try {
-        const updatedProvider = await providerService.changeStgateProvider(id, req.body.status);
-        if (!updatedProvider) {
-            return res.status(404).json({ message: "Proveedor no encontrado" });
-        }
+        await providerService.changeStateProvider(id, req.body.status);
+        const updatedProvider = await providerService.getProviderById(id)
         res.status(200).json(updatedProvider); // Ahora devuelve el detalle actualizado
     } catch (error) {
         console.error("Error al cambiar estado del proveedor:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
+        res.status(400).json({ message: "Error interno del servidor" });
     }
 };
+
 
 module.exports = {
     createProvider,

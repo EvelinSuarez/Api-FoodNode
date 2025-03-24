@@ -20,8 +20,8 @@ const deleteConceptSpent = async (idExpenseType) => {
     return ConceptSpent.destroy({ where: { idExpenseType } });
 }
 
-const changeStateConceptSpent = async (idExpenseType, state) => {
-    return ConceptSpent.update({ state }, { where: { idExpenseType } });
+const changeStateConceptSpent = async (idExpenseType, status) => {
+    return ConceptSpent.update({ status }, { where: { idExpenseType } });
 }
 
 module.exports = {

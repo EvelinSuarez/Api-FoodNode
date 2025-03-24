@@ -62,7 +62,7 @@ const getConceptSpentByIdValidation = [
 
 // Validación para cambiar el estado de un concepto de gasto
 const changeStateConceptSpentValidation = [
-    body('state').isBoolean().withMessage('El estado debe ser un booleano'),
+    body('status').isBoolean().withMessage('El estado debe ser un booleano'),
     param('idExpenseType')
         .isInt({ min: 1 }).withMessage('El id debe ser un número entero positivo'),
     param('idExpenseType').custom(validateConceptSpentExistence) // Verificar que el concepto de gasto exista

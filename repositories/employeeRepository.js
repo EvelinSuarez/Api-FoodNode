@@ -20,7 +20,7 @@ const deleteEmployee = async (idEmployee) => {
     return Employee.destroy({ where: { idEmployee } });
 }
 
-const changeSateEmployee = async (idEmployee, status) => {
+const changeStateEmployee = async (idEmployee, status) => {
     return Employee.update({ status }, { where: { idEmployee } });
 }
 
@@ -30,7 +30,7 @@ module.exports = {
     getEmployeeById,
     updateEmployee,
     deleteEmployee,
-    changeSateEmployee,
+    changeStateEmployee,
 };
 
 
