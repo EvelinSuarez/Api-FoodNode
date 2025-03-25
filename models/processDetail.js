@@ -1,5 +1,8 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const Process = require('./Process');
+const SpecSheet = require('./SpecSheet');
+const Employee = require('./Employee');
 
 const ProcessDetail = sequelize.define('ProcessDetail', {
     idProcessDetail: { 
@@ -48,5 +51,14 @@ const ProcessDetail = sequelize.define('ProcessDetail', {
     timestamps: true,
     tableName: 'ProcessDetails'
 });
+
+// Definir asociaciones
+ProcessDetail.belongsTo(Process, { foreignKey: 'idProcess' });
+ProcessDetail.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet' });
+ProcessDetail.belongsTo(Employee, { foreignKey: 'idEmployee' });
+
+Process.hasMany(ProcessDetail, { foreignKey: 'idProcess' });
+SpecSheet.hasMany(ProcessDetail, { foreignKey: 'idSpecSheet' });
+Employee.hasMany(ProcessDetail, { foreignKey: 'idEmployee' });
 
 module.exports = ProcessDetail;
