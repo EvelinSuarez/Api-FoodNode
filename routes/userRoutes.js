@@ -11,4 +11,5 @@ router.post('/',VerifyToken,authorize(["Crear Usuario"]), userValidations.create
 router.put('/:id',VerifyToken,authorize(["Actualizar Usuario"]), userValidations.updateUserValidation, userController.updateUser);
 router.delete('/:id',VerifyToken,authorize(["Inhabilitar Usuario"]), userValidations.deleteUserValidation, userController.deleteUser);
 
+
 module.exports = router;
