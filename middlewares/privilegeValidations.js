@@ -2,7 +2,7 @@
 
 // middlewares/privilegeValidations.js
 const { body, param } = require('express-validator');
-const Privilege = require('../models/privileges');
+const Privilege = require('../models/privilege');
 
 const validatePrivilegeExistence = async (idPrivilege) => {
     const privilege = await Privilege.findByPk(idPrivilege);
@@ -12,21 +12,21 @@ const validatePrivilegeExistence = async (idPrivilege) => {
 };
 
 const validateUniquePrivilegeName = async (privilegeName) => {
-    const privilege = await Privilege.findOne({ where: { privilegename: privilegeName } });
+    const privilege = await Privilege.findOne({ where: { privilegeName: privilegeName } });
     if (privilege) {
         return Promise.reject('El nombre del privilegio ya existe');
     }
 };
 
 const privilegeBaseValidation = [
-    body('privilegename')
+    body('privilegeName')
         .isLength({ min: 3, max: 50 }).withMessage('El nombre del privilegio debe tener entre 3 y 50 caracteres')
         .matches(/^[a-zA-Z0-9\s]+$/).withMessage('El nombre del privilegio solo puede contener letras, números y espacios')
 ];
 
 const createPrivilegeValidation = [
     ...privilegeBaseValidation,
-    body('privilegename').custom(validateUniquePrivilegeName)
+    body('privilegeName').custom(validateUniquePrivilegeName)
 ];
 
 const updatePrivilegeValidation = [

@@ -5,18 +5,21 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Privilege = sequelize.define('privileges', {
+const Privilege = sequelize.define('privilege', {
     idPrivilege: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
-    },
-    privilegename: {
+    },privilegeName
+    : {
         type: DataTypes.STRING(60),
         allowNull: false,
-        unique: true
+    },
+    status: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
     }
     // Se elimina idPermission de este modelo
-}, { timestamps: false });
+});
 
 module.exports = Privilege;

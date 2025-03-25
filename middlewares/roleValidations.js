@@ -55,7 +55,7 @@ const updateRoleValidation = [
     param('idRole').isInt({ min: 1 }).withMessage('El id del rol debe ser un número entero positivo'),
     param('idRole').custom(validateRoleExistence),
     body('roleName').custom(validateUniqueRoleName),
-    body('privileges').isArray().optional() // 🔹 Ahora los permisos son opcionales
+    body('privilege').isArray().optional() // 🔹 Ahora los permisos son opcionales
 ];
 
 const deleteRoleValidation = [

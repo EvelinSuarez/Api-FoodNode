@@ -2,12 +2,9 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/user');
 
 const createUser = async (user) => {
-    if (user.password) {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
-    }
-    return User.create(user);
+    return User.create(user); // Ya se maneja en beforeCreate
 };
+
 
 const getAllUsers = async () => {
     return User.findAll();

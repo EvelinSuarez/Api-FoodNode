@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
-require('dotenv').config(); // Cargar variables de entorno          
-// dotenv.config();
+require('dotenv').config();         
+
     
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'], // Agrega los posibles orígenes de tu frontend
@@ -15,7 +15,15 @@ app.use(express.json());
 
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
-const authMiddleware = require('./middlewares/authMiddleware');
+const authMiddleware = require('./middlewares/authValidations');
+
+
+app.use('/users', userRoutes);          
+app.use('/api/auth', authRoutes);
+
+app.get('/api/protected', authMiddleware, (req, res) => {
+    res.json({ message: 'Ruta protegida', user: req.user });
+});
 const employeeRoutes = require('./routes/employeeRoutes');
 const providerRoutes = require('./routes/providerRoutes');
 const conceptSpentRoutes = require('./routes/conceptSpentRoutes');
@@ -60,6 +68,9 @@ app.use('/purchaseDetail', purchaseDetailRoutes);
 app.use('/productSheet', productSheetRoutes);
 app.use('/process', processRoutes);
 app.use('/processDetail', processDetailRoutes);
+
+
+
 
 
 module.exports = app;
