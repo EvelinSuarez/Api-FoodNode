@@ -43,6 +43,7 @@ const purchaseDetailRoutes = require('./routes/purchaseDetailRoutes');
 const productSheetRoutes = require('./routes/productSheetRoutes');
 const processRoutes = require('./routes/processRoutes');
 const processDetailRoutes = require('./routes/processDetailRoutes');
+const reservationServicesRoutes = require('./routes/reservationServicesRoutes')
 
 app.use('/users', userRoutes);
 app.use('/api/auth', authRoutes);
@@ -68,8 +69,7 @@ app.use('/purchaseDetail', purchaseDetailRoutes);
 app.use('/productSheet', productSheetRoutes);
 app.use('/process', processRoutes);
 app.use('/processDetail', processDetailRoutes);
-
-
+app.use('/reservationServices', reservationServicesRoutes);
 
 
 
