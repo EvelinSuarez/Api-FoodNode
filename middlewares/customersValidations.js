@@ -21,7 +21,7 @@ const validateUniqueCustomersCellphone = async (cellphone, { req }) => {
 // Validaciones base para crear y actualizar clientes
 const customersBaseValidation = [
     body('fullName')
-        .isLength({ min: 5 }).withMessage('El nombre debe tener al menos 5 caracteres'),
+        .isLength({ min: 5 }).withMessage('El nombre debe tener al menos 5 caracteres'), 
     body('distintive')
         .isString().withMessage('El campo distintivo debe ser una cadena de texto')
         .notEmpty().withMessage('El campo distintivo es obligatorio'),
