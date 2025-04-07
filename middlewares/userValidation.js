@@ -31,7 +31,7 @@ const createUserValidation = [
     body('email').notEmpty().withMessage('El correo electrónico es obligatorio').isEmail().isLength({ max: 255 }).custom(validateUniqueUserEmail),
     body('password').notEmpty().withMessage('La contraseña es obligatoria').isLength({ min: 10, max: 10 }).withMessage('La contraseña debe tener exactamente 10 caracteres'),
     body('idRole').optional().isInt().withMessage('El ID del rol debe ser un número entero'),
-    body('state').optional().isBoolean().withMessage('El estado debe ser un valor booleano'),
+    body('status').optional().isBoolean().withMessage('El estado debe ser un valor booleano'),
 ];
 
 const updateUserValidation = [

@@ -20,8 +20,8 @@ const deleteUser = async (id) => {
     return userRepository.deleteUser(id);
 };
 
-const changeStateUser = async (id, state) => {
-    return userRepository.changeStateUser(id, state);
+const changeStateUser = async (id, status) => {
+    return userRepository.changeStateUser(id, status);
 };
 
 module.exports = {

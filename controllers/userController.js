@@ -69,7 +69,7 @@ const changeStateUser = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        await userService.changeStateUser(req.params.id, req.body.state);
+        await userService.changeStateUser(req.params.id, req.body.status);
         res.status(204).end();
     } catch (error) {
         res.status(400).json({ message: error.message });
