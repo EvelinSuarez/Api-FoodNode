@@ -1,8 +1,8 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Process = require('./Process');
-const SpecSheet = require('./SpecSheet');
-const Employee = require('./Employee');
+const Process = require('./process');
+const SpecSheet = require('./specSheet');
+const Employee = require('./employee');
 
 const ProcessDetail = sequelize.define('ProcessDetail', {
     idProcessDetail: { 

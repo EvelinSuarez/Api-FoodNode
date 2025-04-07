@@ -31,22 +31,11 @@ const productBaseValidation = [
     .withMessage("El nombre del producto debe tener al menos 3 caracteres")
     .matches(/^[a-zA-Z0-9\s]+$/)
     .withMessage("El nombre solo puede contener letras, números y espacios"),
-  body("process")
-    .isLength({ min: 3 })
-    .withMessage("El proceso debe tener al menos 3 caracteres")
-    .matches(/^[a-zA-Z0-9\s]+$/)
-    .withMessage("El proceso solo puede contener letras, números y espacios"),
-  body("totalTime")
-    .isInt({ min: 1 })
-    .withMessage("El tiempo total debe ser un número entero positivo"),
   body("status")
     .default(true)
     .isBoolean()
     .withMessage("El estado debe ser un booleano"),
-  body("idSupplier")
-    .isInt({ min: 1 })
-    .withMessage("El ID del insumo debe ser un número entero positivo")
-    .custom(validateSupplierExists),
+  
 ]
 
 // Validación para crear producto

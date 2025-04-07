@@ -42,8 +42,8 @@ const supplierBaseValidation = [
     body("measurementUnit")
     .isString()
     .withMessage("La unidad de medida debe ser un texto")
-    .matches(/^(kg|g|mg|lb|oz|ton|gramos|kilogramos|miligramos|libras|onzas|toneladas)$/i)
-    .withMessage("La unidad de medida debe ser válida (kg, g, mg, lb, oz, ton, etc.)"),  
+    .matches(/^(kg|g|mg|lb|oz|L|mL|gal|m|cm|mm|unidad|docena|gramos|kilogramos|miligramos|libras|onzas|litros|mililitros|galones|metros|centimetros|milimetros|unidades|docenas)$/i)
+.withMessage("La unidad de medida debe ser válida: kg, g, mg, lb, oz, L, mL, gal, m, cm, mm, unidad, docena, gramos, kilogramos, miligramos, libras, onzas, litros, mililitros, galones, metros, centímetros, milímetros, unidades, docenas."),
   body("status").default(true).isBoolean().withMessage("El estado debe ser un booleano"),
 ]
 

@@ -5,9 +5,12 @@ const createProduct = async (product) => {
 }
 
 const getAllProducts = async () => {
-    return productRepository.getAllProducts();
-}
-
+    try {
+        return await productRepository.getAllProducts();
+    } catch (error) {
+        throw new Error("Error al obtener los productos: " + error.message);
+    }
+};
 const getProductById = async (id) => {
     return productRepository.getProductById(id);
 }
@@ -29,11 +32,11 @@ const getProductsBySupplier = async (idSupplier) => {
 }
 
 module.exports = {
-    createProduct,
-    getAllProducts,
-    getProductById,
-    updateProduct,
-    deleteProduct,
-    changeStateProduct,
-    getProductsBySupplier
-};
+        createProduct,
+        getAllProducts,
+        getProductById,
+        updateProduct,
+        deleteProduct,
+        changeStateProduct,
+        getProductsBySupplier
+    };
