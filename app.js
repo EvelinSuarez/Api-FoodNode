@@ -21,6 +21,7 @@ const authRoutes = require('./routes/authRoutes');
 app.use('/users', userRoutes);          
 app.use('/api/auth', authRoutes);
 
+        
 
 const employeeRoutes = require('./routes/employeeRoutes');
 const providerRoutes = require('./routes/providerRoutes');
