@@ -1,8 +1,15 @@
 const specSheetRepository = require('../repositories/specSheetRepository');
 
-const createSpecSheet = async (specSheet) => {
-    return specSheetRepository.createSpecSheet(specSheet);
-}
+const createSpecSheet = async (specSheetData) => {
+    try {
+        console.log('Datos recibidos en servicio:', specSheetData);
+        const newSpecSheet = await specSheetRepository.createSpecSheet(specSheetData);
+        return newSpecSheet;
+    } catch (error) {
+        console.error('Error en servicio createSpecSheet:', error);
+        throw new Error(`Error al crear la ficha técnica: ${error.message}`);
+    }
+};
 
 const getAllSpecSheets = async () => {
     return specSheetRepository.getAllSpecSheets();

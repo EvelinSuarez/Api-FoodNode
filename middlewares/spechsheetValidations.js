@@ -80,13 +80,16 @@
       .default(true)
       .isBoolean()
       .withMessage("El estado debe ser un booleano"),
+    body("measurementUnit")
+          .isString()
+          .withMessage("La unidad de medida debe ser un texto")
+          .matches(/^(kg|g|mg|lb|oz|L|mL|gal|m|cm|mm|unidad|docena|gramos|kilogramos|miligramos|libras|onzas|litros|mililitros|galones|metros|centimetros|milimetros|unidades|docenas)$/i)
+          .withMessage("La unidad de medida debe ser válida: kg, g, mg, lb, oz, L, mL, gal, m, cm, mm, unidad, docena, gramos, kilogramos, miligramos, libras, onzas, litros, mililitros, galones, metros, centímetros, milímetros, unidades, docenas."),
     body("quantity")
-      .isInt({ min: 1 })
-      .withMessage("La cantidad debe ser un número entero positivo"),
-    body("suppliers")
-      .isArray()
-      .withMessage("Los insumos deben ser un array de IDs")
-      .custom((value, { req }) => validateUniqueSuppliers(req.body.idProduct, value))
+          .isString()
+          .withMessage("La cantidad debe ser un texto")
+          .isLength({ min: 1, max: 30 })
+          .withMessage("La cantidad debe tener entre 1 y 30 caracteres")
   ]
   
   // Validación para crear ficha técnica

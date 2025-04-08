@@ -18,8 +18,9 @@ router.get('/process/:idProcess',
 router.get('/specsheet/:idSpecSheet', 
     processDetailValidations.getProcessDetailsBySpecSheetValidation, 
     processDetailController.getProcessDetailsBySpecSheet);
-router.get('/employee/:idEmployee', 
+router.get('/employee/:idEmployee',
     processDetailValidations.getProcessDetailsByEmployeeValidation, 
     processDetailController.getProcessDetailsByEmployee);
+
 
 module.exports = router;
