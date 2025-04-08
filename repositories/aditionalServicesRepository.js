@@ -20,8 +20,8 @@ const deleteAditionalServices = async (idAditionalServices) => {
     return AditionalServices.destroy({ where: { idAditionalServices } });
 }
 
-const changeStateAditionalServices = async (idAditionalServices, state) => {
-    return AditionalServices.update({ state }, { where: { idAditionalServices } });
+const changeStateAditionalServices = async (idAditionalServices, status) => {
+    return AditionalServices.update({ status: status }, { where: { idAditionalServices } });
 }
 
 module.exports = {
