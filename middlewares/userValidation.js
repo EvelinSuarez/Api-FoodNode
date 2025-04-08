@@ -57,6 +57,7 @@ const changeStateValidation = [
     param('id').custom(validateUserExistence),
 ];
 
+
 module.exports = {
     createUserValidation,
     updateUserValidation,
