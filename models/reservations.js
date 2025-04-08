@@ -58,18 +58,12 @@ const Reservations = sequelize.define('Reservations', {
     idCustomers: { 
         type: DataTypes.INTEGER, references: { model: Customers, key: 'idCustomers' } 
     },
-    idAditionalServices: { 
-        type: DataTypes.INTEGER, references: { model: AditionalServices, key: 'idAditionalServices' } 
-    },
 });
 
 
-// Relación con Customer y services
+// Relación con Customer
 Reservations.belongsTo(Customers, { foreignKey: 'idCustomers' });
 Customers.hasMany(Reservations, { foreignKey: 'idCustomers' });
-
-Reservations.belongsTo(AditionalServices, { foreignKey: 'idAditionalServices' });
-AditionalServices.hasMany(Reservations, { foreignKey: 'idAditionalServices' });
 
 
 module.exports = Reservations;

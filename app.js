@@ -44,6 +44,7 @@ const processRoutes = require('./routes/processRoutes');
 const processDetailRoutes = require('./routes/processDetailRoutes');
 const productionOrderRoutes = require('./routes/productionOrderRoutes');
 
+const reservationServicesRoutes = require('./routes/reservationServicesRoutes')
 
 app.use('/users', userRoutes);
 app.use('/api/auth', authRoutes);
@@ -70,6 +71,7 @@ app.use('/processDetail', processDetailRoutes);
 app.use('/productionOrder', productionOrderRoutes);
 
 
+app.use('/reservationServices', reservationServicesRoutes);
 
 
 

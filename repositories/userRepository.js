@@ -26,8 +26,8 @@ const deleteUser = async (id) => {
     return User.destroy({ where: { idUsers: id } });
 };
 
-const changeStateUser = async (id, state) => {
-    return User.update({ state }, { where: { idUsers: id } });
+const changeStateUser = async (id, status) => {
+    return User.update({ status }, { where: { idUsers: id } });
 };
 
 module.exports = {
