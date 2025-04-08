@@ -1,4 +1,5 @@
 const reservationsRepository = require('../repositories/reservationsRepository');
+const passRepository = require('../repositories/passRepository');
 
 const createReservations = async (reservations) => {
     return reservationsRepository.createReservations(reservations);

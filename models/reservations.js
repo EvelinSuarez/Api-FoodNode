@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Customers = require('./customers');
 const AditionalServices = require('./aditionalServices');
-
+const Pass = require('./pass');
 
 const Reservations = sequelize.define('Reservations', {
     idReservations: { 
@@ -55,6 +55,7 @@ const Reservations = sequelize.define('Reservations', {
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     },
+    
     idCustomers: { 
         type: DataTypes.INTEGER, references: { model: Customers, key: 'idCustomers' } 
     },
@@ -65,5 +66,8 @@ const Reservations = sequelize.define('Reservations', {
 Reservations.belongsTo(Customers, { foreignKey: 'idCustomers' });
 Customers.hasMany(Reservations, { foreignKey: 'idCustomers' });
 
+//relacion con abono
+Reservations.hasMany(Pass, { foreignKey: 'idReservation', as: 'Pass' }); 
+Pass.belongsTo(Reservations, { foreignKey: 'idReservation' });
 
 module.exports = Reservations;

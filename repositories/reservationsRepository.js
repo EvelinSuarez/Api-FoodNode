@@ -1,6 +1,7 @@
 const Reservations = require('../models/reservations');
 const Customers = require('../models/customers');
 const AditionalServices = require('../models/aditionalServices');
+const Pass = require('../models/pass');
 
 const createReservations = async (reservations) => {
     return Reservations.create(reservations);
@@ -14,9 +15,11 @@ const getAllReservations = async () => {
             },
             {
                 model: AditionalServices,
-            }
+            },
+            { model: Pass, as: 'Pass', attributes: ['idPass', 'paymentDate', 'amount'] },
         ]
     });
+    
     return reservations;
     
 }
@@ -29,7 +32,8 @@ const getReservationsById = async (id) => {
             },
             {
                 model: AditionalServices,
-            }
+            },
+            { model: Pass, as: 'Pass', attributes: ['idPass', 'paymentDate', 'amount'] }
         ]
     });
 };
@@ -43,8 +47,8 @@ const deleteReservations = async (idReservations) => {
     return Reservations.destroy({ where: { idReservations } });
 }
 
-const changeStateReservations = async (idReservations, state) => {
-    return Reservations.update({ state }, { where: { idReservations } });
+const changeStateReservations = async (idReservations, status) => {
+    return Reservations.update({ status:status }, { where: { idReservations } });
 }
 
 module.exports = {
