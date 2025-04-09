@@ -56,16 +56,6 @@ const productSheetBaseValidation = [
     .isInt({ min: 1 })
     .withMessage("El ID del insumo debe ser un número entero positivo")
     .custom(validateSupplierExistence),
-  body("measurementUnit")
-    .isString()
-    .withMessage("La unidad de medida debe ser un texto")
-    .matches(/^(kg|g|mg|lb|oz|ton|gramos|kilogramos|miligramos|libras|onzas|toneladas)$/i)
-    .withMessage("La unidad de medida debe ser válida (kg, g, mg, lb, oz, ton, etc.)"),
-  body("quantity")
-    .isString()
-    .withMessage("La cantidad debe ser un texto")
-    .isLength({ min: 1, max: 30 })
-    .withMessage("La cantidad debe tener entre 1 y 30 caracteres")
 ];
 
 // Validation for creating ProductSheet

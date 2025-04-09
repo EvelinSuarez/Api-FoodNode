@@ -1,19 +1,40 @@
 const { validationResult } = require('express-validator');
 const specSheetService = require('../services/spechSheetService');
+const productService = require('../services/productService');
 
 const createSpecSheet = async (req, res) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({errors: errors.array()})
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+
     try {
-        const specSheet = await specSheetService.createSpecSheet(req.body);
-        res.status(201).json(specSheet);
+        // Obtener todos los productos disponibles
+        const availableProducts = await productService.getAllProducts();
+
+        // Validar que el producto seleccionado exista
+        const { idProduct, startDate, endDate, status, quantity } = req.body;
+        const productExists = availableProducts.some(product => product.idProduct === idProduct);
+
+        if (!productExists) {
+            return res.status(400).json({ message: "El producto seleccionado no existe o no está disponible." });
+        }
+
+        // Crear la ficha técnica
+        const specSheet = await specSheetService.createSpecSheet({
+            idProduct,
+            startDate,
+            endDate,
+            status,
+            quantity,
+        });
+
+        res.status(201).json({ message: "Ficha técnica creada exitosamente", specSheet });
     } catch (error) {
-        console.error("Error al crear ficha técnica:", error);
-        res.status(400).json({ message: error.message });
+        res.status(500).json({ message: error.message });
     }
-}
+};
+
 
 const getAllSpecSheets = async (req, res) => {
     try {
