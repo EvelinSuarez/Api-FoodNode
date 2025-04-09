@@ -10,4 +10,5 @@ router.put('/:idRole', roleValidations.updateRoleValidation, roleController.upda
 router.delete('/:idRole', roleValidations.deleteRoleValidation, roleController.deleteRole);
 router.patch('/:idRole', roleValidations.changeRoleStateValidation, roleController.changeRoleState);
 
+
 module.exports = router;    
