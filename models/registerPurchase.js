@@ -1,49 +1,40 @@
+// models/registerPurchase.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-const Provider = require('./provider'); // Modelo de proveedor
-const Supplier = require('./supplier');
+const sequelize = require('../config/database'); // Importa la instancia
 
 const RegisterPurchase = sequelize.define('RegisterPurchase', {
-    idPurchase: { 
-        type: DataTypes.INTEGER, 
-        primaryKey: true, 
-        autoIncrement: true 
+    idRegisterPurchase: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
     },
-    idProvider: { 
-        type: DataTypes.INTEGER, 
-        allowNull: false, 
-        references: { 
-            model: Provider, 
-            key: 'idProvider' 
-        }
+    // *** AÑADIDO EXPLÍCITAMENTE: Definición de la columna FK ***
+    idProvider: {
+        type: DataTypes.INTEGER, // Debe coincidir con el tipo de la PK en Provider
+        allowNull: false,
+        // No necesitas 'references' aquí si lo defines en la asociación central
+        // references: {
+        //   model: 'Providers', // Nombre de la tabla referenciada
+        //   key: 'idProvider'   // Clave primaria referenciada
+        // }
     },
-    idSupplier: { 
-        type: DataTypes.INTEGER, 
-        allowNull: false, 
-        references: { 
-            model: Supplier, 
-            key: 'idSupplier' 
-        }
+    purchaseDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
     },
-    purchaseDate: { 
-        type: DataTypes.DATE, 
-        allowNull: false 
+    totalAmount: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: false
     },
-    totalAmount: { 
-        type: DataTypes.INTEGER, 
-        allowNull: false 
-    },
-    status: { 
-        type: DataTypes.BOOLEAN, 
-        defaultValue: true 
+    status: {
+        type: DataTypes.STRING,
+        defaultValue: 'PENDIENTE'
     }
+    // }, {
+    // timestamps: true // Descomenta si usas timestamps
 });
 
-// Relaciones con otros modelos
-RegisterPurchase.belongsTo(Provider, { foreignKey: 'idProvider' });
-Provider.hasMany(RegisterPurchase, { foreignKey: 'idProvider' });
-
-RegisterPurchase.belongsTo(Supplier, { foreignKey: 'idSupplier' });
-Supplier.hasMany(RegisterPurchase, { foreignKey: 'idSupplier' });
+// La asociación en models/index.js completará la configuración de la FK.
+// RegisterPurchase.belongsTo(Provider, { foreignKey: 'idProvider', ... });
 
 module.exports = RegisterPurchase;

@@ -1,53 +1,34 @@
+// models/purchaseDetail.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const RegisterPurchase = require('./registerPurchase');
-const Supplier = require('./supplier');
+// No necesitas importar modelos aquí si las asociaciones se definen centralmente
 
 const PurchaseDetail = sequelize.define('PurchaseDetail', {
-    idDetail: { 
-        type: DataTypes.INTEGER, 
-        primaryKey: true, 
-        autoIncrement: true 
+    idPurchaseDetail: { // Renombrado para claridad
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
     },
-    idPurchase: { 
-        type: DataTypes.INTEGER, 
-        allowNull: false, 
-        references: { 
-            model: RegisterPurchase, 
-            key: 'idPurchase' 
-        }
+    // idRegisterPurchase será añadido por la asociación
+    // idSupplier (representando el INSUMO) será añadido por la asociación
+    quantity: {
+        type: DataTypes.DECIMAL(10, 2), // Permite decimales si es necesario (kg, litros)
+        allowNull: false
     },
-    idSupplier: { 
-        type: DataTypes.INTEGER, 
-        allowNull: false, 
-        references: { 
-            model: Supplier, 
-            key: 'idSupplier' 
-        }
+    unitPrice: {
+        type: DataTypes.DECIMAL(10, 2), // Precio unitario
+        allowNull: false
     },
-    quantity: { 
-        type: DataTypes.INTEGER, 
-        allowNull: false 
-    },
-    unitPrice: { 
-        type: DataTypes.FLOAT, 
-        allowNull: false 
-    },
-    subtotal: { 
-        type: DataTypes.FLOAT, 
-        allowNull: false 
-    },
-    status: { 
-        type: DataTypes.BOOLEAN, 
-        defaultValue: true 
+    subtotal: {
+        type: DataTypes.DECIMAL(12, 2), // Cantidad * Precio Unitario
+        allowNull: false
     }
+    // Quitamos status de aquí
+    // Timestamps podrían ser útiles si quieres saber cuándo se añadió/modificó una línea
+    // }, {
+    // timestamps: true
 });
 
-// Relaciones
-PurchaseDetail.belongsTo(RegisterPurchase, { foreignKey: 'idPurchase' });
-RegisterPurchase.hasMany(PurchaseDetail, { foreignKey: 'idPurchase' });
-
-PurchaseDetail.belongsTo(Supplier, { foreignKey: 'idSupplier' });
-Supplier.hasMany(PurchaseDetail, { foreignKey: 'idSupplier' });
+// Asociaciones se definen centralmente
 
 module.exports = PurchaseDetail;
