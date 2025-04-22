@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
+const Product = require("./Product");
 
 const SpecSheet = sequelize.define(
   "SpecSheet",
@@ -13,10 +14,6 @@ const SpecSheet = sequelize.define(
     idProduct: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "Products",
-        key: "idProduct",
-      },
     },
     startDate: {
       type: DataTypes.DATE,
@@ -24,7 +21,7 @@ const SpecSheet = sequelize.define(
     },
     endDate: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
     },
     status: {
       type: DataTypes.BOOLEAN,
@@ -35,14 +32,22 @@ const SpecSheet = sequelize.define(
       allowNull: false,
     },
     quantity: {
-      type: DataTypes.STRING(30),
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   },
   {
     timestamps: true,
-    tableName: 'SpecSheets' // Asegúrate de que el nombre de la tabla sea correcto
+    tableName: "SpecSheets", // Asegúrate de que el nombre de la tabla sea correcto
   }
 );
 
+// Definir relaciones
+SpecSheet.belongsTo(Product, { 
+  foreignKey: "idProduct",
+  as: "Product" 
+});
+Product.hasMany(SpecSheet, { foreignKey: "idProduct" });
+
+// Exportar para poder importar en ProductSheet
 module.exports = SpecSheet;
