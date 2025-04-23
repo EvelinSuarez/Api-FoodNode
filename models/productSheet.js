@@ -1,8 +1,5 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const Supplier = require("./supplier");
-const SpecSheet = require("./specSheet");
-
 
 const ProductSheet = sequelize.define(
   "ProductSheet",
@@ -11,34 +8,40 @@ const ProductSheet = sequelize.define(
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
-      allowNull: false,
     },
     idSpecSheet: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "specSheets",
-        key: "idSpecsheet",
-      },
     },
     idSupplier: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: "Suppliers",
-        key: "idSupplier",
-      },
+    },
+    quantity: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
     },
   },
   {
+    tableName: "productSheets",
     timestamps: true,
   }
 );
 
-// Establish relationships
-ProductSheet.belongsTo(SpecSheet, { foreignKey: "idSpecSheet" });
-ProductSheet.belongsTo(Supplier, { foreignKey: "idSupplier" });
-SpecSheet.hasMany(ProductSheet, { foreignKey: "idSpecSheet" });
-Supplier.hasMany(ProductSheet, { foreignKey: "idSupplier" });
-
+// Las asociaciones se definirán después de exportar
 module.exports = ProductSheet;
+
+// Importar los modelos después para evitar dependencias circulares
+const SpecSheet = require("./specSheet");
+const Supplier = require("./supplier");
+
+// Definir asociaciones
+ProductSheet.belongsTo(SpecSheet, {
+  foreignKey: "idSpecSheet",
+  as: "SpecSheet",
+});
+
+ProductSheet.belongsTo(Supplier, {
+  foreignKey: "idSupplier",
+  as: "Supplier",
+});

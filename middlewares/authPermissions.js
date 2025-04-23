@@ -1,8 +1,8 @@
 const { getRolePrivilegeById } = require("../repositories/rolePrivilegesRepository");
 
+
 const authorize = (requiredPermissions) => {
   return async (req, res, next) => {
-
     try {
       if (!req.user || !req.user.id) {
         return res.status(401).json({ message: "Usuario no autenticado" });
