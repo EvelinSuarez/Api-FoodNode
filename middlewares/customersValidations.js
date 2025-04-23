@@ -1,10 +1,5 @@
-// middlewares/customersValidations.js
-
-// Importaciones necesarias
-const { body, param, query, validationResult } = require('express-validator'); // <--- AÑADIR 'query'
-const Customers = require('../models/customers'); // Asumiendo ruta correcta al modelo
-
-// --- FUNCIONES HELPER DE VALIDACIÓN (Sin cambios) ---
+const { body, param, query, validationResult } = require('express-validator'); 
+const Customers = require('../models/customers'); 
 
 // Validar si el cliente existe por ID
 const validateCustomersExistence = async (id) => {
@@ -12,9 +7,12 @@ const validateCustomersExistence = async (id) => {
     if (!customers) {
         // Usar throw new Error es a veces preferido por express-validator
         throw new Error('El cliente no existe');
-        // return Promise.reject('El cliente no existe'); // Alternativa
     }
-    // No es necesario devolver nada si existe
+};
+
+// Validar existencia del cliente para reservas (reutiliza validateCustomersExistence)
+const validateCustomerExistenceForReservation = async (id) => {
+    await validateCustomersExistence(id);
 };
 
 // Validar unicidad del número de celular (excluyendo el ID actual en actualizaciones)
@@ -31,11 +29,11 @@ const validateUniqueCustomersCellphone = async (cellphone, { req }) => {
     const customers = await Customers.findOne({ where: whereClause });
     if (customers) {
         throw new Error('El número de celular del cliente ya está registrado');
-        // return Promise.reject('El numero de celular del cliente ya está registrado'); // Alternativa
+        // return Promise.reject('El numero de celular del cliente ya está registrado'); 
     }
 };
 
-// --- VALIDACIONES BASE (Sin cambios) ---
+
 // Usadas para crear y actualizar clientes
 const customersBaseValidation = [
     body('fullName')
@@ -109,7 +107,7 @@ const changeStateValidation = [
         .isBoolean({ strict: true }).withMessage('El estado debe ser un valor booleano (true o false)') // Estricto para solo booleanos
 ];
 
-// --- VALIDACIÓN PARA BUSCAR CLIENTES (MODIFICADA) ---
+// --- VALIDACIÓN PARA BUSCAR CLIENTES 
 const searchCustomersValidation = [
     // Cambiamos de body('searchTerm') a query('term')
     query('term', 'El término de búsqueda es requerido (mínimo 2 caracteres)') // Mensaje de error unificado
@@ -119,12 +117,13 @@ const searchCustomersValidation = [
       // .escape()                             // Opcional: Escapar caracteres HTML si se mostrarán directamente
 ];
 
-// --- EXPORTACIONES (Sin cambios) ---
+
 module.exports = {
     createCustomersValidation,
     updateCustomersValidation,
     deleteCustomersValidation,
     getCustomersByIdValidation,
     changeStateValidation,
-    searchCustomersValidation, // Exportar la validación de búsqueda modificada
+    searchCustomersValidation, 
+    validateCustomerExistenceForReservation
 };

@@ -1,5 +1,5 @@
 const reservationsRepository = require('../repositories/reservationsRepository');
-const passRepository = require('../repositories/passRepository');
+
 
 const createReservations = async (reservations) => {
     return reservationsRepository.createReservations(reservations);
@@ -21,8 +21,16 @@ const deleteReservations = async (id) => {
     return reservationsRepository.deleteReservations(id);
 }
 
-const changeStateReservations = async (id, state) => {
-    return reservationsRepository.changeStateReservations(id, state);
+const changeStateReservations = async (id, status) => {
+    return reservationsRepository.changeStateReservations(id, status);
+}
+
+const  reprogramReservationsValidation = async (id, dateTime) => {
+    return reservationsRepository.reprogramReservationsValidation(id, dateTime);
+}
+
+const changeStateValidation = async (id, status) => {
+    return reservationsRepository.changeStateValidation(id, status);
 }
 
 module.exports = {
@@ -32,4 +40,6 @@ module.exports = {
     updateReservations,
     deleteReservations,
     changeStateReservations,
+    reprogramReservationsValidation,
+    changeStateValidation
 };
