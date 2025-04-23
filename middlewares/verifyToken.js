@@ -10,7 +10,7 @@ const verifyToken = (req, res, next) => {
 
   // Extraer solo el token sin el "Bearer "
   const token = authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : authHeader;
-  
+
 
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
