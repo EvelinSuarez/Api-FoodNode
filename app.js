@@ -3,7 +3,6 @@ const cors = require('cors');
 const app = express();
 require('dotenv').config();         
 
-    
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'], // Agrega los posibles orígenes de tu frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
@@ -12,16 +11,12 @@ app.use(cors({
 
 app.use(express.json());
 
-
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
-
-
 
 app.use('/users', userRoutes);          
 app.use('/api/auth', authRoutes);
 
-        
 
 const employeeRoutes = require('./routes/employeeRoutes');
 const providerRoutes = require('./routes/providerRoutes');
