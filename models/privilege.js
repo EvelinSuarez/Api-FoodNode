@@ -3,24 +3,28 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const Privilege = sequelize.define('privilege', {
-    idPrivilege: { // El atributo que causa el error
-        type: DataTypes.INTEGER, // <-- ASEGÚRATE QUE ESTÉ ASÍ
+    idPrivilege: {
+        type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
-        allowNull: false // Generalmente las PK no son nulas
-    },
-    privilegeName: { // Ejemplo de otro campo
-        type: DataTypes.STRING,
         allowNull: false
     },
-    // ... otros atributos de tu modelo privilege ...
+    privilegeName: { // Nombre legible
+        type: DataTypes.STRING,
+        allowNull: false
+        // unique: true // Podría ser único también
+    },
+    privilegeKey: { // <--- ¡AÑADIR ESTO!
+        type: DataTypes.STRING(50), // Ajusta longitud
+        allowNull: false,
+        unique: true // La clave DEBE ser única
+    },
     status: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     }
 }, {
-    // Opciones del modelo (timestamps, tableName, etc.)
-    timestamps: false // O true si usas createdAt/updatedAt
+    timestamps: false
 });
 
 module.exports = Privilege;
