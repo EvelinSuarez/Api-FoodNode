@@ -1,4 +1,5 @@
 const Customers = require('../models/customers');
+const { Op } = require("sequelize"); // Importar Sequelize para usar operadores lógicos
 
 const createCustomers = async (customers) => {
     return Customers.create(customers);
@@ -20,8 +21,8 @@ const deleteCustomers = async (idCustomers) => {
     return Customers.destroy({ where: { idCustomers } });
 }
 
-const changeStateCustomers = async (idCustomers, state) => {
-    return Customers.update({ state }, { where: { idCustomers } });
+const changeStateCustomers = async (idCustomers, status) => {
+    return Customers.update({ status: status }, { where: { idCustomers } });
 }
 // Método para buscar clientes
 const searchCustomers = async (searchTerm) => {
