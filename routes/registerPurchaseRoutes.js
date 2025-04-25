@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
+
 const registerPurchaseController = require('../controllers/registerPurchaseController');
-const registerPurchaseValidations = require('../middlewares/registerPurchaseValidations');
+const registerPurchaseValidations = require('../middlewares/registerPurchaseValidations'); // Ajusta la ruta si es necesario
 
 router.get('/', registerPurchaseController.getAllRegisterPurchases);
-router.get('/:idPurchase', registerPurchaseValidations.getRegisterPurchaseByIdValidation, registerPurchaseController.getRegisterPurchaseById);
-router.post('/', registerPurchaseValidations.createRegisterPurchaseValidation, registerPurchaseController.createRegisterPurchase);
-router.put('/:idPurchase', registerPurchaseValidations.updateRegisterPurchaseValidation, registerPurchaseController.updateRegisterPurchase);
-router.delete('/:idPurchase', registerPurchaseValidations.deleteRegisterPurchaseValidation, registerPurchaseController.deleteRegisterPurchase);
-router.patch('/:idPurchase', registerPurchaseValidations.changeStateValidation, registerPurchaseController.changeStateRegisterPurchase);
+router.get('/:idPurchase',registerPurchaseValidations.validateIdParam, registerPurchaseController.getRegisterPurchaseById);
+router.post('/',registerPurchaseValidations.validateCreateOrUpdatePurchase, registerPurchaseController.createRegisterPurchase);
+router.put('/:idPurchase',registerPurchaseValidations.validateUpdatePurchase, registerPurchaseController.updateRegisterPurchase);
+router.delete('/:idPurchase',registerPurchaseValidations.validateIdParam, registerPurchaseController.deleteRegisterPurchase);
+router.patch('/:idPurchase/state', registerPurchaseValidations.changeStateValidation, registerPurchaseController.changeStateRegisterPurchase);
+
 
 module.exports = router;

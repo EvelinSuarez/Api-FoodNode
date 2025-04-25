@@ -1,87 +1,106 @@
+// middlewares/registerPurchaseValidations.js
 const { body, param } = require('express-validator');
-const RegisterPurchase = require('../models/registerPurchase');
-const Provider = require('../models/provider');
+const { RegisterPurchase, Provider } = require('../models'); // Asume models/index.js
 
-// Validación para verificar si el proveedor existe
+// --- Funciones de Validación Reutilizables ---
+// (validateProviderExistence y validateRegisterPurchaseExistence se mantienen igual)
 const validateProviderExistence = async (idProvider) => {
+    // ... (código existente)
+    if (!idProvider) return;
     const provider = await Provider.findByPk(idProvider);
     if (!provider) {
-        return Promise.reject('El proveedor no existe');
+        return Promise.reject('El proveedor especificado no existe');
     }
 };
 
-// Validación para verificar si la compra existe
 const validateRegisterPurchaseExistence = async (idPurchase) => {
+    // ... (código existente)
+    if (!idPurchase) return;
     const purchase = await RegisterPurchase.findByPk(idPurchase);
     if (!purchase) {
-        return Promise.reject('La compra no existe');
+        return Promise.reject('La compra especificada no existe');
     }
 };
 
-// Validación para verificar si ya existe un registro con el mismo proveedor
-const validateExistingPurchaseByProvider = async (idProvider, { req }) => {
-    const existingPurchase = await RegisterPurchase.findOne({ where: { idProvider } });
 
-    if (existingPurchase) {
-        // Si ya existe, sumamos la cantidad en lugar de crear una nueva compra
-        existingPurchase.totalAmount += req.body.totalAmount;
-        await existingPurchase.save();
-        return Promise.reject('Ya existe una compra con este proveedor, se ha actualizado el monto en el registro existente.');
-    }
-};
+// --- Validaciones Específicas (Para las rutas) ---
 
-// Validaciones base para el registro de compra
-const registerPurchaseBaseValidation = [
+// Validación solo para el ID en el parámetro (usada en GET por ID y DELETE)
+const validateIdParam = [
+    param('idPurchase')
+        .isInt({ min: 1 }).withMessage('El ID de la compra en la ruta debe ser un número entero positivo.')
+        // Opcional: Añadir la validación de existencia si se requiere *antes* de llegar al controlador
+        // .custom(validateRegisterPurchaseExistence) // Descomentar si es necesario
+];
+
+// Validación base (reutilizable) - Sin cambios
+const registerPurchaseBaseValidationRules = [
+    // ... (código existente para idProvider, purchaseDate, totalAmount, details)
     body('idProvider')
-        .isInt({ min: 1 }).withMessage('El ID del proveedor debe ser un número entero positivo')
+        .notEmpty().withMessage('El ID del proveedor es obligatorio.')
+        .isInt({ min: 1 }).withMessage('El ID del proveedor debe ser un número entero positivo.')
         .custom(validateProviderExistence),
     body('purchaseDate')
-        .isISO8601().withMessage('La fecha de compra debe ser válida (ISO 8601)'),
+        .notEmpty().withMessage('La fecha de compra es obligatoria.')
+        .isISO8601().withMessage('La fecha de compra debe tener un formato válido (YYYY-MM-DD).')
+        .toDate(),
     body('totalAmount')
-        .isInt({ min: 1 }).withMessage('El monto total debe ser un número entero positivo')
+        .notEmpty().withMessage('El monto total es obligatorio.')
+        .isFloat({ min: 0 })
+        .withMessage('El monto total debe ser un número positivo o cero.')
+        .toFloat(),
+    body('details')
+        .isArray({ min: 1 }).withMessage('Se requiere al menos un detalle de compra.')
+        .custom((details) => {
+            if (!Array.isArray(details)) return false; // Redundante por isArray, pero seguro
+            for (const detail of details) {
+                // console.log("Validando Detalle Backend:", detail);
+                if (
+                    !detail.idInsumo || typeof detail.idInsumo !== 'number' || detail.idInsumo < 1 ||
+                    detail.quantity === undefined || typeof detail.quantity !== 'number' || detail.quantity <= 0 ||
+                    detail.unitPrice === undefined || typeof detail.unitPrice !== 'number' || detail.unitPrice < 0
+                ) {
+                    // console.error("Falló validación de detalle:", detail);
+                    throw new Error('Cada detalle debe incluir idInsumo (número > 0), quantity (número > 0) y unitPrice (número >= 0).');
+                }
+            }
+            return true;
+        })
 ];
 
-// Validación para crear una nueva compra (considera compras existentes con el mismo proveedor)
-const createRegisterPurchaseValidation = [
-    ...registerPurchaseBaseValidation,
-    body('idProvider').custom(validateExistingPurchaseByProvider),
+// Validación para CREAR o ACTUALIZAR (usada en POST)
+const validateCreateOrUpdatePurchase = [
+    ...registerPurchaseBaseValidationRules
+    // No se necesita validación de ID aquí ya que es para POST
 ];
 
-// Validación para actualizar una compra
-const updateRegisterPurchaseValidation = [
+// Validación para ACTUALIZAR específicamente (usada en PUT)
+const validateUpdatePurchase = [
+    // Primero valida el parámetro de ruta
     param('idPurchase')
-        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
-        .custom(validateRegisterPurchaseExistence),
-    ...registerPurchaseBaseValidation,
+        .isInt({ min: 1 }).withMessage('El ID de la compra en la ruta debe ser un número entero positivo.')
+        .custom(validateRegisterPurchaseExistence), // Importante para PUT: asegurar que existe
+    // Luego aplica las validaciones base al cuerpo
+    ...registerPurchaseBaseValidationRules,
 ];
 
-// Validación para eliminar una compra
-const deleteRegisterPurchaseValidation = [
-    param('idPurchase')
-        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
-        .custom(validateRegisterPurchaseExistence),
-];
-
-// Validación para obtener una compra por ID
-const getRegisterPurchaseByIdValidation = [
-    param('idPurchase')
-        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
-        .custom(validateRegisterPurchaseExistence),
-];
-
-// Validación para cambiar el estado de una compra
+// Validación para CAMBIAR ESTADO (usada en PATCH) - Sin cambios necesarios en la definición
 const changeStateValidation = [
     param('idPurchase')
-        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .isInt({ min: 1 }).withMessage('El ID de la compra debe ser un número entero positivo.')
         .custom(validateRegisterPurchaseExistence),
     body('status')
-        .isBoolean().withMessage('El estado debe ser un booleano'),
+       .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).')
+       .toBoolean(),
 ];
 
+
+// --- EXPORTACIONES CORREGIDAS ---
+// Exporta con los nombres que se usan en registerPurchaseRoutes.js
 module.exports = {
-    createRegisterPurchaseValidation,
-    updateRegisterPurchaseValidation,
-    deleteRegisterPurchaseValidation,
-    getRegisterPurchaseByIdValidation,
-    changeStateValidation
+    validateIdParam,                // Para GET /:id y DELETE /:id
+    validateCreateOrUpdatePurchase, // Para POST /
+    validateUpdatePurchase,         // Para PUT /:id
+    changeStateValidation           // Para PATCH /:id/state
+    // Ya no necesitas exportar las otras variaciones si no las usas directamente
 };

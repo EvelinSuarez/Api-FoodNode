@@ -1,7 +1,3 @@
-
-
-
-// models/rolePrivileges.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Role = require('./role');
@@ -38,16 +34,18 @@ const RolePrivileges = sequelize.define('rolePrivileges', {
             key: 'idPermission'
         }
     }
-}, { timestamps: false });
+}, {
+    timestamps: false
+});
 
-// Relaciones
-RolePrivileges.belongsTo(Role, { foreignKey: 'idRole' });
-Role.hasMany(RolePrivileges, { foreignKey: 'idRole' });
+// Relaciones SIN alias duplicados
+RolePrivileges.belongsTo(Role, { foreignKey: 'idRole', as: 'role' });
+Role.hasMany(RolePrivileges, { foreignKey: 'idRole', as: 'rolePrivilegesList' });
 
-RolePrivileges.belongsTo(Privilege, { foreignKey: 'idPrivilege' });
-Privilege.hasMany(RolePrivileges, { foreignKey: 'idPrivilege' });
+RolePrivileges.belongsTo(Privilege, { foreignKey: 'idPrivilege', as: 'privilege' });
+Privilege.hasMany(RolePrivileges, { foreignKey: 'idPrivilege', as: 'privilegeAssignments' });
 
-RolePrivileges.belongsTo(Permission, { foreignKey: 'idPermission' });
-Permission.hasMany(RolePrivileges, { foreignKey: 'idPermission' });
+RolePrivileges.belongsTo(Permission, { foreignKey: 'idPermission', as: 'permission' });
+Permission.hasMany(RolePrivileges, { foreignKey: 'idPermission', as: 'permissionAssignments' });
 
 module.exports = RolePrivileges;

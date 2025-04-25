@@ -11,7 +11,14 @@ const getAllUsers = async () => {
 };
 
 const getUserById = async (id) => {
-    return User.findByPk(id);
+    // USA findByPk con attributes para seleccionar o excluir campos
+    return User.findByPk(id, {
+        attributes: {
+            exclude: ['password'] // Excluye el campo 'password'
+        }
+        // Opcionalmente, puedes listar explícitamente los campos que SÍ quieres:
+        // attributes: ['idUsers', 'email', 'full_name', 'idRole', ...] // Lista todos MENOS password
+    });
 };
 
 const updateUser = async (id, user) => {
@@ -38,3 +45,4 @@ module.exports = {
     deleteUser,
     changeStateUser,
 };
+
