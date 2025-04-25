@@ -47,10 +47,6 @@ const Reservations = sequelize.define('Reservations', {
         type: DataTypes.FLOAT, 
         allowNull: false 
     },
-    paymentMethod: { 
-        type: DataTypes.STRING(20), 
-        allowNull: false,
-    },
     status: { 
         type: DataTypes.STRING, 
         defaultValue: true 
