@@ -22,5 +22,11 @@ const AditionalServices = sequelize.define('AditionalServices', {
     tableName:'aditionalservices',
 
 });
-
+AditionalServices.associate = (models) => {
+    AditionalServices.belongsToMany(models.Reservations, {
+        through: 'reservationServices',
+        foreignKey: 'idAditionalServices',
+        otherKey: 'idReservations',
+    });
+};
 module.exports = AditionalServices; 

@@ -10,4 +10,5 @@ router.put('/:id', reservationsValidations.updateReservationsValidation, reserva
 router.delete('/:id', reservationsValidations.deleteReservationsValidation, reservationsController.deleteReservations);
 router.patch('/:id', reservationsValidations.changeStateValidation, reservationsController.changeStateReservations);
 
+
 module.exports = router;

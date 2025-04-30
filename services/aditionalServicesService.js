@@ -20,8 +20,8 @@ const deleteAditionalServices = async (idAditionalServices) => {
     return aditionalServicesRepository.deleteAditionalServices(idAditionalServices);
 }
 
-const changeStateAditionalServices = async (id, state) => {
-    return aditionalServicesRepository.changeStateAditionalServices(id, state);
+const changeStateAditionalServices = async (id, status) => {
+    return aditionalServicesRepository.changeStateAditionalServices(id, status);
 }
 
 module.exports = {
