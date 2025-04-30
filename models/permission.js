@@ -8,13 +8,13 @@ const Permission = sequelize.define('permission', {
         primaryKey: true,
         autoIncrement: true,
     },
-    permissionName: { // Nombre legible
+    permissionName: { // Nombre legible del permiso
         type: DataTypes.STRING(60),
         allowNull: false,
-        unique: true // El nombre también podría ser único
+        unique: true // El nombre también podría ser único si deseas
     },
-    permissionKey: { // <--- ¡AÑADIR ESTO!
-        type: DataTypes.STRING(50), // Ajusta longitud según tus keys
+    permissionKey: { // Clave única del permiso
+        type: DataTypes.STRING(50),
         allowNull: false,
         unique: true // La clave DEBE ser única
     },
@@ -22,6 +22,14 @@ const Permission = sequelize.define('permission', {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     }
-}, { timestamps: false });
+}, {
+    timestamps: false,
+    indexes: [
+        {
+            unique: true,
+            fields: ['permissionKey'], // Índice único para permissionKey
+        },
+    ],
+});
 
 module.exports = Permission;

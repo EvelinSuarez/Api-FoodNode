@@ -2,7 +2,7 @@
 const bcrypt = require('bcryptjs');
 
 // Cambia esta contraseña por la que quieras encriptar
-const plainPassword = '123456';
+const plainPassword = '1015071Ds**';
 
 // Opcional: puedes cambiar el número de saltos (más alto = más seguro pero más lento)
 const saltRounds = 10;

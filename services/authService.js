@@ -1,100 +1,152 @@
-// services/authService.js (Backend)
+// services/authService.js (Backend - COMPLETO Y CORREGIDO)
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-// Asegúrate de importar el modelo Role y User correctamente
-// (Usualmente desde el index.js de la carpeta models si configuraste asociaciones allí)
-// const { User, Role } = require("../models"); // Ejemplo si usas index.js
-const User = require("../models/user"); // Tu forma actual
-const Role = require("../models/role");   // Tu forma actual
+const User = require("../models/user");
+const Role = require("../models/role");
+
+// --- ¡¡IMPORTANTE!! Asegúrate de importar la función CORRECTA y CORREGIDA del repositorio ---
+//       Esta función debe devolver un array como: [{ modulo: 'key_modulo', privilegio: 'key_privilegio' }, ...]
+// const { findPrivilegesByRoleId } = require('../repositories/rolePrivilegesRepository'); // Comenta/Elimina si renombraste
+const { findStructuredPermissionsByRoleId } = require('../repositories/rolePrivilegesRepository'); // <-- Importa la función (renombrada o corregida)
+
 require("dotenv").config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'; // Default a 24h si no está definido
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'; // Default a 24h
 
 // Verificación de seguridad al inicio
 if (!JWT_SECRET) {
-  console.error("ERROR CRÍTICO: JWT_SECRET no está definido en las variables de entorno. El login fallará.");
-  // Considera lanzar un error o salir si esto es inaceptable en producción
-  // throw new Error("Configuración crítica del servidor faltante: JWT_SECRET");
+  console.error("❌ ERROR CRÍTICO: JWT_SECRET no está definido en las variables de entorno.");
+  // Considera lanzar un error o salir si es inaceptable en producción
+  // process.exit(1); // O throw new Error(...)
 }
 
+/**
+ * Autentica a un usuario, genera un token JWT y recupera sus permisos estructurados.
+ * @param {string} email - Email del usuario.
+ * @param {string} password - Contraseña del usuario (sin hashear).
+ * @returns {Promise<{user: object, token: string}>} - Objeto con datos del usuario (incluyendo permissions) y el token.
+ * @throws {Error} - Si las credenciales son inválidas o hay un error interno.
+ */
 const login = async (email, password) => {
-  // Verifica si JWT_SECRET está disponible ANTES de la consulta
+  // Verifica disponibilidad de JWT_SECRET antes de proceder
   if (!JWT_SECRET) {
-    // Lanza un error claro si falta el secreto, para evitar fallos silenciosos más adelante
-    console.error("Error en login: JWT_SECRET no está disponible.");
-    throw new Error("Error de configuración interna del servidor.");
+    console.error("❌ Error en login: JWT_SECRET no disponible.");
+    throw new Error("Error de configuración interna del servidor."); // No expongas detalles
   }
 
-  console.log(`Intentando login para email: ${email}`); // Log útil
+  console.log(`[AuthService] Intentando login para email: ${email}`);
 
+  // 1. Buscar al usuario por email e incluir su rol asociado
   const user = await User.findOne({
     where: { email },
-    // --- CORRECCIÓN AQUÍ ---
-    // Incluye el modelo Role USANDO el alias 'role' definido en la asociación
-    include: [ // Es buena práctica usar un array para include
-      {
+    include: [{
         model: Role,
-        as: 'role' // <-- ¡EL ALIAS CORRECTO!
-        // Puedes añadir 'attributes' aquí si solo quieres campos específicos del rol
-        // attributes: ['idRole', 'roleName']
-      }
-    ]
-    // No necesitas excluir la contraseña aquí porque la necesitas para bcrypt.compare
+        as: 'role' // ¡Verifica que 'role' sea el alias correcto de tu asociación User <-> Role!
+    }]
   });
 
+  // 2. Verificar si el usuario existe
   if (!user) {
-    console.log(`Login fallido: Usuario no encontrado para email ${email}`);
+    console.warn(`[AuthService] Login fallido: Usuario no encontrado para email ${email}`);
     throw new Error("Credenciales inválidas."); // Mensaje genérico por seguridad
   }
 
-  // Compara la contraseña proporcionada con la almacenada (hasheada)
-  const isMatch = await user.validatePassword(password); // Usa el método del prototipo si lo definiste
-  // const isMatch = await bcrypt.compare(password, user.password); // Alternativa directa
+  // 3. Validar la contraseña proporcionada contra la almacenada (hasheada)
+  const isMatch = await user.validatePassword(password); // Asume que tienes este método en tu modelo User
+  // Alternativa: const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
-    console.log(`Login fallido: Contraseña incorrecta para email ${email}`);
-    throw new Error("Credenciales inválidas."); // Mensaje genérico por seguridad
+    console.warn(`[AuthService] Login fallido: Contraseña incorrecta para email ${email}`);
+    throw new Error("Credenciales inválidas."); // Mensaje genérico
   }
 
-  // Si el usuario y la contraseña son correctos, genera el token
-  console.log(`Usuario ${email} autenticado correctamente. Generando token...`);
+  console.log(`[AuthService] Usuario ${email} autenticado correctamente.`);
 
-  // Asegúrate de que user.role (el objeto Role incluido) exista si planeas usarlo
-  // El payload actual usa user.idRole, que viene directamente del modelo User y está bien
+  // --- 4. Obtener y Estructurar Permisos del Rol ---
+  let permissionsArray = []; // Inicializa un array vacío para los strings de permiso
+
+  if (user.idRole) { // Procede solo si el usuario tiene un rol asignado (idRole existe)
+      try {
+          console.log(`[AuthService] Obteniendo permisos estructurados para Role ID: ${user.idRole}`);
+
+          // Llama a la función (corregida/renombrada) del repositorio
+          // Se espera que devuelva: [{ modulo: 'usuarios', privilegio: 'view' }, ...]
+          const dbPrivileges = await findStructuredPermissionsByRoleId(user.idRole); // <-- LLAMA A LA FUNCIÓN CORRECTA
+
+          console.log("[AuthService] Permisos estructurados recibidos del Repo:", dbPrivileges);
+
+          // Transforma el resultado del repositorio al array de strings 'modulo-privilegio'
+          if (Array.isArray(dbPrivileges)) {
+              for (const priv of dbPrivileges) {
+                  // --- ¡¡AJUSTA ESTAS CLAVES si son diferentes en el resultado del Repo!! ---
+                  const moduloKey = priv.modulo;      // Clave del módulo (ej: 'usuarios')
+                  const privilegeKey = priv.privilegio; // Clave del privilegio (ej: 'view')
+                  // -------------------------------------------------------------------------
+
+                  if (moduloKey && privilegeKey) { // Asegura que ambas claves existen
+                      // Crea el string de permiso combinado
+                      const permissionString = `${moduloKey}-${privilegeKey}`; // Ej: "usuarios-view"
+
+                      // Añade al array si no existe ya (previene duplicados)
+                      if (!permissionsArray.includes(permissionString)) {
+                          permissionsArray.push(permissionString);
+                      }
+                  } else {
+                      // Advierte si una entrada del repositorio viene incompleta
+                      console.warn("[AuthService] Privilegio recibido del repo incompleto o con formato inesperado:", priv);
+                  }
+              }
+          } else {
+              // Advierte si el repositorio no devolvió un array
+              console.warn(`[AuthService] findStructuredPermissionsByRoleId no devolvió un array para Role ID ${user.idRole}. Resultado:`, dbPrivileges);
+          }
+
+          console.log("[AuthService] Permisos finales generados (array de strings):", permissionsArray);
+
+      } catch (permError) {
+          // Captura errores específicos de la obtención/procesamiento de permisos
+          console.error(`[AuthService] Error obteniendo/procesando permisos para Role ID ${user.idRole}:`, permError);
+          // Mantiene permissionsArray vacío para no bloquear el login, pero loguea el error.
+          // Considera si un error aquí debería impedir el login completamente.
+          permissionsArray = [];
+      }
+  } else {
+      // Advierte si el usuario no tiene rol (no se pueden obtener permisos)
+      console.warn(`[AuthService] Usuario ${email} (ID: ${user.idUsers}) no tiene un idRole asignado. No se buscarán permisos.`);
+  }
+  // --- Fin Lógica de Permisos ---
+
+  // 5. Generar el Token JWT
+  // Incluye información esencial en el payload para uso posterior (ej: middlewares)
   const payload = {
+      id: user.idUsers,       // ID único del usuario
+      email: user.email,      // Email del usuario
+      role: user.idRole       // ID del rol del usuario (importante para autorización en backend)
+      // NO incluyas información sensible o innecesariamente grande aquí
+  };
+  const token = jwt.sign(
+      payload,
+      JWT_SECRET, // Tu secreto JWT
+      { expiresIn: JWT_EXPIRES_IN } // Tiempo de expiración del token
+  );
+  console.log(`[AuthService] Token JWT generado para ${email}`);
+
+  // 6. Construir y Devolver la Respuesta Final para el Frontend
+  return {
+    user: { // Objeto limpio con datos del usuario
       id: user.idUsers,
       email: user.email,
-      role: user.idRole // O podrías usar user.role.idRole si lo necesitas desde el include
-      // También podrías incluir user.role.roleName si es útil en el cliente
-      // roleName: user.role ? user.role.roleName : null
-  };
-
-  const token = jwt.sign(
-    payload,
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-
-  console.log(`Token generado para ${email}`);
-
-  // Devuelve la información necesaria al controlador
-  // ¡IMPORTANTE! NUNCA devuelvas el objeto 'user' completo de Sequelize aquí
-  // porque contiene métodos y la contraseña hasheada. Crea un objeto limpio.
-  return {
-    user: { // Objeto limpio para el frontend
-      id: user.idUsers, // Cambiado a 'id' para posible consistencia
-      email: user.email,
-      full_name: user.full_name, // Añade otros campos necesarios
-      // Puedes enviar el nombre del rol si lo incluiste y es necesario
-      role: user.role ? { id: user.role.idRole, name: user.role.roleName } : null
-      // O simplemente el idRole como lo tenías:
-      // roleId: user.idRole
+      full_name: user.full_name, // Añade otros campos públicos si los necesitas
+      // Incluye información básica del rol si existe la asociación
+      role: user.role ? { id: user.role.idRole, name: user.role.roleName } : null,
+      // ¡¡EL ARRAY DE STRINGS DE PERMISOS PARA EL FRONTEND!!
+      permissions: permissionsArray,
     },
-    token,
+    token: token, // El token JWT generado
   };
 };
 
-// Asegúrate de exportar solo lo necesario
+// Exporta la función login para que el controlador la pueda usar
 module.exports = { login };
