@@ -56,6 +56,7 @@ const authorize = (requiredPermissions = []) => { // Default a array vacío
           return next();
       }
 
+      
       // 2.2. Si la ruta SÍ requiere permisos, obtener los privilegios del rol del usuario
       const userPrivileges = await findByRoleId(userRoleId);
       // console.log(" P Privilegios obtenidos del Repo para rol no-admin:", JSON.stringify(userPrivileges, null, 2)); // Log detallado si es necesario
