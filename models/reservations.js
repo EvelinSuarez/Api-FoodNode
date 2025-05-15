@@ -22,9 +22,10 @@ const Reservations = sequelize.define('Reservations', {
         type: DataTypes.STRING(100), 
         allowNull: false 
     },
-    timeDurationR: { 
-        type: DataTypes.TIME, 
-        allowNull: false 
+timeDurationR: {
+        type: DataTypes.STRING, // O DataTypes.INTEGER si prefieres
+        allowNull: false,
+        defaultValue: "" // Proporcionar un valor por defecto
     },
     pass: {
         type: DataTypes.JSON, // Debe ser tipo JSON para almacenar arrays
@@ -48,8 +49,9 @@ const Reservations = sequelize.define('Reservations', {
         allowNull: false 
     },
     status: { 
-        type: DataTypes.STRING, 
-        defaultValue: true 
+        type: DataTypes.ENUM('pendiente', 'confirmada','en_proceso','terminada','anulada'),
+        allowNull: false,
+        defaultValue: "pendiente" 
     },
     idCustomers: {
         type: DataTypes.INTEGER,

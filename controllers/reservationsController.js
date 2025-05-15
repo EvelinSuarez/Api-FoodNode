@@ -217,7 +217,7 @@ const updateReservations = async (req, res) => {
                 { model: AditionalServices, as: 'AditionalServices' }
             ]
         });
-        
+        console.log("Reserva actualizada. Nueva duración:", reservation.timeDurationR);
         console.log(`[updateReservations] Reserva ${id} actualizada correctamente`);
         return res.status(200).json(reservationWithRelations);
     } catch (error) {
@@ -274,6 +274,11 @@ const changeStateReservations = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
+        
+        // Verificar que el estado sea uno de los valores permitidos
+        if (!['pendiente', 'confirmada', 'en_proceso', 'terminada', 'anulada'].includes(status)) {
+            return res.status(400).json({ message: 'Estado no válido' });
+        }
         
         // Verificar que la reserva existe
         const reservation = await Reservations.findByPk(id);
