@@ -10,6 +10,7 @@ router.get(
   specSheetController.getSpecSheetsByProduct
 );
 
+
 router.get("/", specSheetController.getAllSpecSheets);
 router.get(
   "/:id",
