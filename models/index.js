@@ -90,7 +90,36 @@ PurchaseDetail.belongsTo(Supplier, {
 Role.hasMany(User, { foreignKey: 'idRole', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'idRole', as: 'role' });
 
+// --- Asociaciones: Roles con Permisos y Privilegios (muchos a muchos) ---
+// Role <-> Permission
+Role.belongsToMany(Permission, {
+    through: RolePrivilege,
+    foreignKey: 'idRole',
+    otherKey: 'idPermission',
+    as: 'permissions'
+});
+Permission.belongsToMany(Role, {
+    through: RolePrivilege,
+    foreignKey: 'idPermission',
+    otherKey: 'idRole',
+    as: 'rolesWithPermission'
+});
 
+// Role <-> Privilege
+Role.belongsToMany(Privilege, {
+    through: RolePrivilege,
+    foreignKey: 'idRole',
+    otherKey: 'idPrivilege',
+    as: 'privileges'
+});
+Privilege.belongsToMany(Role, {
+    through: RolePrivilege,
+    foreignKey: 'idPrivilege',
+    otherKey: 'idRole',
+    as: 'rolesWithPrivilege'
+
+
+});
 if (db.ProductionOrder && db.Product) {
     console.log("Definiendo ProductionOrder.belongsTo(Product)");
     db.ProductionOrder.belongsTo(db.Product, { foreignKey: 'idProduct', as: 'product' });

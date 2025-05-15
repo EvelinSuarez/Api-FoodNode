@@ -31,6 +31,10 @@ const RegisterPurchase = sequelize.define('RegisterPurchase', {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false
     },
+    category: {
+            type: DataTypes.STRING,
+            allowNull: false
+    },
     status: {
         type: DataTypes.STRING,
         defaultValue: 'PENDIENTE'
