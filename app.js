@@ -21,14 +21,16 @@ const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
 
 app.use("/users", userRoutes);
-app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
 
 const employeeRoutes = require("./routes/employeeRoutes");
 const providerRoutes = require("./routes/providerRoutes");
 const conceptSpentRoutes = require("./routes/conceptSpentRoutes");
 const monthlyOverallExpenseRoutes = require("./routes/monthlyOverallExpenseRoutes");
 const customersRoutes = require("./routes/customersRoutes");
+console.log("BACKEND: Montando /api/roles...");
 const roleRoutes = require("./routes/roleRoutes");
+console.log("BACKEND: /api/roles montado.");
 const permissionRoutes = require("./routes/permissionRoutes");
 const privilegeRoutes = require("./routes/privilegeRoutes");
 const aditionalServicesRoutes = require("./routes/aditionalServicesRoutes");
@@ -46,7 +48,7 @@ const productionOrderRoutes = require("./routes/productionOrderRoutes");
 const reservationServicesRoutes = require("./routes/reservationServicesRoutes");
 
 app.use("/users", userRoutes);
-app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
 
 app.use("/employee", employeeRoutes);
 app.use("/provider", providerRoutes);

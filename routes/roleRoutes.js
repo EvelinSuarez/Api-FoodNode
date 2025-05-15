@@ -1,85 +1,85 @@
-// routes/roleRoutes.js (COMPLETO Y CORREGIDO)
-
+// routes/roleRoutes.js
 const express = require('express');
 const router = express.Router();
-const roleController = require('../controllers/roleController'); // Controlador para CRUD de Roles
-// --- ¡IMPORTA EL CONTROLADOR QUE MANEJA ASIGNACIONES! ---
-const rolePrivilegesController = require('../controllers/rolePrivilegesController'); // Ajusta la ruta si es necesario
-// --- Middlewares de Validación y Autenticación/Autorización ---
-const validations = require('../middlewares/roleValidations'); // Tus validaciones de roles
-// const { verifyToken } = require('../middlewares/auth'); // Descomenta si usas autenticación/JWT
-// const authorize = require('../middlewares/authPermissions'); // Descomenta si usas autorización basada en permisos
+const roleController = require('../controllers/roleController');
+const rolePrivilegesController = require('../controllers/rolePrivilegesController');
+const validations = require('../middlewares/roleValidations'); // Asumo que este archivo existe y es correcto
 
-// --- Middleware Global de Autenticación (Opcional) ---
-// Si TODAS las rutas de roles requieren autenticación, puedes usarlo aquí:
-// router.use(verifyToken);
+// --- MIDDLEWARES DE AUTENTICACIÓN Y AUTORIZACIÓN ---
+const verifyToken = require('../middlewares/verifyToken'); // Usará el payload del token con id, idRole
+const authorize = require('../middlewares/authPermissions'); // Usará req.user.idRole
 
-// --- Rutas CRUD básicas para Roles (usando roleController) ---
+console.log("BACKEND: roleRoutes.js - Archivo cargado.");
 
-// POST /api/roles (Crear un nuevo Rol)
-// Asume que createRole en roleController maneja solo la creación del rol, no los privilegios iniciales.
-// La asignación se haría con PUT /roles/:idRole/privileges después.
+// --- Rutas CRUD básicas para Roles ---
 router.post('/',
-    // verifyToken, authorize(['roles-create']), // Ejemplo de protección
+    verifyToken,
+    authorize(['roles-create']), // Ejemplo: se necesita el permiso 'roles-create'
     validations.createRoleValidation,
     roleController.createRole
 );
 
-// GET /api/roles (Obtener todos los roles)
 router.get('/',
-    // verifyToken, authorize(['roles-view']), // Ejemplo de protección
+    verifyToken,
+    authorize(['roles-view']), // Ejemplo: se necesita el permiso 'roles-view'
     roleController.getAllRoles
 );
 
-// GET /api/roles/:idRole (Obtener un rol por ID)
 router.get('/:idRole',
-    // verifyToken, authorize(['roles-view']), // Ejemplo de protección
+    verifyToken,
+    authorize(['roles-view']), // O 'roles-view-details' si tienes esa granularidad
     validations.getRoleByIdValidation,
     roleController.getRoleById
 );
 
-// PUT /api/roles/:idRole (Actualizar solo nombre/estado del rol)
 router.put('/:idRole',
-    // verifyToken, authorize(['roles-edit']), // Ejemplo de protección
-    validations.updateRoleValidation, // Valida ID, roleName, status
+    verifyToken,
+    authorize(['roles-edit']),
+    validations.updateRoleValidation,
     roleController.updateRole
 );
 
-// DELETE /api/roles/:idRole (Eliminar un rol - ¡CUIDADO! Usualmente se desactiva)
-router.delete('/:idRole',
-    // verifyToken, authorize(['roles-delete']), // Ejemplo de protección
-    validations.deleteRoleValidation,
-    roleController.deleteRole
-);
-
-// PATCH /api/roles/:idRole/state (Cambiar estado del rol - más seguro que delete)
-router.patch('/:idRole/state',
-    // verifyToken, authorize(['roles-edit']), // Ejemplo de protección (mismo que editar?)
+// Considera si cambiar el estado es 'roles-edit' o un permiso más específico como 'roles-status'
+router.patch('/:idRole/state', // Asumiendo que tienes un permiso como 'roles-status' o usas 'roles-edit'
+    verifyToken,
+    authorize(['roles-status']), // o ['roles-edit'] si es el caso
     validations.changeRoleStateValidation,
     roleController.changeRoleState
 );
 
-
-// --- Rutas para manejar los Privilegios asociados a un Rol (usando rolePrivilegesController) ---
-
-// GET /api/roles/:id/privileges (Obtener las asignaciones [idPermission, idPrivilege] para un rol)
-// Esta es la ruta que tu FormPermissions necesita para cargar el estado inicial
-router.get('/:id/privileges', // <-- Cambiado de :idRole a :id para consistencia con otras rutas
-    // verifyToken, authorize(['roles-view']), // Protección: ¿Quién puede ver asignaciones?
-    validations.getRoleByIdValidation, // Reutiliza la validación de ID de rol
-    rolePrivilegesController.getRoleAssignments // <-- Llama a la función del OTRO controlador
+router.delete('/:idRole', // Usualmente los deletes no se usan, se inhabilita el estado. Si lo usas:
+    verifyToken,
+    authorize(['roles-delete']),
+    validations.deleteRoleValidation,
+    roleController.deleteRole
 );
 
-// PUT /api/roles/:id/privileges (Reemplazar TODAS las asignaciones de privilegios para un rol)
-// El frontend enviará el array de { idPermission, idPrivilege } en el body
-router.put('/:id/privileges', // <-- Cambiado de :idRole a :id
-    // verifyToken, authorize(['roles-edit']), // Protección: ¿Quién puede editar asignaciones?
-    // Necesitarás una validación para el body (que sea un array, etc.)
-    // Podrías crearla en roleValidations.js o rolePrivilegesValidations.js
-    // validations.assignPrivilegesValidation, // Descomenta si creas la validación
-    rolePrivilegesController.assignPrivilegesToRole // <-- Llama a la función del OTRO controlador
-);
-// --- Fin Rutas Privilegios ---
 
+// --- Ruta para Permisos Efectivos de un Rol (cómo lo pide el frontend) ---
+// Esta ruta la usa el frontend para saber qué permisos tiene un rol.
+// Generalmente, un usuario que puede ver roles o editar roles debería poder ver esto.
+router.get('/:idRole/effective-permissions',
+    verifyToken,
+    authorize(['roles-view']), // O un permiso más específico si lo deseas
+    validations.getRoleByIdValidation, // Valida que idRole sea un número y exista
+    roleController.getEffectivePermissionsForRole // Controlador que devuelve los permisos en formato { modulo: [accion1, accion2] }
+);
+
+
+// --- Rutas para manejar los Privilegios/Permisos asignados a un Rol ---
+// (Esto es lo que el FormPermissions.jsx usa para mostrar/guardar la matriz de permisos)
+router.get('/:idRole/privileges', // Obtiene las asignaciones actuales para el FormPermissions
+    verifyToken,
+    authorize(['roles-view']), // Quien puede ver roles, puede ver sus asignaciones
+    validations.getRoleByIdValidation,
+    rolePrivilegesController.getRoleAssignments // Devuelve { idPermission, idPrivilege }
+);
+
+router.put('/:idRole/privileges', // Guarda las nuevas asignaciones del FormPermissions
+    verifyToken,
+    authorize(['roles-edit']), // Quien puede editar roles, puede cambiar sus asignaciones
+    validations.assignPrivilegesValidation, // Valida el body de la petición
+    rolePrivilegesController.assignPrivilegesToRole
+);
 
 module.exports = router;
