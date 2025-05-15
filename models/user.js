@@ -38,6 +38,15 @@ const User = sequelize.define('user', {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    resetCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    resetCodeExp: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
     idRole: {
       type: DataTypes.INTEGER,
       references: {

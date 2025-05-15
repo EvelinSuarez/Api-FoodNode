@@ -22,7 +22,8 @@ const Privilege = sequelize.define('privilege', {
     status: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
-    }
+    },
+    
 }, {
     timestamps: false
 });

@@ -75,24 +75,32 @@ const assignPrivilegesToRole = async (req, res) => {
 // --- Función para OBTENER asignaciones de un rol ---
 const getRoleAssignments = async (req, res) => {
   try {
-      const roleId = req.params.id;
-      console.log(`[Controller] Solicitud GET /role/${roleId}/privileges (getRoleAssignments) recibida.`);
-      const roleIdInt = parseInt(roleId, 10);
+      const roleIdFromParams = req.params.idRole; // <--- USA idRole consistentemente con tu ruta
+      console.log(`[Controller] Solicitud GET /role/${roleIdFromParams}/privileges (getRoleAssignments) recibida.`);
+
+      // El middleware 'getRoleByIdValidation' ya debería haber validado que idRole es un número
+      // y que el rol existe. Si llegamos aquí, se asume que es válido.
+      // No obstante, una conversión y verificación no hace daño, pero la validación primaria ya sucedió.
+      const roleIdInt = parseInt(roleIdFromParams, 10);
+
       if (isNaN(roleIdInt)) {
-          console.warn(`[Controller] ID de rol inválido recibido: ${roleId}`);
-          return res.status(400).json({ message: "ID de rol inválido." });
+          // Esto no debería ocurrir si getRoleByIdValidation funcionó,
+          // pero es una salvaguarda.
+          console.warn(`[Controller] ID de rol ${roleIdFromParams} no es numérico después de la validación (inesperado).`);
+          return res.status(400).json({ message: "Error interno: ID de rol no numérico después de validación." });
       }
 
-      const assignments = await RolePrivilege.findAll({
+      console.log(`[Controller] Buscando asignaciones para Rol ID ${roleIdInt}`);
+      const assignments = await RolePrivilege.findAll({ // Asegúrate que RolePrivilege es tu modelo Sequelize
           where: { idRole: roleIdInt },
-          attributes: ['idPrivilegedRole', 'idRole', 'idPermission', 'idPrivilege']
+          attributes: ['idPrivilegedRole', 'idRole', 'idPermission', 'idPrivilege'] // Ajusta atributos si es necesario
       });
-      console.log(`[Controller] Asignaciones encontradas para Rol ID ${roleIdInt}: ${assignments.length} encontradas.`);
-      res.status(200).json(assignments);
+      console.log(`[Controller] Asignaciones encontradas para Rol ID ${roleIdInt}: ${assignments.length}.`);
+      res.status(200).json(assignments); // Devuelve array vacío si no hay asignaciones (lo cual es correcto)
 
   } catch (error) {
-      console.error(`❌ [Controller] Error en getRoleAssignments para rol ${req.params.id}:`, error);
-      res.status(500).json({ message: 'Error al obtener las asignaciones del rol' });
+      console.error(`❌ [Controller] Error en getRoleAssignments para rol ${req.params.idRole}:`, error);
+      res.status(500).json({ message: 'Error interno al obtener las asignaciones del rol.' });
   }
 };
 

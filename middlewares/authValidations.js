@@ -16,15 +16,18 @@ const authMiddleware = () => {
             const verified = jwt.verify(token, process.env.JWT_SECRET);
             req.user = verified;
 
-            // Obtener el usuario sin verificar permisos ni privilegios
             const user = await User.findByPk(req.user.id, {
-                include: {
-                    model: Role
-                }
+            include: {
+                model: Role
+            }
             });
 
-            if (!user) {
-                return res.status(403).json({ message: 'Usuario no encontrado.' });
+            if (user) {
+                req.user = {
+                    id: user.idUsers,
+                    role: user.idRole // Asegúrate que `user.idRole` es el ID del rol
+                };
+                return next();
             }
 
             next();
