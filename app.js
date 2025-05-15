@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-require('dotenv').config(); 
+require("dotenv").config();
 
 app.use(
   cors({
@@ -35,7 +35,7 @@ const aditionalServicesRoutes = require("./routes/aditionalServicesRoutes");
 const reservationsRoutes = require("./routes/reservationsRoutes");
 const supplierRoutes = require("./routes/supplierRoutes");
 const productRoutes = require("./routes/productRoutes");
-const specSheetRoutes = require("./routes/spechsheetRoutes");
+const specSheetRoutes = require("./routes/specSheetRoutes");
 const rolePrivilegesRoutes = require("./routes/rolePrivilegesRoutes");
 const registerPurchaseRoutes = require("./routes/registerPurchaseRoutes");
 const purchaseDetailRoutes = require("./routes/purchaseDetailRoutes");
@@ -43,7 +43,6 @@ const productSheetRoutes = require("./routes/productSheetRoutes");
 const processRoutes = require("./routes/processRoutes");
 const processDetailRoutes = require("./routes/processDetailRoutes");
 const productionOrderRoutes = require("./routes/productionOrderRoutes");
-
 const reservationServicesRoutes = require("./routes/reservationServicesRoutes");
 
 app.use("/users", userRoutes);
@@ -71,13 +70,4 @@ app.use("/processDetail", processDetailRoutes);
 app.use("/productionOrder", productionOrderRoutes);
 app.use("/reservationServices", reservationServicesRoutes);
 
-
 module.exports = app;
-
-
-
-
-
-
-
-

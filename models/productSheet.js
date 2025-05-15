@@ -1,5 +1,7 @@
+// models/productSheet.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
+// NO necesitas require('./SpecSheet') ni require('./Supplier') aquí
 
 const ProductSheet = sequelize.define(
   "ProductSheet",
@@ -9,16 +11,16 @@ const ProductSheet = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    idSpecSheet: {
+    idSpecSheet: { // FK
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    idSupplier: {
+    idSupplier: { // FK
       type: DataTypes.INTEGER,
       allowNull: false,
     },
     quantity: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   },
@@ -28,20 +30,4 @@ const ProductSheet = sequelize.define(
   }
 );
 
-// Las asociaciones se definirán después de exportar
-module.exports = ProductSheet;
-
-// Importar los modelos después para evitar dependencias circulares
-const SpecSheet = require("./specSheet");
-const Supplier = require("./supplier");
-
-// Definir asociaciones
-ProductSheet.belongsTo(SpecSheet, {
-  foreignKey: "idSpecSheet",
-  as: "SpecSheet",
-});
-
-ProductSheet.belongsTo(Supplier, {
-  foreignKey: "idSupplier",
-  as: "Supplier",
-});
+module.exports = ProductSheet; // SOLO EXPORTA EL MODELO DEFINIDO

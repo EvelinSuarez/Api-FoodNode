@@ -6,6 +6,7 @@ const registerPurchaseValidations = require('../middlewares/registerPurchaseVali
 
 router.get('/', registerPurchaseController.getAllRegisterPurchases);
 router.get('/:idPurchase',registerPurchaseValidations.validateIdParam, registerPurchaseController.getRegisterPurchaseById);
+router.get('/providers/meat', registerPurchaseController.getProvidersFromMeatCategory);
 router.post('/',registerPurchaseValidations.validateCreateOrUpdatePurchase, registerPurchaseController.createRegisterPurchase);
 router.put('/:idPurchase',registerPurchaseValidations.validateUpdatePurchase, registerPurchaseController.updateRegisterPurchase);
 router.delete('/:idPurchase',registerPurchaseValidations.validateIdParam, registerPurchaseController.deleteRegisterPurchase);

@@ -7,6 +7,9 @@ const createPurchaseDetail = async (purchaseDetail) => {
 const getAllPurchaseDetails = async () => {
     return purchaseDetailRepository.getAllPurchaseDetails();
 };
+async function getMeatProviders() { // Nombre más específico
+    return registerPurchaseRepository.getUniqueProvidersFromCategory('carne');
+}
 
 const getPurchaseDetailById = async (id) => {
     return purchaseDetailRepository.getPurchaseDetailById(id);
@@ -27,6 +30,7 @@ const changeStatePurchaseDetail = async (id, status) => {
 module.exports = {
     createPurchaseDetail,
     getAllPurchaseDetails,
+    getMeatProviders,
     getPurchaseDetailById,
     updatePurchaseDetail,
     deletePurchaseDetail,

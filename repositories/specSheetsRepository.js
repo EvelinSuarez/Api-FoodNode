@@ -1,4 +1,4 @@
-const SpecSheet = require("../models/specSheet");
+const SpecSheet   = require("../models/specSheet");
 
 const createSpecSheet = async (specSheetData) => {
   try {
@@ -44,10 +44,31 @@ const deleteSpecSheet = async (idSpecsheet) => {
   return SpecSheet.destroy({ where: { idSpecsheet } });
 };
 
-const changeStateSpecSheet = async (idSpecsheet, status) => {
-  return SpecSheet.update({ status }, { where: { idSpecsheet } });
-};
 
+const changeStateSpecSheet = async (idSpecsheet, newStatus) => {
+  try {
+    const updateData = { status: newStatus }; // El nuevo estado
+
+    if (newStatus === false) { // Si se está inactivando
+      updateData.endDate = new Date(); // Establece la fecha actual
+    } else { // Si se está activando
+      updateData.endDate = null; // Limpia la fecha de inactivación
+    }
+
+    // Sequelize update devuelve un array: [numberOfAffectedRows]
+    // El nombre del parámetro 'idSpecsheet' debe coincidir con el nombre de la columna PK en tu modelo.
+    // Si tu columna PK se llama 'id' en el modelo, usa { where: { id: idSpecsheet } } o asegúrate de que
+    // 'idSpecsheet' sea el nombre correcto de la columna PK.
+    const [affectedRows] = await SpecSheet.update(updateData, {
+      where: { idSpecsheet: idSpecsheet } // o simplemente { idSpecsheet } si la variable se llama igual que la propiedad
+    });
+
+    return [affectedRows]; // Devolver el número de filas afectadas
+  } catch (error) {
+    console.error(`Error en el repositorio al cambiar estado para ficha ${idSpecsheet}:`, error);
+    throw error; // Re-lanzar el error para que el servicio/controlador lo maneje si es necesario
+  }
+};
 const getSpecSheetsByProduct = async (idProduct) => {
   try {
     console.log("Buscando fichas técnicas para el producto:", idProduct);
@@ -56,15 +77,17 @@ const getSpecSheetsByProduct = async (idProduct) => {
       include: [
         {
           model: require("../models/Product"),
-          as: "Product",
-          attributes: ["name", "idProduct"],
+          as: "product",
+          attributes: ["productName", "idProduct"],
         },
         {
           model: require("../models/productSheet"),
+          as: "ProductSheets", // <--- Asegúrate que este alias coincida con el definido en SpecSheet.hasMany 
           include: [
             {
-              model: require("./supplier"),
-              attributes: ["name", "idSupplier"],
+              model: require("../models/supplier"),
+              as: "supplier",
+              attributes: ["supplierName", "idSupplier"],
             },
           ],
         },

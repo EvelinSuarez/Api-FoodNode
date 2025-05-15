@@ -1,6 +1,6 @@
 const { body, param, validationResult } = require("express-validator")
 const Supplier = require("../models/supplier")
-const Product = require("../models/Product") // Asumiendo que existe un modelo Producto
+const ProductSheet = require("../models/productSheet")
 
 // Validaciones auxiliares
 const validateSupplierExistence = async (id) => {
@@ -21,16 +21,7 @@ const validateUniqueSupplierName = async (supplierName) => {
   }
 }
 
-const validateSupplierNotAssociatedWithProduct = async (id) => {
-  // Asumiendo que hay una relación entre Producto e Insumo
-  const productSupplie = await Product.findOne({
-    where: { idSupplier: id },
-  })
 
-  if (productSupplie) {
-    return Promise.reject("No se puede eliminar el insumo porque está asociado a un producto")
-  }
-}
 
 // Validaciones base para insumos
 const supplierBaseValidation = [
@@ -73,7 +64,6 @@ const updateSupplierValidation = [
 const deleteSupplierValidation = [
   param("id").isInt({ min: 1 }).withMessage("El id debe ser un número entero positivo"),
   param("id").custom(validateSupplierExistence),
-  param("id").custom(validateSupplierNotAssociatedWithProduct),
 ]
 
 // Validación para obtener insumo por ID

@@ -121,6 +121,59 @@ const getRegisterPurchaseById = async (idPurchase) => {
         ]
     });
 };
+async function getUniqueProvidersFromCategory(categoryName) {
+    try {
+        const purchases = await RegisterPurchase.findAll({
+            where: { category: categoryName },
+            include: [{
+                model: Provider,
+                as: 'provider', // Asegúrate que este alias coincida con tu asociación
+                attributes: ['idProvider', 'providerName'], // Solo necesitamos estos campos
+                required: true // Solo compras que tengan un proveedor asociado
+            }],
+            attributes: [
+                // Usar sequelize.fn y sequelize.col para DISTINCT es más complejo
+                // La forma más simple es obtener todos y luego filtrar en el servicio/controller
+                // O agrupar por proveedor.
+                // Para una lista única de proveedores, agruparemos.
+            ],
+            group: ['Provider.idProvider', 'Provider.providerName'], // Agrupar para obtener proveedores únicos
+                                                            // El alias del include debe usarse en group
+                                                            // Si el alias es 'provider', entonces 'provider.idProvider'
+                                                            // Si no hay alias, 'Provider.idProvider'
+                                                            // Asegúrate que tu DB soporte esto o ajusta.
+                                                            // Sequelize a veces requiere incluir los campos agrupados en attributes
+                                                            // si no, la opción más segura es procesar en JS después.
+        });
+
+        // Alternativa más segura si GROUP BY es problemático con includes complejos:
+        // Obtener todas las compras de carne con su proveedor
+        const allMeatPurchases = await RegisterPurchase.findAll({
+            where: { category: categoryName },
+            include: [{
+                model: Provider,
+                as: 'provider', // Usa el alias correcto
+                attributes: ['idProvider', 'providerName'],
+                required: true
+            }]
+        });
+
+        // Luego, procesar en JavaScript para obtener proveedores únicos
+        const uniqueProviders = [];
+        const providerMap = new Map();
+        allMeatPurchases.forEach(purchase => {
+            if (purchase.provider && !providerMap.has(purchase.provider.idProvider)) {
+                providerMap.set(purchase.provider.idProvider, true);
+                uniqueProviders.push(purchase.provider); // Añade el objeto Provider completo
+            }
+        });
+        return uniqueProviders;
+
+    } catch (error) {
+        console.error(`Error fetching unique providers for category ${categoryName}:`, error);
+        throw error;
+    }
+}
 
 // --- ACTUALIZAR COMPRA (Simplificado - Solo campos principales) ---
 const updateRegisterPurchase = async (idPurchase, registerPurchaseData) => {
@@ -157,6 +210,7 @@ const changeStateRegisterPurchase = async (idPurchase, status) => {
 module.exports = {
     createRegisterPurchase,
     getAllRegisterPurchases,
+    getUniqueProvidersFromCategory,
     getRegisterPurchaseById,
     updateRegisterPurchase,
     deleteRegisterPurchase,
