@@ -1,4 +1,4 @@
-const specSheetRepository = require("../repositories/specSheetRepository");
+const specSheetRepository = require("../repositories/specSheetsRepository");
 
 const createSpecSheet = async (specSheetData) => {
   return specSheetRepository.createSpecSheet(specSheetData);

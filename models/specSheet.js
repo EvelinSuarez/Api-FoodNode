@@ -1,17 +1,18 @@
+// models/specSheet.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const Product = require("./Product");
+// NO necesitas require('./Product') aquí
 
 const SpecSheet = sequelize.define(
   "SpecSheet",
   {
-    idSpecsheet: {
+    idSpecsheet: { // Asegúrate que este case sea consistente con tus FKs
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
       allowNull: false,
     },
-    idProduct: {
+    idProduct: { // Esta es la FK
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -32,22 +33,14 @@ const SpecSheet = sequelize.define(
       allowNull: false,
     },
     quantity: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER, // O FLOAT si puede tener decimales
       allowNull: false,
     },
   },
   {
     timestamps: true,
-    tableName: "SpecSheets", // Asegúrate de que el nombre de la tabla sea correcto
+    tableName: "specSheets", // Corregido de 'SpecSheets' a 'specSheets' para coincidir con tu modelo ProcessDetail
   }
 );
 
-// Definir relaciones
-SpecSheet.belongsTo(Product, { 
-  foreignKey: "idProduct",
-  as: "Product" 
-});
-Product.hasMany(SpecSheet, { foreignKey: "idProduct" });
-
-// Exportar para poder importar en ProductSheet
-module.exports = SpecSheet;
+module.exports = SpecSheet; // SOLO EXPORTA EL MODELO DEFINIDO

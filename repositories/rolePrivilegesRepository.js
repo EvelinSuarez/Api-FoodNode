@@ -2,7 +2,7 @@
 // C:\Users\daniela\Documents\Api-FoodNode\repositories\rolePrivilegesRepository.js
 
 // Asegúrate de importar TODOS los modelos necesarios
-const { RolePrivilege, Privilege, Permission } = require("../models");
+const { RolePrivilege, Privilege, Permission } = require("../models"); // Asegúrate de que los nombres coincidan con los definidos en tu modelo
 
 /**
  * Encuentra todas las asignaciones de privilegios para un rol específico,

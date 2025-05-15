@@ -1,8 +1,6 @@
+// models/productionOrder.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-const Process = require('./process');
-const ProcessDetail = require('./processDetail');
-const Product = require('./Product');
+const sequelize = require('../config/database'); // Tu instancia de sequelize
 
 const ProductionOrder = sequelize.define('ProductionOrder', {
     idOrder: {
@@ -12,28 +10,18 @@ const ProductionOrder = sequelize.define('ProductionOrder', {
         allowNull: false
     },
     idProduct: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-            model: Product,
-            key: 'idProduct'
-        }
+        type: DataTypes.INTEGER, // FK a Product
+        allowNull: false // O true, dependiendo de tu lógica
+        // SIN 'references' aquí
     },
-    idProcess: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-            model: Process,
-            key: 'idProcess'
-        }
+    idSpecSheet: {
+        type: DataTypes.INTEGER, // FK a SpecSheet
+        allowNull: false // O true
+        // SIN 'references' aquí
     },
-    idProcessDetail: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-            model: ProcessDetail,
-            key: 'idProcessDetail'
-        }
+    dateTimeCreation: {
+        type: DataTypes.DATE,
+        allowNull: true, // O defaultValue: DataTypes.NOW
     },
     initialAmount: {
         type: DataTypes.INTEGER,
@@ -47,24 +35,30 @@ const ProductionOrder = sequelize.define('ProductionOrder', {
         type: DataTypes.DOUBLE,
         allowNull: true
     },
-    initialWeight: {
-        type: DataTypes.DOUBLE,
-        allowNull: true
-    },
+    // initialWeight: { // Si necesitas este campo
+    //     type: DataTypes.DOUBLE,
+    //     allowNull: true
+    // },
     observations: {
         type: DataTypes.TEXT,
         allowNull: true
     },
     status: {
-        type: DataTypes.BOOLEAN,
+        type: DataTypes.BOOLEAN, // O STRING para más estados
         allowNull: false,
-        defaultValue: true
+        defaultValue: true // O un estado inicial como 'PENDING' si es STRING
     }
+    // NO idProcessDetail aquí, esa relación la maneja ProcessDetail
+}, {
+    tableName: 'ProductionOrders', // Opcional
+    timestamps: true
 });
 
-// Definir relaciones
-ProductionOrder.belongsTo(Process, { foreignKey: 'idProcess' });
-ProductionOrder.belongsTo(Product, { foreignKey: 'idProduct' });
-ProductionOrder.belongsTo(ProcessDetail, { foreignKey: 'idProcessDetail' });
+// ----- ELIMINAR ASOCIACIONES DE AQUÍ -----
+// ProductionOrder.belongsTo(models.Product, ...); // QUITAR
+// ProductionOrder.belongsTo(models.SpecSheet, ...); // QUITAR
+// ProductionOrder.hasMany(models.ProcessDetail, ...); // QUITAR
+
+// YA NO necesitas importar Product, SpecSheet, ProcessDetail aquí si solo eran para asociaciones
 
 module.exports = ProductionOrder;
