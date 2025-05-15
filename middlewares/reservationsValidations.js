@@ -70,7 +70,10 @@ const reservationsBaseValidation = [
     body('dateTime').isISO8601().withMessage('La fecha y hora deben tener un formato válido').custom(checkRealTimeAvailability),
     body('numberPeople').isInt({ min: 1 }).withMessage('El número de personas debe ser válido y mayor a cero'),
     body('matter').isLength({ min: 3, max: 100 }).withMessage('El asunto debe tener entre 3 y 100 caracteres'),
-    body('timeDurationR').matches(/^\d{1,2}:\d{2}$/).withMessage('La duración del evento debe estar en formato HH:MM'), // <-- Ojo: ¿Permitía segundos antes?
+body('timeDurationR').isString().notEmpty().withMessage('La duración del evento es requerida').custom((value) => {
+    const numValue = parseInt(value, 10);
+    return !isNaN(numValue) && numValue > 0;
+}).withMessage('La duración del evento debe ser un número válido mayor a 0'),
     body('pass')
     .optional()
     .isArray().withMessage('Abonos debe ser un array')
@@ -91,8 +94,9 @@ const reservationsBaseValidation = [
     body('remaining').isFloat({ min: 0 }).withMessage('El valor restante debe ser un valor numérico positivo'),
     body('evenType').isLength({ max: 60 }).withMessage('El tipo de evento debe tener máximo 60 caracteres'),
     body('totalPay').isFloat({ min: 0 }).withMessage('El total a pagar debe ser un valor numérico positivo'),
-    body('paymentMethod').isLength({ max: 20 }).withMessage('La forma de pago debe tener máximo 20 caracteres'),
-    body('status').isBoolean().withMessage('El estado debe ser un valor booleano').optional({ nullable: true }),
+    body('status').isIn(['pendiente', 'confirmada', 'en_proceso', 'terminada', 'anulada'])
+  .withMessage('El estado debe ser uno de los valores permitidos: pendiente, confirmada, en_proceso, terminada, anulada')
+  .optional({ nullable: true }),
     body('idCustomers').isInt().withMessage('El ID del cliente debe ser un número entero'),
     // Mantenemos la validación original para UN SOLO servicio adicional opcional
     body('idAditionalServices')

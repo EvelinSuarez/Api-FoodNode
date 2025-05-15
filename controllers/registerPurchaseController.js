@@ -30,6 +30,14 @@ const createRegisterPurchase = async (req, res) => {
         res.status(500).json({ message: error.message || "Error interno del servidor al procesar la compra." });
     }
 };
+async function getProvidersFromMeatCategory(req, res) {
+    try {
+        const providers = await registerPurchaseService.getMeatProviders();
+        res.status(200).json(providers);
+    } catch (error) {
+        res.status(500).json({ message: error.message || "Error al obtener proveedores de carne." });
+    }
+}
 
 // --- OBTENER TODAS LAS COMPRAS ---
 const getAllRegisterPurchases = async (req, res) => {
@@ -143,6 +151,7 @@ const changeStateRegisterPurchase = async (req, res) => {
 module.exports = {
     createRegisterPurchase,   // <--- ¡Asegurada la exportación!
     getAllRegisterPurchases,
+    getProvidersFromMeatCategory,
     getRegisterPurchaseById,
     updateRegisterPurchase,   // Mantener si la ruta PUT todavía la usa
     deleteRegisterPurchase,

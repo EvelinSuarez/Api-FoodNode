@@ -31,6 +31,9 @@ const getProcessDetailsByProcess = async (idProcess) => {
 const getProcessDetailsBySpecSheet = async (idSpecSheet) => {
     return processDetailRepository.getProcessDetailsBySpecSheet(idSpecSheet);
 }
+const getProcessDetailsByProductionOrder = async (idProductionOrder) => {
+    return processDetailRepository.getProcessDetailsByProductionOrder(idProductionOrder);
+}
 
 const getProcessDetailsByEmployee = async (idEmployee) => {
     return processDetailRepository.getProcessDetailsByEmployee(idEmployee);
@@ -44,6 +47,7 @@ module.exports = {
     createProcessDetail,
     getAllProcessDetails,
     getProcessDetailById,
+    getProcessDetailsByProductionOrder,
     updateProcessDetail,
     deleteProcessDetail,
     changeStateProcessDetail,

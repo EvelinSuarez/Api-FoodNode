@@ -1,8 +1,7 @@
 // repositories/rolePrivilegesRepository.js
 
-const RolePrivileges = require('../models/roleprivileges');
-const Permission = require('../models/permission');
-const Privilege = require('../models/privilege');
+// Asegúrate de importar TODOS los modelos necesarios
+const { RolePrivilege, Privilege, Permission } = require("../models"); // Asegúrate de que los nombres coincidan con los definidos en tu modelo
 
 /**
  * Obtiene los permisos combinados (ej. 'modulo-accion') para un rol específico.

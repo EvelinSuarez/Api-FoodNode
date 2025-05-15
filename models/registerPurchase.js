@@ -22,6 +22,11 @@ const RegisterPurchase = sequelize.define('RegisterPurchase', {
         type: DataTypes.DATEONLY,
         allowNull: false
     },
+    category: {
+            type: DataTypes.STRING,
+            allowNull: false
+    },
+
     totalAmount: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false
