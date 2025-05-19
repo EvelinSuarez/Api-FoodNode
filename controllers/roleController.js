@@ -1,182 +1,224 @@
 // controllers/roleController.js
 const { validationResult } = require('express-validator');
-const roleService = require('../services/roleService'); // Asegúrate que la ruta es correcta
+const roleService = require('../services/roleService');
+// const db = require('../models'); // O from '../models/index'
 
-// POST /role
+const LOG_PREFIX_CONTROLLER = "[CONTROLLER Role]";
+
+// POST /api/roles (Cambié a plural "roles" por convención REST)
 const createRole = async (req, res) => {
+    console.log(`${LOG_PREFIX_CONTROLLER} createRole - Solicitud POST /api/roles recibida.`);
+    console.log(`${LOG_PREFIX_CONTROLLER} createRole - req.body:`, JSON.stringify(req.body, null, 2));
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+        console.warn(`${LOG_PREFIX_CONTROLLER} createRole - Errores de validación:`, JSON.stringify(errors.array()));
         return res.status(400).json({ errors: errors.array() });
     }
     try {
+        // req.body esperado: { roleName, status? (boolean), privilegeAssignments?: [{ idPrivilege: number, (opcional) idPermission: number }] }
+        // El servicio transformará privilegeAssignments a lo que Sequelize necesita para la asociación
         const role = await roleService.createRole(req.body);
+        console.log(`${LOG_PREFIX_CONTROLLER} createRole - Rol creado exitosamente:`, role);
         res.status(201).json(role);
     } catch (error) {
-        console.error("Controller Error in createRole:", error.message);
-        // Devuelve un mensaje más específico si el servicio lo proporciona
-        const statusCode = error.message.toLowerCase().includes("ya existe") ? 409 : 400;
-        res.status(statusCode).json({ message: error.message });
+        console.error(`${LOG_PREFIX_CONTROLLER} createRole - Error: ${error.message}`, error.stack);
+        // Simplificado, el servicio debería arrojar errores con más contexto
+        if (error.message.toLowerCase().includes("ya existe")) {
+            return res.status(409).json({ message: error.message });
+        }
+        if (error.message.toLowerCase().includes("no existe") || error.message.toLowerCase().includes("inválido")) {
+            return res.status(400).json({ message: error.message });
+        }
+        res.status(500).json({ message: error.message || "Error al crear el rol." });
     }
 };
 
-// GET /role
+// GET /api/roles
 const getAllRoles = async (req, res) => {
+    console.log(`${LOG_PREFIX_CONTROLLER} getAllRoles - Solicitud GET /api/roles recibida.`);
     try {
+        // El servicio getAllRoles debería incluir los privilegios asignados
         const roles = await roleService.getAllRoles();
         res.status(200).json(roles);
     } catch (error) {
-        console.error("Controller Error in getAllRoles:", error.message);
+        console.error(`${LOG_PREFIX_CONTROLLER} getAllRoles - Error: ${error.message}`);
         res.status(500).json({ message: "Error al obtener roles." });
     }
 };
 
-// GET /role/:idRole
+// GET /api/roles/:idRole
 const getRoleById = async (req, res) => {
-    const errors = validationResult(req); // Validaciones de formato de ID desde el middleware
+    const { idRole } = req.params;
+    console.log(`${LOG_PREFIX_CONTROLLER} getRoleById - Solicitud GET /api/roles/${idRole} recibida.`);
+    const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const roleId = req.params.idRole; // Ya validado como numérico por el middleware
-        const role = await roleService.getRoleById(roleId);
-        // El servicio ya lanza "Rol no encontrado" que se maneja abajo
+        // El servicio getRoleById debería incluir los privilegios asignados
+        const role = await roleService.getRoleById(idRole); // Este servicio debe manejar el "no encontrado"
         res.status(200).json(role);
     } catch (error) {
-        console.error(`Controller Error in getRoleById (${req.params.idRole}):`, error.message);
+        console.error(`${LOG_PREFIX_CONTROLLER} getRoleById - Error para ID ${idRole}: ${error.message}`);
         if (error.message.includes('Rol no encontrado')) {
-             res.status(404).json({ message: error.message });
+            res.status(404).json({ message: error.message });
         } else {
-             res.status(500).json({ message: "Error al obtener el rol." });
+            res.status(500).json({ message: "Error al obtener el rol." });
         }
     }
 };
 
-// PUT /role/:idRole
+// PUT /api/roles/:idRole  (Para actualizar nombre/estado del rol)
 const updateRole = async (req, res) => {
+    const { idRole } = req.params;
+    const { roleName, status } = req.body; // Solo estos campos para esta ruta
+    console.log(`${LOG_PREFIX_CONTROLLER} updateRole - Solicitud PUT /api/roles/${idRole} recibida.`);
+    console.log(`${LOG_PREFIX_CONTROLLER} updateRole - req.body:`, JSON.stringify(req.body, null, 2));
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const roleId = req.params.idRole;
-        await roleService.updateRole(roleId, req.body);
-        // El servicio debería lanzar error si el rol no existe o si hay error de validación (ej. nombre duplicado)
-        const updatedRole = await roleService.getRoleById(roleId); // Opcional: devolver el rol actualizado
-        res.status(200).json(updatedRole); // O res.status(204).end(); si no devuelves nada
+        const updatedRole = await roleService.updateRole(idRole, { roleName, status });
+        console.log(`${LOG_PREFIX_CONTROLLER} updateRole - Rol ID ${idRole} actualizado.`);
+        res.status(200).json(updatedRole);
     } catch (error) {
-        console.error(`Controller Error in updateRole (${req.params.idRole}):`, error.message);
-         if (error.message.includes('Rol no encontrado')) {
-             res.status(404).json({ message: error.message });
-        } else if (error.message.toLowerCase().includes("ya existe")) { // Para nombres duplicados
+        console.error(`${LOG_PREFIX_CONTROLLER} updateRole - Error para ID ${idRole}: ${error.message}`);
+        if (error.message.includes('Rol no encontrado')) {
+            res.status(404).json({ message: error.message });
+        } else if (error.message.toLowerCase().includes("ya existe")) {
             res.status(409).json({ message: error.message });
         } else {
-             res.status(400).json({ message: error.message }); // Otros errores de validación del servicio
+            res.status(500).json({ message: error.message || "Error al actualizar el rol." });
         }
     }
 };
 
-// DELETE /role/:idRole
+// DELETE /api/roles/:idRole
 const deleteRole = async (req, res) => {
+    // ... (Tu lógica actual parece correcta, asumiendo que roleService.deleteRole maneja "no encontrado" y dependencias)
+    const { idRole } = req.params;
+    console.log(`${LOG_PREFIX_CONTROLLER} deleteRole - Solicitud DELETE /api/roles/${idRole} recibida.`);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        await roleService.deleteRole(req.params.idRole);
+        await roleService.deleteRole(idRole);
+        console.log(`${LOG_PREFIX_CONTROLLER} deleteRole - Rol ID ${idRole} eliminado.`);
         res.status(204).end();
-    } catch (error) {
-        console.error(`Controller Error in deleteRole (${req.params.idRole}):`, error.message);
+    } catch (error)        {
+        console.error(`${LOG_PREFIX_CONTROLLER} deleteRole - Error para ID ${idRole}: ${error.message}`);
         if (error.message.includes('Rol no encontrado')) {
             res.status(404).json({ message: error.message });
         } else if (error.message.includes('usuarios asociados')) {
-            res.status(409).json({ message: error.message }); // Conflict
+            res.status(409).json({ message: error.message });
         } else {
-            res.status(500).json({ message: error.message }); // Otros errores
+            res.status(500).json({ message: error.message || "Error al eliminar el rol." });
         }
     }
 };
 
-// PATCH /role/:idRole/state
+// PATCH /api/roles/:idRole/state
 const changeRoleState = async (req, res) => {
+    // ... (Tu lógica actual parece correcta)
+    const { idRole } = req.params;
+    const { status } = req.body;
+    console.log(`${LOG_PREFIX_CONTROLLER} changeRoleState - Solicitud PATCH /api/roles/${idRole}/state recibida.`);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-    // La validación de 'status' en el body ya está en el middleware 'changeRoleStateValidation'
     try {
-        await roleService.changeRoleState(req.params.idRole, req.body.status);
-        res.status(204).end();
+        const updatedRole = await roleService.changeRoleState(idRole, status);
+        console.log(`${LOG_PREFIX_CONTROLLER} changeRoleState - Estado del rol ID ${idRole} cambiado.`);
+        res.status(200).json(updatedRole); // Devolver el rol actualizado puede ser útil
     } catch (error) {
-         console.error(`Controller Error in changeRoleState (${req.params.idRole}):`, error.message);
+        console.error(`${LOG_PREFIX_CONTROLLER} changeRoleState - Error para ID ${idRole}: ${error.message}`);
+        if (error.message.includes('Rol no encontrado')) {
+            res.status(404).json({ message: error.message });
+        } else if (error.message.includes('debe ser un valor booleano')) {
+            res.status(400).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: error.message || "Error al cambiar el estado del rol." });
+        }
+    }
+};
+
+// GET /api/roles/:idRole/privileges (Devuelve las asignaciones actuales [{idPrivilege, idPermission, privilegeName, ...}, ...])
+const getRolePrivileges = async (req, res) => {
+    const { idRole } = req.params;
+    console.log(`${LOG_PREFIX_CONTROLLER} getRolePrivileges - Solicitud GET /api/roles/${idRole}/privileges recibida.`);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+        // El servicio se encarga de buscar RolePrivileges e incluir Privilege y Permission
+        const privileges = await roleService.getRolePrivileges(idRole);
+        console.log(`${LOG_PREFIX_CONTROLLER} getRolePrivileges - Asignaciones para rol ID ${idRole}:`, JSON.stringify(privileges, null, 2));
+        res.status(200).json(privileges);
+    } catch (error) {
+        console.error(`${LOG_PREFIX_CONTROLLER} getRolePrivileges - Error para ID ${idRole}: ${error.message}`);
         if (error.message.includes('Rol no encontrado')) {
             res.status(404).json({ message: error.message });
         } else {
-            res.status(400).json({ message: error.message }); // Otros errores (ej. valor de status inválido)
+            res.status(500).json({ message: "Error al obtener los privilegios del rol." });
         }
     }
 };
 
-// --- Controladores para Privilegios del Rol (si los manejas aquí) ---
-
-// GET /role/:idRole/privileges
-const getRolePrivileges = async (req, res) => {
-    const errors = validationResult(req); // Viene de getRoleByIdValidation en la ruta
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-    try {
-        const privileges = await roleService.getRolePrivileges(req.params.idRole);
-        // Si el rol no tiene privilegios, el servicio devuelve array vacío, lo cual es 200 OK.
-        res.status(200).json(privileges);
-    } catch (error) {
-        console.error(`Controller Error in getRolePrivileges for role ${req.params.idRole}:`, error.message);
-         if (error.message.includes('Rol no encontrado')) { // Error del servicio si el rol base no existe
-             res.status(404).json({ message: error.message });
-        } else {
-             res.status(500).json({ message: "Error al obtener los privilegios del rol." });
-        }
-    }
-};
-
-// PUT /role/:idRole/privileges
+// PUT /api/roles/:idRole/privileges (Asigna/Reemplaza TODAS las asignaciones para un rol)
+// El cuerpo de la solicitud debe ser un array: [{ idPrivilege: number, (opcional) idPermission: number  }, ...]
 const assignPrivileges = async (req, res) => {
-    const errors = validationResult(req); // Viene de assignPrivilegesValidation
+    const { idRole } = req.params;
+    const privilegeAssignments = req.body; // Array de objetos [{ idPrivilege, (opcional) idPermission }]
+
+    console.log(`${LOG_PREFIX_CONTROLLER} assignPrivileges - Solicitud PUT /api/roles/${idRole}/privileges recibida.`);
+    console.log(`${LOG_PREFIX_CONTROLLER} assignPrivileges - req.body (assignments):`, JSON.stringify(privilegeAssignments, null, 2));
+
+    const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const { idRole } = req.params;
-        // El middleware assignPrivilegesValidation ya debería haber validado la estructura de req.body.rolePrivileges
-        const rolePrivileges = req.body; // Asumiendo que el body es el array directamente
-                                         // o req.body.rolePrivileges si está anidado
-
-        await roleService.assignPrivilegesToRole(idRole, rolePrivileges);
-        res.status(200).json({ message: "Privilegios asignados correctamente." });
+        // El servicio se encarga de validar los IDs y la lógica de reemplazo
+        await roleService.assignPrivilegesToRole(idRole, privilegeAssignments);
+        console.log(`${LOG_PREFIX_CONTROLLER} assignPrivileges - Privilegios asignados/actualizados para rol ID ${idRole}.`);
+        // Podrías devolver los privilegios asignados o el rol actualizado con sus privilegios
+        const updatedRoleWithPrivileges = await roleService.getRoleById(idRole); // Asumiendo que getRoleById incluye privilegios
+        res.status(200).json({ message: "Privilegios asignados/actualizados correctamente.", role: updatedRoleWithPrivileges });
     } catch (error) {
-         console.error(`Controller Error in assignPrivileges for role ${req.params.idRole}:`, error.message);
-         if (error.message.includes('Rol no encontrado')) {
-             res.status(404).json({ message: error.message });
-        } else if (error.message.includes("Se esperaba un array") || error.message.includes("inválido")) {
-             res.status(400).json({ message: error.message }); // Errores de validación de datos de privilegios
-        }
-         else {
-             res.status(500).json({ message: "Error al asignar privilegios al rol." });
+        console.error(`${LOG_PREFIX_CONTROLLER} assignPrivileges - Error para ID ${idRole}: ${error.message}`);
+        if (error.message.includes('Rol no encontrado')) {
+            res.status(404).json({ message: error.message });
+        } else if (error.message.toLowerCase().includes("inválido") ||
+                   error.message.toLowerCase().includes("no existe") ||
+                   error.message.toLowerCase().includes("se esperaba un array") ||
+                   error.message.toLowerCase().includes("deben ser números")) {
+            res.status(400).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: error.message || "Error al asignar privilegios al rol." });
         }
     }
 };
 
-// --- Controlador para Permisos Efectivos ---
+// GET /api/roles/:idRole/effective-permissions (Devuelve { permissionKey: [privilegeKey, ...], ... })
 const getEffectivePermissionsForRole = async (req, res) => {
-    const errors = validationResult(req); // Viene de getRoleByIdValidation
+    const { idRole } = req.params;
+    console.log(`${LOG_PREFIX_CONTROLLER} getEffectivePermissionsForRole - Solicitud GET /api/roles/${idRole}/effective-permissions recibida.`);
+    const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const { idRole } = req.params;
         const effectivePermissions = await roleService.getRoleEffectivePermissions(idRole);
+        console.log(`${LOG_PREFIX_CONTROLLER} getEffectivePermissionsForRole - Permisos efectivos para rol ID ${idRole}:`, JSON.stringify(effectivePermissions, null, 2));
         res.status(200).json(effectivePermissions);
     } catch (error) {
-        console.error(`Controller Error in getEffectivePermissionsForRole for role ${req.params.idRole}:`, error.message);
+        console.error(`${LOG_PREFIX_CONTROLLER} getEffectivePermissionsForRole - Error para ID ${idRole}: ${error.message}`);
         if (error.message.includes('Rol no encontrado')) {
             res.status(404).json({ message: error.message });
         } else {
@@ -185,7 +227,6 @@ const getEffectivePermissionsForRole = async (req, res) => {
     }
 };
 
-
 module.exports = {
     createRole,
     getAllRoles,
@@ -193,9 +234,7 @@ module.exports = {
     updateRole,
     deleteRole,
     changeRoleState,
-    // Si estos son los controladores principales para privilegios, deben estar aquí:
     getRolePrivileges,
     assignPrivileges,
-    // Y el de permisos efectivos:
     getEffectivePermissionsForRole,
 };

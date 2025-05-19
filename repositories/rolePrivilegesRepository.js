@@ -1,122 +1,127 @@
 // repositories/rolePrivilegesRepository.js
+const { RolePrivilege, Permission, Privilege, Role } = require('../models'); // Asumiendo que RolePrivilege es el nombre del modelo
+const { Op } = require('sequelize');
 
-const RolePrivileges = require('../models/rolePrivileges');
-const Permission = require('../models/permission');
-const Privilege = require('../models/privilege');
+const LOG_REPO_RP = "[Repo RolePrivileges]";
 
 /**
  * Obtiene los permisos combinados (ej. 'modulo-accion') para un rol específico.
- * Esta función es la que debe ser utilizada por el middleware 'authorize'.
  * @param {number | string} idRole - El ID del rol.
- * @returns {Promise<Array<string>>}
- *          Un array de strings, cada uno representando un permiso combinado efectivo.
- *          Ej: ['roles-view', 'usuarios-create', ...]
+ * @returns {Promise<Array<string>>} Ej: ['USERS_MANAGE-USER_CREATE', ...]
  */
 const getCombinedPermissionsByRoleId = async (idRole) => {
-    console.log(`[Repo] Buscando permisos combinados (ej. 'modulo-accion') para Rol ID: ${idRole}`);
+    console.log(`${LOG_REPO_RP} getCombinedPermissionsByRoleId - Rol ID: ${idRole}`);
     try {
         const roleIdInt = parseInt(idRole, 10);
         if (isNaN(roleIdInt)) {
-            console.error(`[Repo] ID de rol inválido para getCombinedPermissionsByRoleId: ${idRole}`);
             throw new Error("ID de rol inválido.");
         }
 
-        const results = await RolePrivileges.findAll({
-            where: { idRole: roleIdInt, '$permission.status$': true, '$privilege.status$': true },
+        const results = await RolePrivilege.findAll({
+            where: { idRole: roleIdInt },
             include: [
                 {
-                    model: Permission,
-                    as: 'permission', // Asegúrate que 'permission' es el alias correcto en tu modelo RolePrivileges
-                    attributes: ['permissionKey'],
-                    required: true // INNER JOIN
-                },
-                {
                     model: Privilege,
-                    as: 'privilege', // Asegúrate que 'privilege' es el alias correcto
-                    attributes: ['privilegeKey'],
-                    required: true // INNER JOIN
+                    as: 'privilege', // Alias de la asociación RolePrivilege.belongsTo(Privilege)
+                    attributes: ['privilegeKey', 'status'], // Incluir status para filtrar
+                    required: true, // INNER JOIN
+                    where: { status: true }, // Filtrar privilegios activos
+                    include: [
+                        {
+                            model: Permission,
+                            as: 'permission', // Alias de la asociación Privilege.belongsTo(Permission)
+                            attributes: ['permissionKey', 'status'], // Incluir status
+                            required: true, // INNER JOIN
+                            where: { status: true } // Filtrar permisos activos
+                        }
+                    ]
                 }
             ],
-            raw: true, // Para obtener objetos planos
-            nest: true  // Para anidar los resultados de los includes bajo sus alias
+            // raw: true y nest: true pueden complicar el acceso a datos anidados profundamente
+            // Es mejor trabajar con instancias de Sequelize y usar .get({ plain: true }) si es necesario
         });
 
         const combinedPermissions = results.map(entry => {
-            // Con raw: true y nest: true, accedes así: entry.aliasDeAsociacion.nombreDeColumna
-            const pKey = entry.permission?.permissionKey;
-            const privKey = entry.privilege?.privilegeKey;
+            const priv = entry.privilege; // Objeto Privilege
+            if (!priv || !priv.permission) { // Verificar que la anidación existe
+                console.warn(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Entrada incompleta:`, entry.toJSON());
+                return null;
+            }
+            const pKey = priv.permission.permissionKey;
+            const privKey = priv.privilegeKey;
 
             if (!pKey || !privKey) {
-                console.warn(`[Repo] (getCombinedPermissionsByRoleId) Entrada incompleta encontrada: ${JSON.stringify(entry)}`);
+                console.warn(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Claves faltantes: pKey=${pKey}, privKey=${privKey}`);
                 return null;
             }
             return `${pKey}-${privKey}`;
-        }).filter(Boolean); // Filtra cualquier entrada nula si pKey o privKey faltaban
+        }).filter(Boolean);
 
-        console.log(`[Repo] Permisos combinados ('modulo-accion') mapeados para Rol ID ${roleIdInt}:`, JSON.stringify(combinedPermissions, null, 2));
+        console.log(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Permisos combinados para Rol ID ${roleIdInt}:`, combinedPermissions);
         return combinedPermissions;
 
     } catch (error) {
-        console.error(`[Repo] Error en getCombinedPermissionsByRoleId para rol ${idRole}:`, error);
+        console.error(`${LOG_REPO_RP} Error en getCombinedPermissionsByRoleId para rol ${idRole}:`, error);
         throw error;
     }
 };
 
 /**
  * Obtiene los pares de permissionKey y privilegeKey para un rol específico.
- * Esta función es la que debe ser utilizada por authService para construir el objeto de permisos del frontend.
  * @param {number | string} idRole - El ID del rol.
  * @returns {Promise<Array<{permissionKey: string, privilegeKey: string}>>}
- *          Un array de objetos, cada uno con permissionKey y privilegeKey.
- *          Ej: [{permissionKey: 'roles', privilegeKey: 'view'}, {permissionKey: 'usuarios', privilegeKey: 'create'}, ...]
  */
 const getPermissionKeyPrivilegeKeyPairsByRoleId = async (idRole) => {
-    console.log(`[Repo] Buscando pares (permissionKey, privilegeKey) para Rol ID: ${idRole}`);
+    console.log(`${LOG_REPO_RP} getPermissionKeyPrivilegeKeyPairsByRoleId - Rol ID: ${idRole}`);
     try {
         const roleIdInt = parseInt(idRole, 10);
         if (isNaN(roleIdInt)) {
-            console.error(`[Repo] ID de rol inválido para getPermissionKeyPrivilegeKeyPairsByRoleId: ${idRole}`);
             throw new Error("ID de rol inválido.");
         }
 
-        const results = await RolePrivileges.findAll({
-            where: { idRole: roleIdInt, '$permission.status$': true, '$privilege.status$': true },
+        const results = await RolePrivilege.findAll({
+            where: { idRole: roleIdInt },
             include: [
                 {
-                    model: Permission,
-                    as: 'permission', // Asegúrate que 'permission' es el alias correcto en tu modelo RolePrivileges
-                    attributes: ['permissionKey'],
-                    required: true // INNER JOIN
-                },
-                {
                     model: Privilege,
-                    as: 'privilege', // Asegúrate que 'privilege' es el alias correcto
-                    attributes: ['privilegeKey'],
-                    required: true // INNER JOIN
+                    as: 'privilege',
+                    attributes: ['privilegeKey', 'status'],
+                    required: true,
+                    where: { status: true },
+                    include: [
+                        {
+                            model: Permission,
+                            as: 'permission',
+                            attributes: ['permissionKey', 'status'],
+                            required: true,
+                            where: { status: true }
+                        }
+                    ]
                 }
-            ],
-            raw: true, // Para obtener objetos planos
-            nest: true  // Para anidar los resultados de los includes bajo sus alias
+            ]
         });
 
         const permissionKeyPrivilegeKeyPairs = results.map(entry => {
-            // Con raw: true y nest: true, accedes así: entry.aliasDeAsociacion.nombreDeColumna
-            const pKey = entry.permission?.permissionKey;
-            const privKey = entry.privilege?.privilegeKey;
-
-            if (!pKey || !privKey) {
-                console.warn(`[Repo] (getPermissionKeyPrivilegeKeyPairsByRoleId) Entrada incompleta encontrada: ${JSON.stringify(entry)}`);
+            const priv = entry.privilege;
+            if (!priv || !priv.permission) {
+                console.warn(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Entrada incompleta:`, entry.toJSON());
                 return null;
             }
-            // Construir el objeto esperado por authService
-            return { permissionKey: pKey, privilegeKey: privKey };
-        }).filter(Boolean); // Filtra cualquier entrada nula si pKey o privKey faltaban
+            const pKey = priv.permission.permissionKey;
+            const privKey = priv.privilegeKey;
 
-        console.log(`[Repo] Pares (permissionKey, privilegeKey) mapeados para Rol ID ${roleIdInt}:`, JSON.stringify(permissionKeyPrivilegeKeyPairs, null, 2));
+            if (!pKey || !privKey) {
+                console.warn(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Claves faltantes: pKey=${pKey}, privKey=${privKey}`);
+                return null;
+            }
+            return { permissionKey: pKey, privilegeKey: privKey };
+        }).filter(Boolean);
+
+        console.log(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Pares para Rol ID ${roleIdInt}:`, permissionKeyPrivilegeKeyPairs);
         return permissionKeyPrivilegeKeyPairs;
 
     } catch (error) {
-        console.error(`[Repo] Error en getPermissionKeyPrivilegeKeyPairsByRoleId para rol ${idRole}:`, error);
+        console.error(`${LOG_REPO_RP} Error en getPermissionKeyPrivilegeKeyPairsByRoleId para rol ${idRole}:`, error);
         throw error;
     }
 };
@@ -126,24 +131,32 @@ const getPermissionKeyPrivilegeKeyPairsByRoleId = async (idRole) => {
  * Obtiene las asignaciones de un rol específico (idPermission, idPrivilege).
  * Utilizado para cargar el estado inicial en FormPermissions.jsx.
  * @param {number | string} idRole - El ID del rol.
- * @returns {Promise<Array<{idPermission: number, idPrivilege: number}>>}
+ * @returns {Promise<Array<{idPrivilege: number, idPermission: number}>>}
  */
 const getRawAssignmentsByRoleId = async (idRole) => {
-    console.log(`[Repo] Buscando asignaciones crudas (idPermission, idPrivilege) para Rol ID: ${idRole}`);
+    console.log(`${LOG_REPO_RP} getRawAssignmentsByRoleId - Rol ID: ${idRole}`);
     try {
         const roleIdInt = parseInt(idRole, 10);
         if (isNaN(roleIdInt)) {
-            console.error(`[Repo] ID de rol inválido para getRawAssignmentsByRoleId: ${idRole}`);
             throw new Error("ID de rol inválido.");
         }
-        const assignments = await RolePrivileges.findAll({
+        // RolePrivilege tiene idPrivilege. Necesitamos idPermission del Privilege asociado.
+        const assignments = await RolePrivilege.findAll({
             where: { idRole: roleIdInt },
-            attributes: ['idPermission', 'idPrivilege']
-            // No es necesario raw:true aquí si solo queremos los atributos directamente del modelo RolePrivileges
+            attributes: ['idPrivilege'], // Solo necesitamos idPrivilege de RolePrivilege
+            include: [{
+                model: Privilege,
+                as: 'privilege', // Asegúrate que este alias es correcto
+                attributes: ['idPermission'], // Traemos idPermission del Privilegio
+                required: true // Para asegurar que solo traemos asignaciones con privilegios válidos
+            }]
         });
-        return assignments.map(a => ({ idPermission: a.idPermission, idPrivilege: a.idPrivilege }));
+        return assignments.map(a => ({
+            idPrivilege: a.idPrivilege,
+            idPermission: a.privilege.idPermission // Acceder a idPermission a través del privilegio incluido
+        }));
     } catch (error) {
-        console.error(`Repository Error in getRawAssignmentsByRoleId for role ${idRole}:`, error);
+        console.error(`${LOG_REPO_RP} Error en getRawAssignmentsByRoleId para rol ${idRole}:`, error);
         throw error;
     }
 };
@@ -152,66 +165,60 @@ const getRawAssignmentsByRoleId = async (idRole) => {
 /**
  * Elimina todas las asignaciones de privilegios para un rol específico.
  * @param {number | string} idRole - El ID del rol.
- * @param {object} [transaction=null] - Una transacción de Sequelize opcional.
+ * @param {object} [options={}] - Opciones de Sequelize, ej { transaction }.
  * @returns {Promise<number>} - El número de filas eliminadas.
  */
-const deleteByRoleId = async (idRole, transaction = null) => {
+const deleteByRoleId = async (idRole, options = {}) => {
+    console.log(`${LOG_REPO_RP} deleteByRoleId - Rol ID: ${idRole}`);
     try {
         const roleIdInt = parseInt(idRole, 10);
         if (isNaN(roleIdInt)) {
-            throw new Error("ID de rol inválido proporcionado a deleteByRoleId.");
+            throw new Error("ID de rol inválido.");
         }
-        const options = { where: { idRole: roleIdInt } };
-        if (transaction) {
-            options.transaction = transaction;
-        }
-        const deletedCount = await RolePrivileges.destroy(options);
-        return deletedCount;
+        const queryOptions = { where: { idRole: roleIdInt }, ...options };
+        return RolePrivilege.destroy(queryOptions);
     } catch (error) {
-        console.error(`Repository Error in deleteByRoleId for role ${idRole}:`, error);
+        console.error(`${LOG_REPO_RP} Error en deleteByRoleId para rol ${idRole}:`, error);
         throw error;
     }
 };
 
 /**
  * Crea asignaciones de privilegios en lote para un rol.
- * @param {Array<object>} assignments - Un array de objetos, cada uno con { idRole, idPermission, idPrivilege }.
- * @param {object} [transaction=null] - Una transacción de Sequelize opcional.
- * @returns {Promise<Array<RolePrivileges>>} - Un array de las instancias de RolePrivileges creadas.
+ * @param {Array<object>} assignments - Un array de objetos, cada uno con { idRole, idPrivilege }.
+ * @param {object} [options={}] - Opciones de Sequelize, ej { transaction }.
+ * @returns {Promise<Array<RolePrivilege>>}
  */
-const bulkCreate = async (assignments, transaction = null) => {
+const bulkCreate = async (assignments, options = {}) => {
+    console.log(`${LOG_REPO_RP} bulkCreate - Asignaciones:`, assignments);
     if (!Array.isArray(assignments)) {
         throw new Error("Se esperaba un array para 'assignments' en bulkCreate.");
     }
     if (assignments.length === 0) {
         return [];
     }
+    // RolePrivileges solo tiene idRole, idPrivilege
     const isValidStructure = assignments.every(a =>
         typeof a === 'object' && a !== null &&
         Number.isInteger(a.idRole) && a.idRole > 0 &&
-        Number.isInteger(a.idPermission) && a.idPermission > 0 &&
         Number.isInteger(a.idPrivilege) && a.idPrivilege > 0
+        // No idPermission aquí
     );
     if (!isValidStructure) {
         const invalidAssignment = assignments.find(a =>
             !(typeof a === 'object' && a !== null &&
             Number.isInteger(a.idRole) && a.idRole > 0 &&
-            Number.isInteger(a.idPermission) && a.idPermission > 0 &&
             Number.isInteger(a.idPrivilege) && a.idPrivilege > 0)
         );
-        console.error("[Repo] Estructura inválida en 'assignments'. Ejemplo de entrada inválida:", invalidAssignment);
-        throw new Error(`Estructura inválida en 'assignments'. Se esperan objetos con idRole, idPermission, e idPrivilege como enteros positivos. Entrada inválida: ${JSON.stringify(invalidAssignment)}`);
+        console.error(`${LOG_REPO_RP} Estructura inválida en 'assignments'. Ejemplo:`, invalidAssignment);
+        throw new Error(`Estructura inválida en 'assignments'. Se esperan objetos con idRole e idPrivilege como enteros positivos. Inválido: ${JSON.stringify(invalidAssignment)}`);
     }
 
     try {
-        const options = {};
-        if (transaction) {
-            options.transaction = transaction;
-        }
-        const createdAssignments = await RolePrivileges.bulkCreate(assignments, options);
-        return createdAssignments;
+        const queryOptions = { ...options };
+        return RolePrivilege.bulkCreate(assignments, queryOptions);
     } catch (error) {
-        console.error("Repository Error in bulkCreate:", error.name, error.message);
+        console.error(`${LOG_REPO_RP} Error en bulkCreate:`, error);
         if (error.name === 'SequelizeUniqueConstraintError') {
             throw new Error(`Error de restricción única al crear asignaciones: ${error.errors?.[0]?.message || error.message}`);
         }
@@ -219,22 +226,13 @@ const bulkCreate = async (assignments, transaction = null) => {
     }
 };
 
-// Exporta las funciones necesarias
 module.exports = {
-    // Esta es la función que debe ser llamada por el middleware 'authorize'
-    // Devuelve ['modulo-accion', ...]
-    findByRoleId: getCombinedPermissionsByRoleId,
-
-    // Esta es la función que debe ser llamada por authService.js para obtener los pares de claves
-    // Devuelve [{permissionKey: '...', privilegeKey: '...'}, ...]
-    getEffectiveKeysByRoleId: getPermissionKeyPrivilegeKeyPairsByRoleId, // <-- CORRECCIÓN PRINCIPAL
-
-    // Otras funciones
-    getRawAssignmentsByRoleId,
+    findByRoleId: getCombinedPermissionsByRoleId, // Para authorize middleware
+    getEffectiveKeysByRoleId: getPermissionKeyPrivilegeKeyPairsByRoleId, // Para authService (frontend)
+    getRawAssignmentsByRoleId, // Para FormPermissions.jsx
     deleteByRoleId,
     bulkCreate,
-
-    // Opcional: Exportar las funciones también por su nombre original si necesitas acceder a ellas directamente
+    // Para acceso directo si es necesario
     getCombinedPermissionsByRoleId,
     getPermissionKeyPrivilegeKeyPairsByRoleId
 };

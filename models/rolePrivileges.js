@@ -1,15 +1,9 @@
-'use strict';
-
+// models/rolePrivileges.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+// No necesitas importar Role y Privilege aquí si las asociaciones se manejan en index.js
 
-// Importar modelos relacionados
-const Role = require('./role');        // Modelo Role
-const Privilege = require('./privilege');  // Modelo Privilege
-const Permission = require('./permission'); // Modelo Permission
-
-// Definición del modelo RolePrivileges
-const RolePrivileges = sequelize.define('rolePrivileges', {
+const RolePrivilege = sequelize.define('RolePrivilege', { // Convención: Nombre de modelo PascalCase y singular
     idPrivilegedRole: {
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -19,7 +13,7 @@ const RolePrivileges = sequelize.define('rolePrivileges', {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: Role,
+            model: 'roles', // Nombre de la TABLA o Modelo importado
             key: 'idRole'
         }
     },
@@ -27,16 +21,8 @@ const RolePrivileges = sequelize.define('rolePrivileges', {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: Privilege,
+            model: 'privileges', // Nombre de la TABLA o Modelo importado
             key: 'idPrivilege'
-        }
-    },
-    idPermission: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: Permission,
-            key: 'idPermission'
         }
     }
 }, {
@@ -45,27 +31,22 @@ const RolePrivileges = sequelize.define('rolePrivileges', {
     indexes: [
         {
             unique: true,
-            name: 'uq_role_permission_privilege',
-            fields: ['idRole', 'idPrivilege', 'idPermission']
+            name: 'uq_role_privilege', // Simplificado
+            fields: ['idRole', 'idPrivilege']
         }
     ]
 });
 
-// Asociaciones belongsTo
-RolePrivileges.belongsTo(Role, {
-    foreignKey: 'idRole',
-    as: 'role' // Relación con Role
-});
+// ELIMINA ESTAS LÍNEAS DE AQUÍ SI LAS DEFINES EN models/index.js
+// RolePrivileges.belongsTo(Role, { foreignKey: 'idRole', as: 'role' });
+// RolePrivileges.belongsTo(Privilege, { foreignKey: 'idPrivilege', as: 'privilege' });
 
-RolePrivileges.belongsTo(Privilege, {
-    foreignKey: 'idPrivilege',
-    as: 'privilege' // Relación con Privilege
-});
+// Si prefieres el método associate:
+/*
+RolePrivilege.associate = function(models) {
+    RolePrivilege.belongsTo(models.Role, { foreignKey: 'idRole', as: 'role' });
+    RolePrivilege.belongsTo(models.Privilege, { foreignKey: 'idPrivilege', as: 'privilege' });
+};
+*/
 
-RolePrivileges.belongsTo(Permission, {
-    foreignKey: 'idPermission',
-    as: 'permission' // Relación con Permission
-});
-
-// Exportar el modelo
-module.exports = RolePrivileges;
+module.exports = RolePrivilege; // Exportar el modelo
