@@ -1,99 +1,144 @@
 // middlewares/roleValidations.js
-const { body, param, validationResult } = require('express-validator'); // Añadido validationResult
-const { Role, User } = require('../models'); // Importar modelos necesarios
-const { Op } = require('sequelize'); // Necesario para la validación OnUpdate
+const { body, param, validationResult } = require('express-validator');
+const { Role, User, Permission, Privilege } = require('../models'); // Asegúrate que los modelos están correctamente exportados desde /models (probablemente /models/index.js)
+const { Op } = require('sequelize');
+
+const LOG_VALIDATION_PREFIX_MW = "[MW RoleValidation]";
 
 // --- Funciones de Validación Personalizadas ---
 
-/**
- * Valida si un rol existe por su ID.
- * Esta función ahora incluye logging detallado y manejo de tipo para idRole.
- * @param {*} idRole El ID del rol a validar, puede ser string o number.
- * @param {object} options - Opciones, incluyendo { req } para el contexto de la solicitud.
- * @returns Promise
- */
-const validateRoleExistence = async (idRole, { req }) => {
-    const LOG_VALIDATION_PREFIX = `[validateRoleExistence for ${req.method} ${req.originalUrl}]`;
-    console.log(`${LOG_VALIDATION_PREFIX} Iniciando validación para idRole: '${idRole}' (tipo: ${typeof idRole})`);
+const validateRoleExistence = async (idRoleValue, { req }) => {
+    const idRoleStr = String(idRoleValue).trim();
+    console.log(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - Validando idRole: '${idRoleStr}' (tipo original: ${typeof idRoleValue}) para ${req.method} ${req.originalUrl}`);
 
-    // ... (verificación de undefined/null/vacío) ...
+    if (!idRoleStr || idRoleStr === 'undefined' || idRoleStr === 'null') {
+        console.error(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - idRole es indefinido, nulo o vacío.`);
+        return Promise.reject('El ID del rol es requerido.');
+    }
 
-    const numericIdRole = Number(idRole); // CONVERSIÓN IMPORTANTE
-    if (isNaN(numericIdRole) || numericIdRole <= 0) {
-        console.error(`${LOG_VALIDATION_PREFIX} idRole '${idRole}' no es un número entero positivo. Rechazando.`);
+    const numericIdRole = Number(idRoleStr);
+    if (isNaN(numericIdRole) || !Number.isInteger(numericIdRole) || numericIdRole <= 0) {
+        console.error(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - idRole '${idRoleStr}' no es un número entero positivo.`);
         return Promise.reject('El ID del rol debe ser un número entero positivo.');
     }
 
     try {
-        console.log(`${LOG_VALIDATION_PREFIX} Buscando rol con ID numérico: ${numericIdRole}`);
-        const role = await Role.findByPk(numericIdRole); // USA EL ID NUMÉRICO
-
+        const role = await Role.findByPk(numericIdRole);
         if (!role) {
-            console.warn(`${LOG_VALIDATION_PREFIX} Rol con ID ${numericIdRole} NO encontrado en la BD.`);
+            console.warn(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - Rol con ID ${numericIdRole} NO encontrado.`);
             return Promise.reject('El rol especificado no existe.');
         }
-
-        console.log(`${LOG_VALIDATION_PREFIX} Rol con ID ${numericIdRole} ENCONTRADO.`);
-        req.foundRole = role;
+        req.foundRole = role; // Adjuntar el rol encontrado
+        console.log(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - Rol con ID ${numericIdRole} ENCONTRADO.`);
         return Promise.resolve();
     } catch (dbError) {
-        console.error(`${LOG_VALIDATION_PREFIX} Error de base de datos al buscar rol con ID ${numericIdRole}:`, dbError);
+        console.error(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - Error de BD al buscar rol ID ${numericIdRole}:`, dbError);
         return Promise.reject('Error interno al verificar la existencia del rol.');
     }
 };
 
-// (El resto de tus funciones de validación personalizadas como validateUniqueRoleNameOnCreate, etc., permanecen igual)
-// Valida si un nombre de rol ya existe (para CREACIÓN)
 const validateUniqueRoleNameOnCreate = async (roleName) => {
+    console.log(`${LOG_VALIDATION_PREFIX_MW} validateUniqueRoleNameOnCreate - Validando unicidad para nombre: '${roleName}'`);
     const role = await Role.findOne({ where: { roleName } });
     if (role) {
-        return Promise.reject('El nombre del rol ya existe');
+        return Promise.reject('El nombre del rol ya existe.');
     }
+    return Promise.resolve();
 };
 
-// Valida si un nombre de rol ya existe en OTRO rol (para ACTUALIZACIÓN)
 const validateUniqueRoleNameOnUpdate = async (roleName, { req }) => {
+    const roleIdToExclude = req.params.idRole;
+    console.log(`${LOG_VALIDATION_PREFIX_MW} validateUniqueRoleNameOnUpdate - Validando unicidad para nombre: '${roleName}', excluyendo ID: ${roleIdToExclude}`);
     const role = await Role.findOne({
         where: {
             roleName,
-            idRole: { [Op.ne]: req.params.idRole }
+            idRole: { [Op.ne]: Number(roleIdToExclude) } // Asegurar que sea número
         }
     });
     if (role) {
-        return Promise.reject('El nombre del rol ya está siendo utilizado por otro rol');
+        return Promise.reject('El nombre del rol ya está siendo utilizado por otro rol.');
     }
+    return Promise.resolve();
 };
 
-// Valida si un rol tiene usuarios asociados (para ELIMINACIÓN)
 const validateRoleHasNoUsers = async (idRole) => {
-    const count = await User.count({ where: { idRole } });
+    console.log(`${LOG_VALIDATION_PREFIX_MW} validateRoleHasNoUsers - Verificando usuarios para rol ID: ${idRole}`);
+    const count = await User.count({ where: { idRole: Number(idRole) } }); // Asegurar que sea número
     if (count > 0) {
-        return Promise.reject('No se puede eliminar el rol porque tiene usuarios asociados');
+        return Promise.reject('No se puede eliminar el rol porque tiene usuarios asociados.');
     }
+    return Promise.resolve();
 };
 
-// Valida que el usuario logueado no esté eliminando su propio rol
 const validateRoleNotAssignedToLoggedUser = async (idRole, { req }) => {
-    if (req.user && req.user.idRole && req.user.idRole == idRole) {
-        return Promise.reject('No puedes eliminar tu propio rol asignado');
+    if (req.user && req.user.idRole && Number(req.user.idRole) === Number(idRole)) {
+        console.log(`${LOG_VALIDATION_PREFIX_MW} validateRoleNotAssignedToLoggedUser - Intento de eliminar/modificar rol propio ID: ${idRole}`);
+        return Promise.reject('No puedes modificar o eliminar tu propio rol asignado de esta manera.');
     }
+    return Promise.resolve();
 };
+
+// Valida la existencia de Permisos y Privilegios, y su correcta asociación
+const validatePermissionsAndPrivilegesExistAndMatch = async (assignmentsArray, { req }) => {
+    console.log(`${LOG_VALIDATION_PREFIX_MW} validatePermissionsAndPrivilegesExistAndMatch - Validando asignaciones:`, JSON.stringify(assignmentsArray, null, 2));
+    if (!assignmentsArray || assignmentsArray.length === 0) {
+        return true; // Array vacío es válido
+    }
+
+    // Para almacenar los idPrivilege que se validaron y serán usados por el servicio
+    const validatedPrivilegeIds = [];
+
+    for (let i = 0; i < assignmentsArray.length; i++) {
+        const assignment = assignmentsArray[i];
+        const { idPrivilege, idPermission } = assignment; // idPermission puede ser opcional en el input
+
+        if (idPrivilege === undefined || !Number.isInteger(idPrivilege) || idPrivilege <= 0) {
+            return Promise.reject(`Cada asignación (índice ${i}) debe tener un 'idPrivilege' numérico positivo.`);
+        }
+
+        const privilege = await Privilege.findByPk(idPrivilege);
+        if (!privilege) {
+            return Promise.reject(`El privilegio con ID ${idPrivilege} (índice ${i}) no existe.`);
+        }
+
+        // Si se proporciona idPermission, verificar que el privilegio le pertenece
+        if (idPermission !== undefined) {
+            if (!Number.isInteger(idPermission) || idPermission <= 0) {
+                return Promise.reject(`El 'idPermission' (índice ${i}) debe ser numérico positivo si se proporciona.`);
+            }
+            const permission = await Permission.findByPk(idPermission);
+            if (!permission) {
+                return Promise.reject(`El permiso con ID ${idPermission} (índice ${i}) no existe.`);
+            }
+            if (privilege.idPermission !== idPermission) {
+                return Promise.reject(`El privilegio con ID ${idPrivilege} no pertenece al permiso con ID ${idPermission} (índice ${i}).`);
+            }
+        }
+        validatedPrivilegeIds.push({ idPrivilege: privilege.idPrivilege }); // Guardamos solo el idPrivilege para la tabla de unión
+    }
+
+    // Opcional: Modificar el req.body para que el servicio solo reciba los { idPrivilege }
+    // Esto depende de cómo tu servicio esté estructurado.
+    // Si 'assignmentsArray' es directamente req.body (como en assignPrivilegesValidation):
+    // req.body = validatedPrivilegeIds;
+    // Si 'assignmentsArray' es una propiedad de req.body (como en createRoleValidation para 'privilegeAssignments'):
+    // req.body.privilegeAssignments = validatedPrivilegeIds; // O el nombre correcto de la propiedad
+
+    return true;
+};
+
 
 // --- Middleware para manejar errores de validación ---
-// Es buena práctica tener un middleware que maneje los resultados de express-validator
 const handleValidationErrors = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        // Loguear los errores para depuración en el servidor
-        console.error("[ValidationErrorHandler] Errores de validación:", JSON.stringify(errors.array()));
-        // Puedes personalizar el formato de la respuesta
-        // Aquí un ejemplo que devuelve la primera o todas, y un mensaje genérico si es necesario
+        console.warn(`${LOG_VALIDATION_PREFIX_MW} handleValidationErrors - Errores para ${req.method} ${req.originalUrl}:`, JSON.stringify(errors.array()));
         return res.status(400).json({
             message: "Error de validación. Por favor, revise los datos enviados.",
             errors: errors.array().map(err => ({
-                field: err.param || err.path || 'general', // err.path a partir de express-validator v7
+                field: err.param || err.path || (err.nestedErrors ? err.nestedErrors[0].param : 'general'), // Para errores en arrays
                 message: err.msg,
-                value: err.value
+                value: err.value !== undefined ? err.value : null
             }))
         });
     }
@@ -103,107 +148,110 @@ const handleValidationErrors = (req, res, next) => {
 
 // --- Conjuntos de Reglas de Validación por Ruta ---
 
-// GET /role/:idRole y otras rutas que necesitan validar :idRole
 const getRoleByIdValidation = [
-    param('idRole')
-        .custom(async (value, { req }) => { // 'value' es el idRole de req.params.idRole
-            // Llama a la función de validación personalizada mejorada.
-            // No es necesario `await` aquí si `custom` maneja la promesa correctamente.
-            // express-validator esperará la promesa de validateRoleExistence.
-            return validateRoleExistence(value, { req });
-        }),
-    handleValidationErrors // Aplicar el manejador de errores después de las validaciones
+    param('idRole').custom(validateRoleExistence),
+    handleValidationErrors
 ];
 
-// POST /role (Crear)
 const createRoleValidation = [
     body('roleName')
         .trim()
-        .isLength({ min: 3, max: 50 }).withMessage('El nombre del rol debe tener entre 3 y 50 caracteres.')
-        .matches(/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚüÜ\s]+$/).withMessage('El nombre del rol solo puede contener letras, números y espacios.')
+        .isLength({ min: 2, max: 50 }).withMessage('El nombre del rol debe tener entre 2 y 50 caracteres.')
+        .matches(/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚüÜ\s'-]+$/).withMessage('El nombre del rol solo puede contener letras, números, espacios, apóstrofes y guiones.')
         .custom(validateUniqueRoleNameOnCreate),
     body('status')
         .optional()
-        .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).'),
-    body('rolePrivileges')
+        .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).')
+        .toBoolean(),
+    body('privilegeAssignments') // El servicio esperará este campo para la creación anidada
         .optional()
-        .isArray().withMessage('rolePrivileges debe ser un array si se proporciona.')
-        .custom((privileges) => {
-            if (!privileges) return true;
-            const isValid = privileges.every(p =>
+        .isArray({ min: 0 }).withMessage('privilegeAssignments debe ser un array si se proporciona.')
+        .custom((assignmentsArray) => { // Valida estructura básica
+            if (!assignmentsArray || assignmentsArray.length === 0) return true;
+            const isValid = assignmentsArray.every(p =>
                 typeof p === 'object' && p !== null &&
-                Number.isInteger(p.idPermission) && p.idPermission > 0 &&
-                Number.isInteger(p.idPrivilege) && p.idPrivilege > 0
+                p.hasOwnProperty('idPrivilege') && Number.isInteger(p.idPrivilege) && p.idPrivilege > 0 &&
+                (!p.hasOwnProperty('idPermission') || (p.idPermission === undefined || (Number.isInteger(p.idPermission) && p.idPermission > 0))) // idPermission es opcional o entero positivo
             );
             if (!isValid) {
-                throw new Error('Cada elemento en rolePrivileges debe ser un objeto con idPermission e idPrivilege como enteros positivos.');
+                throw new Error('Cada elemento en privilegeAssignments debe ser un objeto con idPrivilege (entero positivo) y opcionalmente idPermission (entero positivo o undefined).');
             }
             return true;
-        }),
+        })
+        .custom(validatePermissionsAndPrivilegesExistAndMatch), // Valida existencia y match
     handleValidationErrors
 ];
 
-// PUT /role/:idRole (Actualizar Nombre/Estado)
 const updateRoleValidation = [
-    param('idRole').custom(async (value, { req }) => validateRoleExistence(value, { req })),
+    param('idRole').custom(validateRoleExistence),
     body('roleName')
+        .optional()
         .trim()
-        .isLength({ min: 3, max: 50 }).withMessage('El nombre del rol debe tener entre 3 y 50 caracteres.')
-        .matches(/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚüÜ\s]+$/).withMessage('El nombre del rol solo puede contener letras, números y espacios.')
+        .isLength({ min: 2, max: 50 }).withMessage('El nombre del rol debe tener entre 2 y 50 caracteres.')
+        .matches(/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚüÜ\s'-]+$/).withMessage('El nombre del rol solo puede contener letras, números, espacios, apóstrofes y guiones.')
         .custom(validateUniqueRoleNameOnUpdate),
     body('status')
         .optional()
-        .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).'),
-    body('rolePrivileges')
-        .not().exists().withMessage('La actualización de privilegios se realiza a través de la ruta PUT /role/:idRole/privileges.'),
+        .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).')
+        .toBoolean(),
+    body('privilegeAssignments') // No permitir actualizar privilegios por esta ruta
+        .not().exists().withMessage('La actualización de privilegios se realiza a través de la ruta PUT /api/roles/:idRole/privileges.'),
+    body().custom((value, { req }) => {
+        if (req.body.roleName === undefined && req.body.status === undefined) {
+            throw new Error('Debe proporcionar al menos un campo para actualizar (roleName o status).');
+        }
+        return true;
+    }),
     handleValidationErrors
 ];
 
-// DELETE /role/:idRole
 const deleteRoleValidation = [
-    param('idRole').custom(async (value, { req }) => validateRoleExistence(value, { req }))
-        .custom(validateRoleHasNoUsers) // Estas se encadenan sobre el mismo param('idRole')
-        .custom(validateRoleNotAssignedToLoggedUser),
+    param('idRole').custom(validateRoleExistence)
+        .bail() // Detener si no existe
+        .custom(validateRoleHasNoUsers)
+        .bail() // Detener si tiene usuarios
+        .custom(validateRoleNotAssignedToLoggedUser), // req.user debe estar disponible
     handleValidationErrors
 ];
 
-// PATCH /role/:idRole/state (Cambiar Estado)
 const changeRoleStateValidation = [
-    param('idRole').custom(async (value, { req }) => validateRoleExistence(value, { req })),
+    param('idRole').custom(validateRoleExistence),
     body('status')
-        .exists({ checkFalsy: false }).withMessage('El campo status es requerido.')
-        .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).'),
+        .exists({ checkFalsy: false }).withMessage('El campo status es requerido (puede ser true o false).')
+        .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).')
+        .toBoolean(),
     handleValidationErrors
 ];
 
-// GET /role/:idRole/privileges
-// Esta ruta ya usa getRoleByIdValidation si así lo defines en roleRoutes.js,
-// así que no necesitas definir getRolePrivilegesValidation por separado a menos que tenga reglas distintas.
-// Si la lógica de validación para el :idRole es la misma, reutiliza getRoleByIdValidation.
-// const getRolePrivilegesValidation = getRoleByIdValidation; // Simplemente un alias si es igual
-
-// PUT /role/:idRole/privileges (Asignar/Reemplazar Privilegios)
+// Para PUT /api/roles/:idRole/privileges
+// El cuerpo de la solicitud DEBE SER un array de objetos: [{ idPrivilege: number, idPermission?: number }, ...]
 const assignPrivilegesValidation = [
-    param('idRole').custom(async (value, { req }) => validateRoleExistence(value, { req })),
-    // Asumiendo que el frontend envía el array directamente como req.body
-    body()
-        .isArray().withMessage('El cuerpo de la solicitud debe ser un array de asignaciones.')
-        .custom((privilegesArrayInBody, { req }) => {
-            if (privilegesArrayInBody.length === 0) {
-                return true; // Array vacío es válido (quita todos los permisos)
-            }
-            const isValid = privilegesArrayInBody.every(p =>
+    param('idRole').custom(validateRoleExistence),
+    body() // Validar el cuerpo entero de la solicitud como un array
+        .isArray({ min: 0 }).withMessage('El cuerpo de la solicitud debe ser un array de asignaciones (puede ser vacío para quitar todos los privilegios).')
+        .custom((assignmentsArrayInBody) => { // Valida estructura básica
+            if (assignmentsArrayInBody.length === 0) return true;
+            const isValid = assignmentsArrayInBody.every(p =>
                 typeof p === 'object' && p !== null &&
-                Number.isInteger(p.idPermission) && p.idPermission > 0 &&
-                Number.isInteger(p.idPrivilege) && p.idPrivilege > 0
+                p.hasOwnProperty('idPrivilege') && Number.isInteger(p.idPrivilege) && p.idPrivilege > 0 &&
+                (!p.hasOwnProperty('idPermission') || (p.idPermission === undefined || (Number.isInteger(p.idPermission) && p.idPermission > 0)))
             );
             if (!isValid) {
-                throw new Error('Cada elemento en el array de asignaciones debe ser un objeto con idPermission e idPrivilege como enteros positivos.');
+                throw new Error('Cada elemento en el array de asignaciones debe ser un objeto con idPrivilege (entero positivo) y opcionalmente idPermission (entero positivo o undefined).');
             }
             return true;
-        }),
+        })
+        .custom(validatePermissionsAndPrivilegesExistAndMatch), // Valida existencia y match
     handleValidationErrors
 ];
+
+// Para GET /api/roles/:idRole/privileges y GET /api/roles/:idRole/effective-permissions
+// Solo se necesita validar que el rol exista.
+const getRoleSubresourcesValidation = [
+    param('idRole').custom(validateRoleExistence),
+    handleValidationErrors
+];
+
 
 module.exports = {
     getRoleByIdValidation,
@@ -212,5 +260,5 @@ module.exports = {
     deleteRoleValidation,
     changeRoleStateValidation,
     assignPrivilegesValidation,
-    // No necesitas exportar getRolePrivilegesValidation si es igual a getRoleByIdValidation
+    getRoleSubresourcesValidation, // Usar para getRolePrivileges y getEffectivePermissionsForRole
 };

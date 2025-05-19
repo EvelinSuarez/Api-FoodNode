@@ -1,196 +1,156 @@
-// controllers/rolePrivilegesController.js (CORREGIDO - SIN DUPLICADOS)
-
+// controllers/rolePrivilegesController.js
 const { validationResult } = require("express-validator");
-// const rolePrivilegesService = require("../services/rolePrivilegesService"); // Comentado si no se usa directamente
-const RolePrivilege = require("../models/rolePrivileges"); // Importa el MODELO directamente
-const Role = require("../models/role");
-const Privilege = require("../models/privilege");
-const Permission = require("../models/permission");
+const { RolePrivilege, Role, Privilege } = require("../models"); // Asumiendo que tienes index.js exportando los modelos
+// const db = require('../models'); // Otra forma de importar si usas el db object directamente
 
-// --- Función para ASIGNAR privilegios (SOLO UNA VEZ) ---
-const assignPrivilegesToRole = async (req, res) => {
-  try {
-    const { idRole } = req.params;
-    const assignments = req.body; // Asume array [{ idPermission, idPrivilege }]
+const LOG_PREFIX_RP_CONTROLLER = "[CONTROLLER RolePrivileges]";
 
-    if (!Array.isArray(assignments)) {
-       return res.status(400).json({ message: "El cuerpo de la solicitud debe ser un array de asignaciones." });
-    }
-    const roleIdInt = parseInt(idRole, 10);
-     if (isNaN(roleIdInt)) {
-         return res.status(400).json({ message: "ID de rol inválido." });
-     }
-    const role = await Role.findByPk(roleIdInt);
-    if (!role) {
-      return res.status(404).json({ message: "Rol no encontrado" });
-    }
-
-    const transaction = await RolePrivilege.sequelize.transaction();
-    try {
-        console.log(`[Controller] Eliminando asignaciones existentes para Role ID: ${roleIdInt}`);
-        await RolePrivilege.destroy({ where: { idRole: roleIdInt }, transaction });
-
-        const newAssignments = assignments.map(item => ({
-            idRole: roleIdInt,
-            idPermission: item.idPermission,
-            idPrivilege: item.idPrivilege
-        }));
-
-        const validAssignments = [];
-        for (const item of newAssignments) {
-            if (typeof item.idPermission !== 'number' || typeof item.idPrivilege !== 'number') {
-                console.warn(`[Controller] Asignación inválida omitida (IDs no numéricos):`, item);
-                continue;
-            }
-            validAssignments.push(item);
-        }
-
-        let createdRolePrivileges = [];
-        if (validAssignments.length > 0) {
-             console.log(`[Controller] Creando ${validAssignments.length} nuevas asignaciones para Role ID: ${roleIdInt}`);
-             createdRolePrivileges = await RolePrivilege.bulkCreate(validAssignments, { transaction });
-        } else {
-             console.log(`[Controller] No hay asignaciones válidas para crear para Role ID: ${roleIdInt}`);
-        }
-
-        await transaction.commit();
-        console.log(`[Controller] Asignaciones actualizadas exitosamente para Role ID: ${roleIdInt}`);
-        res.status(200).json({
-          message: "Privilegios y permisos asignados/actualizados con éxito",
-          rolePrivileges: createdRolePrivileges
-        });
-
-    } catch (error) {
-        await transaction.rollback();
-        console.error("Error durante la transacción de asignación:", error);
-        res.status(500).json({ message: "Error interno al actualizar asignaciones." });
-    }
-
-  } catch (error) {
-    console.error("Error general al asignar privilegios:", error);
-    res.status(400).json({ message: error.message || "Error inesperado al procesar la solicitud." });
-  }
-};
-
-// --- Función para OBTENER asignaciones de un rol ---
-const getRoleAssignments = async (req, res) => {
-  try {
-      const roleIdFromParams = req.params.idRole; // <--- USA idRole consistentemente con tu ruta
-      console.log(`[Controller] Solicitud GET /role/${roleIdFromParams}/privileges (getRoleAssignments) recibida.`);
-
-      // El middleware 'getRoleByIdValidation' ya debería haber validado que idRole es un número
-      // y que el rol existe. Si llegamos aquí, se asume que es válido.
-      // No obstante, una conversión y verificación no hace daño, pero la validación primaria ya sucedió.
-      const roleIdInt = parseInt(roleIdFromParams, 10);
-
-      if (isNaN(roleIdInt)) {
-          // Esto no debería ocurrir si getRoleByIdValidation funcionó,
-          // pero es una salvaguarda.
-          console.warn(`[Controller] ID de rol ${roleIdFromParams} no es numérico después de la validación (inesperado).`);
-          return res.status(400).json({ message: "Error interno: ID de rol no numérico después de validación." });
-      }
-
-      console.log(`[Controller] Buscando asignaciones para Rol ID ${roleIdInt}`);
-      const assignments = await RolePrivilege.findAll({ // Asegúrate que RolePrivilege es tu modelo Sequelize
-          where: { idRole: roleIdInt },
-          attributes: ['idPrivilegedRole', 'idRole', 'idPermission', 'idPrivilege'] // Ajusta atributos si es necesario
-      });
-      console.log(`[Controller] Asignaciones encontradas para Rol ID ${roleIdInt}: ${assignments.length}.`);
-      res.status(200).json(assignments); // Devuelve array vacío si no hay asignaciones (lo cual es correcto)
-
-  } catch (error) {
-      console.error(`❌ [Controller] Error en getRoleAssignments para rol ${req.params.idRole}:`, error);
-      res.status(500).json({ message: 'Error interno al obtener las asignaciones del rol.' });
-  }
-};
-
-
-// --- Otras funciones CRUD (Mantenlas si las usas en tus rutas) ---
-
+// GET /api/roleprivileges
 const getAllRolePrivileges = async (req, res) => {
+  console.log(`${LOG_PREFIX_RP_CONTROLLER} getAllRolePrivileges - Solicitado.`);
   try {
-    // Asume que rolePrivilegesService existe y funciona o reemplaza con lógica directa si es necesario
-    const rolePrivileges = await RolePrivilege.findAll(); // Ejemplo directo
+    const rolePrivileges = await RolePrivilege.findAll({
+        include: [ // Es útil incluir los nombres para entender qué se asignó
+            { model: Role, as: 'role', attributes: ['idRole', 'roleName'] },
+            {
+                model: Privilege,
+                as: 'privilege',
+                attributes: ['idPrivilege', 'privilegeName', 'privilegeKey'],
+                // Opcionalmente, incluir el Permiso al que pertenece este Privilegio
+                // include: [{ model: db.Permission, as: 'permission', attributes: ['idPermission', 'permissionName', 'permissionKey'] }]
+            }
+        ]
+    });
     res.status(200).json(rolePrivileges);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(`${LOG_PREFIX_RP_CONTROLLER} getAllRolePrivileges - Error:`, error);
+    res.status(500).json({ message: "Error al obtener todas las asignaciones de rol-privilegio.", error: error.message });
   }
 };
 
+// GET /api/roleprivileges/:idRolePrivilege
 const getRolePrivilegeById = async (req, res) => {
-  const errors = validationResult(req);
+  const { idRolePrivilege } = req.params;
+  console.log(`${LOG_PREFIX_RP_CONTROLLER} getRolePrivilegeById - Solicitado para ID: ${idRolePrivilege}`);
+  const errors = validationResult(req); // Asumiendo que tienes una validación para el ID
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
   try {
-    // Asume que rolePrivilegesService existe y funciona o reemplaza con lógica directa si es necesario
-    const rolePrivilege = await RolePrivilege.findByPk(req.params.idRolePrivilege); // Ejemplo directo
+    const rolePrivilege = await RolePrivilege.findByPk(idRolePrivilege, {
+        include: [
+            { model: Role, as: 'role', attributes: ['idRole', 'roleName'] },
+            { model: Privilege, as: 'privilege', attributes: ['idPrivilege', 'privilegeName', 'privilegeKey'] }
+        ]
+    });
     if (!rolePrivilege) {
-        return res.status(404).json({ message: 'Asignación no encontrada'});
+      return res.status(404).json({ message: 'Asignación rol-privilegio no encontrada.' });
     }
     res.status(200).json(rolePrivilege);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(`${LOG_PREFIX_RP_CONTROLLER} getRolePrivilegeById - Error para ID ${idRolePrivilege}:`, error);
+    res.status(500).json({ message: "Error al obtener la asignación rol-privilegio.", error: error.message });
   }
 };
 
+// POST /api/roleprivileges (Crea UNA entrada)
+// Body: { idRole, idPrivilege }
 const createRolePrivilege = async (req, res) => {
-  const errors = validationResult(req);
+  console.log(`${LOG_PREFIX_RP_CONTROLLER} createRolePrivilege - Solicitado. Body:`, JSON.stringify(req.body, null, 2));
+  const errors = validationResult(req); // Validación para idRole, idPrivilege, y unicidad
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
+  const { idRole, idPrivilege } = req.body; // Solo estos dos campos son necesarios
   try {
-    // Asume que rolePrivilegesService existe y funciona o reemplaza con lógica directa si es necesario
-    const rolePrivilege = await RolePrivilege.create(req.body); // Ejemplo directo
-    res.status(201).json(rolePrivilege);
+    // La validación (que te ayudaré a crear luego) debe verificar:
+    // 1. Que idRole existe en la tabla Roles.
+    // 2. Que idPrivilege existe en la tabla Privileges.
+    // 3. Que la combinación (idRole, idPrivilege) no exista ya en RolePrivileges.
+
+    const newRolePrivilege = await RolePrivilege.create({ idRole, idPrivilege });
+    res.status(201).json(newRolePrivilege);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(`${LOG_PREFIX_RP_CONTROLLER} createRolePrivilege - Error:`, error);
+    if (error.name === 'SequelizeUniqueConstraintError') {
+        return res.status(409).json({ message: "Esta combinación de rol y privilegio ya existe.", details: error.errors });
+    }
+    // Errores de FK (si un idRole o idPrivilege no existe) también pueden ocurrir
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+        return res.status(400).json({ message: "El rol o privilegio especificado no existe.", field: error.fields });
+    }
+    res.status(500).json({ message: "Error al crear la asignación rol-privilegio.", error: error.message });
   }
 };
 
+// PUT /api/roleprivileges/:idRolePrivilege
+// Body: { idRole, idPrivilege } (si se permite cambiar la asignación)
 const updateRolePrivilege = async (req, res) => {
+  const { idRolePrivilege } = req.params;
+  console.log(`${LOG_PREFIX_RP_CONTROLLER} updateRolePrivilege - Solicitado para ID: ${idRolePrivilege}. Body:`, JSON.stringify(req.body, null, 2));
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
+
+  const { idRole, idPrivilege } = req.body; // Campos que se pueden actualizar
+
+  // Validar que no se pueda actualizar a una combinación existente (idRole, idPrivilege)
+  // que no sea la actual entrada que se está modificando.
+  // Esta validación es un poco más compleja.
+
   try {
-    // Asume que rolePrivilegesService existe y funciona o reemplaza con lógica directa si es necesario
-    const [updated] = await RolePrivilege.update(req.body, { where: { idPrivilegedRole: req.params.idRolePrivilege } }); // Ejemplo directo
-    if (updated) {
-        res.status(204).end();
+    const [updatedCount] = await RolePrivilege.update({ idRole, idPrivilege }, {
+      where: { idPrivilegedRole: idRolePrivilege }
+    });
+
+    if (updatedCount > 0) {
+      const updatedRolePrivilege = await RolePrivilege.findByPk(idRolePrivilege);
+      res.status(200).json(updatedRolePrivilege);
     } else {
-        res.status(404).json({ message: 'Asignación no encontrada para actualizar'});
+      res.status(404).json({ message: 'Asignación rol-privilegio no encontrada para actualizar.' });
     }
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(`${LOG_PREFIX_RP_CONTROLLER} updateRolePrivilege - Error para ID ${idRolePrivilege}:`, error);
+    if (error.name === 'SequelizeUniqueConstraintError') {
+        return res.status(409).json({ message: "Esta combinación de rol y privilegio ya está en uso por otra asignación.", details: error.errors });
+    }
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+        return res.status(400).json({ message: "El nuevo rol o privilegio especificado no existe.", field: error.fields });
+    }
+    res.status(500).json({ message: "Error al actualizar la asignación rol-privilegio.", error: error.message });
   }
 };
 
+// DELETE /api/roleprivileges/:idRolePrivilege
 const deleteRolePrivilege = async (req, res) => {
+  // ... (sin cambios importantes aquí, parece correcto)
+  const { idRolePrivilege } = req.params;
+  console.log(`${LOG_PREFIX_RP_CONTROLLER} deleteRolePrivilege - Solicitado para ID: ${idRolePrivilege}`);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
   try {
-    // Asume que rolePrivilegesService existe y funciona o reemplaza con lógica directa si es necesario
-    const deleted = await RolePrivilege.destroy({ where: { idPrivilegedRole: req.params.idRolePrivilege } }); // Ejemplo directo
-     if (deleted) {
-        res.status(204).end();
+    const deletedCount = await RolePrivilege.destroy({
+      where: { idPrivilegedRole: idRolePrivilege }
+    });
+    if (deletedCount > 0) {
+      res.status(204).end();
     } else {
-        res.status(404).json({ message: 'Asignación no encontrada para eliminar'});
+      res.status(404).json({ message: 'Asignación rol-privilegio no encontrada para eliminar.' });
     }
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error(`${LOG_PREFIX_RP_CONTROLLER} deleteRolePrivilege - Error para ID ${idRolePrivilege}:`, error);
+    res.status(500).json({ message: "Error al eliminar la asignación rol-privilegio.", error: error.message });
   }
 };
 
-// --- Exporta las funciones necesarias (SIN DUPLICADOS) ---
+
 module.exports = {
-  getAllRolePrivileges,     // Si la usas
-  getRolePrivilegeById,     // Si la usas
-  createRolePrivilege,    // Si la usas
-  updateRolePrivilege,    // Si la usas
-  deleteRolePrivilege,    // Si la usas
-  assignPrivilegesToRole, // La función de asignar (una sola vez)
-  getRoleAssignments,     // La nueva función para obtener asignaciones
+  getAllRolePrivileges,
+  getRolePrivilegeById,
+  createRolePrivilege,
+  updateRolePrivilege,
+  deleteRolePrivilege,
 };
