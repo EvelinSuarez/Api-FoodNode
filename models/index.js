@@ -36,7 +36,7 @@ Product.hasMany(SpecSheet, { foreignKey: 'idProduct', as: 'specSheets' });
 SpecSheet.belongsTo(Product, { foreignKey: 'idProduct', as: 'product' });
 
 // SpecSheet <-> ProductSheet (Ingredientes de la Ficha)
-SpecSheet.hasMany(ProductSheet, { foreignKey: 'idSpecSheet', as: 'ProductSheets' }); // o 'productSheetItems'
+SpecSheet.hasMany(ProductSheet, { foreignKey: 'idSpecSheet', as: 'ingredients' }); // o 'productSheetItems'
 ProductSheet.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheet' });
 
 // Supplier <-> ProductSheet (Proveedor del Ingrediente)

@@ -33,8 +33,46 @@ const getAllSpecSheets = async () => {
 };
 
 const getSpecSheetById = async (idSpecsheet) => {
-  return SpecSheet.findByPk(idSpecsheet);
+  try {
+    const sheet = await SpecSheet.findByPk(idSpecsheet, {
+      include: [
+        {
+          model: require("../models/Product"), // Usar el modelo importado
+          as: "product", // Alias definido en la asociación SpecSheet.belongsTo(Product)
+          attributes: ["productName", "idProduct"],
+        },
+        {
+          model: require("../models/productSheet"), // Usar el modelo importado
+          as: "ingredients", // CAMBIAR ALIAS A 'ingredients' para que coincida con el frontend
+                              // Este alias debe coincidir con SpecSheet.hasMany(ProductSheet, { as: 'ingredients', ... })
+          attributes: ["idProductSheet", "quantity", "measurementUnit"], // Incluye los atributos que necesitas de ProductSheet
+          include: [
+            {
+              model: require("../models/supplier"), // Usar el modelo importado
+              as: "supplier", // Alias definido en la asociación ProductSheet.belongsTo(Supplier)
+              attributes: ["supplierName", "idSupplier"],
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!sheet) {
+      return null; // O lanzar un error si prefieres
+    }
+
+    // No es necesario un formateo complejo aquí si los 'includes' y 'attributes' están bien definidos.
+    // Sequelize anidará los objetos correctamente.
+    // El frontend accederá a los ingredientes como sheet.ingredients
+    // y dentro de cada ingrediente: ing.quantity, ing.measurementUnit, ing.supplier.idSupplier, ing.supplier.supplierName
+
+    return sheet.toJSON(); // Convertir a JSON plano es buena práctica
+  } catch (error) {
+    console.error(`Error al obtener ficha técnica por ID ${idSpecsheet}:`, error);
+    throw error;
+  }
 };
+
 
 const updateSpecSheet = async (idSpecsheet, specSheet) => {
   return SpecSheet.update(specSheet, { where: { idSpecsheet } });
@@ -82,12 +120,12 @@ const getSpecSheetsByProduct = async (idProduct) => {
         },
         {
           model: require("../models/productSheet"),
-          as: "ProductSheets", // <--- Asegúrate que este alias coincida con el definido en SpecSheet.hasMany 
+          as: "ingredients", // <--- Asegúrate que este alias coincida con el definido en SpecSheet.hasMany 
           include: [
             {
               model: require("../models/supplier"),
               as: "supplier",
-              attributes: ["supplierName", "idSupplier"],
+              attributes: ["supplierName", "idSupplier","measurementUnit"],
             },
           ],
         },

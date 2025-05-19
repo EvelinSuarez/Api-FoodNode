@@ -23,6 +23,7 @@ const ProductSheet = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+  
   },
   {
     tableName: "productSheets",
