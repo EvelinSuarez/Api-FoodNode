@@ -257,6 +257,9 @@ if (Role && User) {
     Role.hasMany(User, { foreignKey: 'idRole', as: 'users' });
     User.belongsTo(Role, { foreignKey: 'idRole', as: 'role' });
 }
+// SpecSheet <-> ProductSheet (Ingredientes de la Ficha)
+SpecSheet.hasMany(ProductSheet, { foreignKey: 'idSpecSheet', as: 'ingredients' }); // o 'productSheetItems'
+ProductSheet.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheet' });
 
 // ***** LA ASOCIACIÓN CRÍTICA FALTANTE *****
 if (Permission && Privilege) {
