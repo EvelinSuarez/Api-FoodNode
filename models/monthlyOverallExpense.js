@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const ConceptSpent = require('./conceptSpent'); // Suponiendo que ConceptSpent es el modelo relacionado con idExpenseType
+const ExpenseType = require('./ExpenseType'); // Referencia al modelo ExpenseType renombrado
 
 const MonthlyOverallExpense = sequelize.define('MonthlyOverallExpense', {
     idOverallMonth: {
@@ -8,20 +8,20 @@ const MonthlyOverallExpense = sequelize.define('MonthlyOverallExpense', {
         primaryKey: true,
         autoIncrement: true
     },
-    idExpenseType: {
+    idExpenseType: { // FK al TIPO DE GASTO GENERAL (ej: "Mano de Obra")
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: ConceptSpent,
-            key: 'idExpenseType'
+            model: ExpenseType, // Referencia al modelo ExpenseType
+            key: 'idExpenseType' // A la PK de ExpenseType
         }
     },
     dateOverallExp: {
-        type: DataTypes.DATE,  // or DataTypes.DATEONLY
-        allowNull: true
+        type: DataTypes.DATEONLY, // Mejor DATEONLY si no necesitas hora
+        allowNull: false // Debería ser no nulo
     },
-    valueExpense: {
-        type: DataTypes.INTEGER,
+    valueExpense: { // Este será la SUMA de los 'price' de todos los MonthlyExpenseItem asociados
+        type: DataTypes.DECIMAL(12, 2), // Usa DECIMAL o FLOAT para dinero
         allowNull: false
     },
     novelty_expense: {
@@ -32,10 +32,12 @@ const MonthlyOverallExpense = sequelize.define('MonthlyOverallExpense', {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     }
+}, {
+    tableName: 'monthly_overall_expense'
 });
 
-// Relación con el modelo ConceptSpent (suponiendo que existe un modelo ConceptSpent)
-MonthlyOverallExpense.belongsTo(ConceptSpent, { foreignKey: 'idExpenseType' });
-ConceptSpent.hasMany(MonthlyOverallExpense, { foreignKey: 'idExpenseType' });
+// Relación con ExpenseType (el tipo general del gasto mensual)
+MonthlyOverallExpense.belongsTo(ExpenseType, { foreignKey: 'idExpenseType', as: 'generalExpenseType' });
+ExpenseType.hasMany(MonthlyOverallExpense, { foreignKey: 'idExpenseType', as: 'monthlyRecords' });
 
 module.exports = MonthlyOverallExpense;

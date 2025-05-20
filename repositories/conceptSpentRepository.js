@@ -1,34 +1,60 @@
-const ConceptSpent = require('../models/conceptSpent');
+// repositories/conceptSpentRepository.js (NUEVO - para conceptos específicos)
+const ConceptSpent = require('../models/ConceptSpent'); // El NUEVO modelo
+const ExpenseType = require('../models/ExpenseType');   // Para include
+const { Op } = require('sequelize');
 
-const createConceptSpent = async (conceptSpent) => {
-    return ConceptSpent.create(conceptSpent);
-}
+const create = async (data) => {
+    return ConceptSpent.create(data);
+};
 
-const getAllConceptSpents = async () => {
-    return ConceptSpent.findAll();
-}
+const findAll = async (filters = {}) => {
+    const whereClause = {};
+    if (filters.idExpenseType) {
+        whereClause.idExpenseType = filters.idExpenseType;
+    }
+    if (filters.status !== undefined) {
+        whereClause.status = filters.status;
+    }
+    if (filters.requiresEmployeeCalculation !== undefined) {
+        whereClause.requiresEmployeeCalculation = filters.requiresEmployeeCalculation;
+    }
 
-const getConceptSpentById = async (idExpenseType) => {
-    return ConceptSpent.findByPk(idExpenseType);
-}
+    return ConceptSpent.findAll({
+        where: whereClause,
+        include: [{
+            model: ExpenseType,
+            as: 'expenseType', // Alias de la relación en el modelo ConceptSpent
+            attributes: ['idExpenseType', 'name']
+        }],
+        order: [
+            [ExpenseType, 'name', 'ASC'], // Ordenar por nombre del tipo general
+            ['name', 'ASC']                // Luego por nombre del concepto específico
+        ]
+    });
+};
 
-const updateConceptSpent = async (idExpenseType, conceptSpent) => {
-    return ConceptSpent.update(conceptSpent, { where: { idExpenseType } });
-}
+const findById = async (idConceptSpent) => {
+    return ConceptSpent.findByPk(idConceptSpent, {
+        include: [{
+            model: ExpenseType,
+            as: 'expenseType',
+            attributes: ['idExpenseType', 'name']
+        }]
+    });
+};
 
-const deleteConceptSpent = async (idExpenseType) => {
-    return ConceptSpent.destroy({ where: { idExpenseType } });
-}
+const update = async (idConceptSpent, data) => {
+    return ConceptSpent.update(data, { where: { idConceptSpent } });
+};
 
-const changeStateConceptSpent = async (idExpenseType, status) => {
-    return ConceptSpent.update({ status }, { where: { idExpenseType } });
-}
+const deleteById = async (idConceptSpent) => {
+    return ConceptSpent.destroy({ where: { idConceptSpent } });
+};
 
 module.exports = {
-    createConceptSpent,
-    getAllConceptSpents,
-    getConceptSpentById,
-    updateConceptSpent,
-    deleteConceptSpent,
-    changeStateConceptSpent,
+    create,
+    findAll,
+    findById,
+    update,
+    deleteById,
 };
