@@ -1,30 +1,22 @@
-// services/authService.js
-
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs"); // Estás usando bcryptjs, lo cual está bien.
+const jwt = require("jsonwebtoken"); // ¡CORREGIDO AQUÍ!
 const nodemailer = require('nodemailer');
-const User = require("../models/user");
-const Role = require("../models/role");
+const User = require("../models/user"); // Ajusta si la exportación es directa (ej. si es module.exports = UserDefinition)
+const Role = require("../models/role");   // Ajusta si la exportación es directa
 
-// ¡IMPORTANTE! Asegúrate de que esta sea la función que devuelve un array de objetos:
-// [{ permissionKey: '...', privilegeKey: '...' }, ...]
-// Y NO la que devuelve ['modulo-accion', ...]
-// Si la renombraste o tienes dos versiones en rolePrivilegesRepository, usa la correcta aquí.
-// Basado en tu rolePrivilegesRepository.js anterior, la función que hace esto se llamaba getEffectiveKeysByRoleId
-// y la que usa el middleware authorize (que devuelve ['modulo-accion']) la exportaste como findByRoleId.
-const { getEffectiveKeysByRoleId } = require('../repositories/rolePrivilegesRepository');
-// Si renombraste getEffectiveKeysByRoleId a algo más o necesitas una función diferente del repo, ajústalo.
+// Asegúrate que esta función devuelve: [{ permissionKey: 'roles', privilegeKey: 'view' }, ...]
+const { getEffectiveKeysByRoleId } = require('../repositories/rolePrivilegesRepository'); // Verifica esta ruta
 
 require("dotenv").config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h'; // Cambiado a 1h como sugerencia, puedes ajustarlo
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 
 if (!JWT_SECRET) {
-  console.error("❌ ERROR CRÍTICO: JWT_SECRET no está definido.");
-  // process.exit(1); // Considera el impacto si descomentas
+  console.error("❌ ERROR CRÍTICO: JWT_SECRET no está definido en las variables de entorno.");
+  // Considera terminar el proceso si es crítico para la seguridad: process.exit(1);
 }
 if (!EMAIL_USER || !EMAIL_PASS) {
   console.warn("⚠️ ADVERTENCIA: EMAIL_USER o EMAIL_PASS no están definidos. La función de olvido de contraseña no podrá enviar correos.");
@@ -38,39 +30,35 @@ const login = async (email, password) => {
     console.log(`[AuthService BE] Intentando login para email: ${email}`);
     const user = await User.findOne({
       where: { email },
-      include: [{ model: Role, as: 'role', attributes: ['idRole', 'roleName'] }] // Especificar atributos del rol
+      include: [{ model: Role, as: 'role', attributes: ['idRole', 'roleName'] }]
     });
 
     if (!user) {
       console.warn(`[AuthService BE] Login fallido: Usuario no encontrado para email ${email}`);
-      throw new Error("Credenciales inválidas.");
+      throw new Error("Credenciales inválidas o usuario no registrado.");
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       console.warn(`[AuthService BE] Login fallido: Contraseña incorrecta para email ${email}`);
-      throw new Error("Credenciales inválidas.");
+      throw new Error("Credenciales inválidas o usuario no registrado.");
     }
 
     if (!user.status) {
         console.warn(`[AuthService BE] Login fallido: Usuario inactivo para email ${email}`);
-        throw new Error('La cuenta de usuario está inactiva.');
+        throw new Error('Su cuenta de usuario se encuentra inactiva. Contacte al administrador.');
     }
-    console.log(`[AuthService BE] Usuario ${email} autenticado correctamente.`);
+    console.log(`[AuthService BE] Usuario ${email} autenticado correctamente (ID: ${user.idUsers}, RoleID: ${user.idRole}).`);
 
-    // --- Lógica de Permisos para el Frontend ---
-    // Esta lógica construye el objeto { modulo: [accion1, accion2], ... }
+    // --- Lógica de Permisos Efectivos para el Frontend (incluida en la respuesta del login) ---
     let effectivePermissionsForFrontend = {};
     if (user.idRole) {
         try {
-            console.log(`[AuthService BE] Obteniendo claves de permisos (obj {pKey, privKey}) para Role ID: ${user.idRole}`);
-            // Asegúrate que getEffectiveKeysByRoleId devuelve [{permissionKey: '...', privilegeKey: '...'}, ...]
+            console.log(`[AuthService BE] Obteniendo permisos efectivos (formato frontend) para Role ID: ${user.idRole}`);
             const permissionObjectsArray = await getEffectiveKeysByRoleId(user.idRole);
-            // console.log("[AuthService BE] Objetos de permisos recibidos del Repo:", JSON.stringify(permissionObjectsArray, null, 2));
 
             if (Array.isArray(permissionObjectsArray)) {
                 permissionObjectsArray.forEach(permObject => {
-                    // permObject es { permissionKey: 'roles', privilegeKey: 'view' }
                     const pKey = permObject.permissionKey;
                     const privKey = permObject.privilegeKey;
 
@@ -82,50 +70,48 @@ const login = async (email, password) => {
                             effectivePermissionsForFrontend[pKey].push(privKey);
                         }
                     } else {
-                        console.warn("[AuthService BE] Objeto de permiso del repositorio incompleto:", permObject);
+                        console.warn("[AuthService BE] (login) Objeto de permiso del repositorio incompleto:", permObject);
                     }
                 });
             } else {
-                console.warn(`[AuthService BE] getEffectiveKeysByRoleId no devolvió un array para Role ID ${user.idRole}. Recibido:`, permissionObjectsArray);
+                console.warn(`[AuthService BE] (login) getEffectiveKeysByRoleId no devolvió un array para Role ID ${user.idRole}. Recibido:`, permissionObjectsArray);
             }
-            console.log("[AuthService BE] Permisos finales para el frontend:", JSON.stringify(effectivePermissionsForFrontend));
+            console.log("[AuthService BE] (login) Permisos para el frontend construidos:", JSON.stringify(effectivePermissionsForFrontend));
         } catch (permError) {
-            console.error(`[AuthService BE] Error obteniendo/procesando permisos para Role ID ${user.idRole}:`, permError);
-            effectivePermissionsForFrontend = {}; // Dejar vacío en caso de error
+            console.error(`[AuthService BE] (login) Error obteniendo/procesando permisos para Role ID ${user.idRole}:`, permError);
+            effectivePermissionsForFrontend = {};
         }
     } else {
-        console.warn(`[AuthService BE] Usuario ${email} no tiene idRole asignado.`);
+        console.warn(`[AuthService BE] (login) Usuario ${email} no tiene idRole asignado. No se cargarán permisos específicos.`);
     }
     // --- Fin Lógica de Permisos ---
 
     const payload = {
-        id: user.idUsers, // Asegúrate que es idUsers o el nombre correcto de tu PK
+        id: user.idUsers,
         email: user.email,
         idRole: user.idRole
     };
+    // Ahora jwt.sign debería funcionar porque jwt es el objeto de la librería jsonwebtoken
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     console.log(`[AuthService BE] Token JWT generado para ${email}`);
 
-    // El objeto user que se envía al frontend debe tener el formato que espera AuthProvider.jsx
     return {
-      user: { // Este es el objeto que AuthProvider.jsx usará
+      token: token,
+      user: {
         id: user.idUsers,
         email: user.email,
         full_name: user.full_name,
-        // El rol anidado es útil, pero AuthProvider.jsx usa user.idRole directamente para los permisos
-        role: user.role ? { id: user.role.idRole, name: user.role.roleName } : null,
-        idRole: user.idRole, // Asegúrate que esta propiedad exista y sea el ID del rol
-        // effectivePermissions NO se envía desde aquí al AuthProvider. AuthProvider lo carga por separado.
+        idRole: user.idRole,
+        role: user.role ? { idRole: user.role.idRole, roleName: user.role.roleName } : null,
+        status: user.status
+        // Añade aquí otros campos del usuario que necesites en el frontend:
+        // document_type: user.document_type,
+        // document: user.document,
+        // cellphone: user.cellphone,
       },
-      token: token,
-      // Los permisos se envían por separado si el frontend los pide directamente en login,
-      // o el frontend los pide a /effective-permissions después.
-      // Si tu AuthProvider actual carga los permisos desde un endpoint separado, no necesitas enviarlos aquí.
-      // Si el frontend espera `effectivePermissions` como parte de la respuesta del login, descomenta y usa:
-      // effectivePermissions: effectivePermissionsForFrontend,
+      effectivePermissions: effectivePermissionsForFrontend,
     };
 };
-
 
 const forgotPasswordService = async (email) => {
     console.log(`[AuthService BE] Solicitud de olvido de contraseña para: ${email}`);
@@ -137,7 +123,7 @@ const forgotPasswordService = async (email) => {
     const user = await User.findOne({ where: { email } });
     if (!user) {
         console.warn(`[AuthService BE] forgotPassword: Usuario no encontrado para ${email}.`);
-        throw new Error('No se encontró un usuario con ese correo electrónico.');
+        throw new Error('Si el correo está registrado y activo, se enviará un código de recuperación.');
     }
     if (!user.status) {
         console.warn(`[AuthService BE] forgotPassword: Cuenta inactiva para ${email}.`);
@@ -150,26 +136,35 @@ const forgotPasswordService = async (email) => {
     user.resetCode = code;
     user.resetCodeExp = expiration;
     await user.save();
-    console.log(`[AuthService BE] Código de reseteo ${code} generado y guardado para ${email}. Expira: ${expiration.toISOString()}`);
+    console.log(`[AuthService BE] Código de reseteo ${code} generado para ${email}. Expira: ${expiration.toISOString()}`);
 
     try {
         const transporter = nodemailer.createTransport({
-            service: 'Gmail',
+            service: 'Gmail', // o tu proveedor de email (ej. SendGrid, Mailgun)
             auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         });
 
         await transporter.sendMail({
-            from: `"Soporte App" <${EMAIL_USER}>`,
+            from: `"Soporte NombreApp" <${EMAIL_USER}>`, // Personaliza "NombreApp"
             to: user.email,
-            subject: 'Código para Restablecer Contraseña',
-            html: `<p>Hola,</p><p>Usa el siguiente código para restablecer tu contraseña:</p><h2>${code}</h2><p>Expira en 10 minutos.</p><p>Si no solicitaste esto, ignora este mensaje.</p>`,
+            subject: 'Restablecimiento de Contraseña - NombreApp', // Personaliza
+            html: `<div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                     <h2>Restablecimiento de Contraseña</h2>
+                     <p>Hola ${user.full_name || 'usuario'},</p>
+                     <p>Has solicitado restablecer tu contraseña para tu cuenta en NombreApp. Usa el siguiente código de verificación:</p>
+                     <p style="font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 2px; margin: 20px 0; padding: 10px; background-color: #f0f0f0; border-radius: 5px;">${code}</p>
+                     <p>Este código es válido por 10 minutos.</p>
+                     <p>Si no solicitaste este cambio, por favor ignora este correo electrónico. Tu contraseña permanecerá sin cambios.</p>
+                     <p>Saludos,<br>El equipo de NombreApp</p>
+                   </div>`,
         });
-        console.log(`[AuthService BE] Email de recuperación enviado exitosamente a ${email}`);
-        return { message: 'Código de verificación enviado al correo.' };
+        console.log(`[AuthService BE] Email de recuperación enviado a ${email}`);
+        return { message: 'Se ha enviado un código de verificación a tu correo electrónico.' };
 
     } catch (mailError) {
-        console.error(`[AuthService BE] Error enviando email a ${email}:`, mailError);
-        throw new Error('Error interno al intentar enviar el correo de recuperación.');
+        console.error(`[AuthService BE] Error enviando email de recuperación a ${email}:`, mailError);
+        // Aunque el email falle, el código se generó. Podrías tener un mecanismo de reintento o notificar al admin.
+        throw new Error('Error interno al intentar enviar el correo de recuperación. Por favor, inténtalo de nuevo más tarde.');
     }
 };
 
@@ -178,16 +173,19 @@ const verifyCodeService = async (email, code, newPassword) => {
     const user = await User.findOne({ where: { email } });
     if (!user) {
         console.warn(`[AuthService BE] verifyCode: Usuario no encontrado para ${email}`);
-        throw new Error('Error al verificar: Usuario no encontrado.');
+        throw new Error('Usuario no encontrado o código incorrecto.');
     }
 
     const now = new Date();
     if (user.resetCode !== code || !user.resetCodeExp || new Date(user.resetCodeExp) < now) {
-        console.warn(`[AuthService BE] verifyCode: Código inválido o expirado para ${email}. Código ingresado: ${code}, Código DB: ${user.resetCode}, Expiración DB: ${user.resetCodeExp}`);
-        throw new Error('El código de verificación es inválido o ha expirado.');
+        console.warn(`[AuthService BE] verifyCode: Código inválido o expirado para ${email}.`);
+        user.resetCode = null; // Limpiar código inválido/expirado para evitar reintentos con el mismo
+        user.resetCodeExp = null;
+        await user.save();
+        throw new Error('El código de verificación es inválido, ha expirado o ya fue utilizado.');
     }
 
-    console.log(`[AuthService BE] Código ${code} verificado correctamente para ${email}. Actualizando contraseña...`);
+    console.log(`[AuthService BE] Código ${code} verificado para ${email}. Actualizando contraseña...`);
     user.password = newPassword; // El hook 'beforeUpdate' del modelo User se encargará del hash
     user.resetCode = null;
     user.resetCodeExp = null;
@@ -195,23 +193,23 @@ const verifyCodeService = async (email, code, newPassword) => {
     await user.save();
     console.log(`[AuthService BE] Contraseña actualizada y código limpiado para ${email}`);
 
-    return { message: 'Contraseña restablecida exitosamente.' };
+    return { message: 'Tu contraseña ha sido restablecida exitosamente.' };
 };
 
-// Función para obtener los permisos efectivos para un rol específico (para el endpoint /effective-permissions)
 const getEffectivePermissionsForRole = async (roleId) => {
-    console.log(`[AuthService BE] Obteniendo permisos efectivos para frontend para Role ID: ${roleId}`);
+    console.log(`[AuthService BE] (Endpoint) Obteniendo permisos efectivos (formato frontend) para Role ID: ${roleId}`);
     let effectivePermissionsForFrontend = {};
+    if (!roleId) {
+        console.warn("[AuthService BE] (Endpoint) Se requiere roleId para getEffectivePermissionsForRole.");
+        return {};
+    }
     try {
-        // Usa la misma función del repositorio que devuelve [{permissionKey: '...', privilegeKey: '...'}, ...]
         const permissionObjectsArray = await getEffectiveKeysByRoleId(roleId);
-        // console.log("[AuthService BE] (getEffectivePermissionsForRole) Objetos de permisos recibidos del Repo:", JSON.stringify(permissionObjectsArray, null, 2));
 
         if (Array.isArray(permissionObjectsArray)) {
             permissionObjectsArray.forEach(permObject => {
                 const pKey = permObject.permissionKey;
                 const privKey = permObject.privilegeKey;
-
                 if (pKey && privKey) {
                     if (!effectivePermissionsForFrontend[pKey]) {
                         effectivePermissionsForFrontend[pKey] = [];
@@ -219,25 +217,20 @@ const getEffectivePermissionsForRole = async (roleId) => {
                     if (!effectivePermissionsForFrontend[pKey].includes(privKey)) {
                         effectivePermissionsForFrontend[pKey].push(privKey);
                     }
-                } else {
-                    console.warn("[AuthService BE] (getEffectivePermissionsForRole) Objeto de permiso del repositorio incompleto:", permObject);
                 }
             });
-        } else {
-            console.warn(`[AuthService BE] (getEffectivePermissionsForRole) getEffectiveKeysByRoleId no devolvió un array para Role ID ${roleId}. Recibido:`, permissionObjectsArray);
         }
-        console.log("[AuthService BE] (getEffectivePermissionsForRole) Permisos finales para el frontend:", JSON.stringify(effectivePermissionsForFrontend));
+        console.log("[AuthService BE] (Endpoint) Permisos construidos para Role ID "+ roleId +":", JSON.stringify(effectivePermissionsForFrontend));
         return effectivePermissionsForFrontend;
     } catch (permError) {
-        console.error(`[AuthService BE] (getEffectivePermissionsForRole) Error obteniendo/procesando permisos para Role ID ${roleId}:`, permError);
-        return {}; // Devolver objeto vacío en caso de error
+        console.error(`[AuthService BE] (Endpoint) Error obteniendo/procesando permisos para Role ID ${roleId}:`, permError);
+        return {};
     }
 };
-
 
 module.exports = {
     login,
     forgotPasswordService,
     verifyCodeService,
-    getEffectivePermissionsForRole // <-- Exportar la nueva función
+    getEffectivePermissionsForRole
 };
