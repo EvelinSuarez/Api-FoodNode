@@ -33,15 +33,52 @@ const {
 
 // Product <-> SpecSheet (Relación Uno-a-Muchos directa)
 Product.hasMany(SpecSheet, { foreignKey: 'idProduct', as: 'specSheets' });
-SpecSheet.belongsTo(Product, { foreignKey: 'idProduct', as: 'product' });
+SpecSheet.belongsTo(Product);
 
-// SpecSheet <-> ProductSheet (Ingredientes de la Ficha)
-SpecSheet.hasMany(ProductSheet, { foreignKey: 'idSpecSheet', as: 'ingredients' }); // o 'productSheetItems'
-ProductSheet.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheet' });
 
-// Supplier <-> ProductSheet (Proveedor del Ingrediente)
-Supplier.hasMany(ProductSheet, { foreignKey: 'idSupplier', as: 'supplierIngredients' });
-ProductSheet.belongsTo(Supplier, { foreignKey: 'idSupplier', as: 'supplier' });
+
+
+SpecSheet.belongsToMany(Supplier, { 
+    through: ProductSheet,         
+    foreignKey: 'idSpecSheet',     
+    otherKey: 'idSupplier',         
+    as: 'ingredients'              
+                                    
+});
+
+Supplier.belongsToMany(SpecSheet, {
+    through: ProductSheet,          
+    foreignKey: 'idSupplier',       
+    otherKey: 'idSpecSheet',        
+    as: 'usedInFichas'          
+});
+
+
+
+SpecSheet.belongsToMany(Process, {
+    through: ProcessDetail,
+    foreignKey: 'idSpecSheet',
+    otherKey: 'idProcess',
+    as: 'processes'
+});
+Process.belongsToMany(SpecSheet, {
+    through: ProcessDetail,
+    foreignKey: 'idProcess',
+    otherKey: 'idSpecSheet',
+    as: 'usedInSpecSheets'
+});
+
+
+
+
+ProductSheet.hasMany(ProcessDetail, {foreignKey: 'idProductSheet', as: 'processDetails'});
+ProcessDetail.belongsTo(ProductSheet);
+
+Employee.hasMany(ProcessDetail, { foreignKey: 'idEmployee', as: 'assignedProcessDetails' });
+ProcessDetail.belongsTo(Employee);
+
+
+
 
 // ProductionOrder relaciones
 ProductionOrder.belongsTo(Product, { foreignKey: 'idProduct', as: 'productOrdered' }); // 'product' ya usado
@@ -90,7 +127,36 @@ PurchaseDetail.belongsTo(Supplier, {
 Role.hasMany(User, { foreignKey: 'idRole', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'idRole', as: 'role' });
 
+// --- Asociaciones: Roles con Permisos y Privilegios (muchos a muchos) ---
+// Role <-> Permission
+Role.belongsToMany(Permission, {
+    through: RolePrivilege,
+    foreignKey: 'idRole',
+    otherKey: 'idPermission',
+    as: 'permissions'
+});
+Permission.belongsToMany(Role, {
+    through: RolePrivilege,
+    foreignKey: 'idPermission',
+    otherKey: 'idRole',
+    as: 'rolesWithPermission'
+});
 
+// Role <-> Privilege
+Role.belongsToMany(Privilege, {
+    through: RolePrivilege,
+    foreignKey: 'idRole',
+    otherKey: 'idPrivilege',
+    as: 'privileges'
+});
+Privilege.belongsToMany(Role, {
+    through: RolePrivilege,
+    foreignKey: 'idPrivilege',
+    otherKey: 'idRole',
+    as: 'rolesWithPrivilege'
+
+
+});
 if (db.ProductionOrder && db.Product) {
     console.log("Definiendo ProductionOrder.belongsTo(Product)");
     db.ProductionOrder.belongsTo(db.Product, { foreignKey: 'idProduct', as: 'product' });

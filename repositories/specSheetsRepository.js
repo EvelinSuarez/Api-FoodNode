@@ -37,24 +37,35 @@ const getSpecSheetById = async (idSpecsheet) => {
     const sheet = await SpecSheet.findByPk(idSpecsheet, {
       include: [
         {
-          model: require("../models/Product"), // Usar el modelo importado
-          as: "product", // Alias definido en la asociación SpecSheet.belongsTo(Product)
+          model: require("../models/Product"), // Product, // Asumiendo que Product está disponible en este scope
+          as: "product",
           attributes: ["productName", "idProduct"],
         },
         {
-          model: require("../models/productSheet"), // Usar el modelo importado
-          as: "ingredients", // CAMBIAR ALIAS A 'ingredients' para que coincida con el frontend
-                              // Este alias debe coincidir con SpecSheet.hasMany(ProductSheet, { as: 'ingredients', ... })
-          attributes: ["idProductSheet", "quantity", "measurementUnit"], // Incluye los atributos que necesitas de ProductSheet
-          include: [
-            {
-              model: require("../models/supplier"), // Usar el modelo importado
-              as: "supplier", // Alias definido en la asociación ProductSheet.belongsTo(Supplier)
-              attributes: ["supplierName", "idSupplier"],
-            },
+          model: require("../models/supplier"), // Supplier, // Este es tu modelo Insumo (Supplier.js)
+          as: "ingredients", // Alias de la relación SpecSheet.belongsToMany(Supplier)
+          attributes: [
+            'idSupplier', // O idSupplier
+            'SupplierName', // O supplierName
+           // Unidad general del insumo
           ],
+          through: {
+            model: require("../models/productSheet"), // ProductSheet, // Este es tu modelo SpecSheetIngredient (ProductSheet.js)
+            as: 'usedInFichas',       // Alias para los atributos de la tabla de unión
+            attributes: ['quantity', 'measurementUnit'] // Cantidad y unidad ESPECÍFICA de la receta
+          }
         },
-      ],
+        {
+          model: require("../models/process"), // Process, // Modelo Process maestro
+          as: "processes",  // Alias de la relación SpecSheet.belongsToMany(Process)
+          attributes: ['processName', 'description'], // Atributos del proceso maestro
+          through: {
+            model: require("../models/processDetail"), // ProcessDetail, // Tu modelo de tabla de unión para procesos
+            as: 'processDetails',
+            attributes: ['idProductionOrder', 'idProcess', 'idProductSheet', 'idEmployee', 'startDate', 'endDate', 'status'] // Atributos de la tabla de unión  
+          }
+        }
+      ]
     });
 
     if (!sheet) {
@@ -121,13 +132,15 @@ const getSpecSheetsByProduct = async (idProduct) => {
         {
           model: require("../models/productSheet"),
           as: "ingredients", // <--- Asegúrate que este alias coincida con el definido en SpecSheet.hasMany 
+          attributes: ['idProductSheet', 'quantity'],
           include: [
             {
               model: require("../models/supplier"),
               as: "supplier",
-              attributes: ["supplierName", "idSupplier","measurementUnit"],
+              attributes: ["supplierName", "idSupplier", "measurementUnit"],
             },
           ],
+         
         },
       ],
       order: [["createdAt", "DESC"]],

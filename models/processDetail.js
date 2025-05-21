@@ -1,9 +1,9 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const ProductionOrder = require('./productionOrder'); // Necesario para la FK
-const Process = require('./process');
-const SpecSheet = require('./specSheet');
+const Process = require('./process'); // Necesario para la FK
 const Employee = require('./employee');
+const ProductSheet = require('./productSheet');
 
 const ProcessDetail = sequelize.define('ProcessDetail', {
     idProcessDetail: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, allowNull: false },
@@ -15,9 +15,9 @@ const ProcessDetail = sequelize.define('ProcessDetail', {
         type: DataTypes.INTEGER, allowNull: false,
         references: { model: Process, key: 'idProcess' }
     },
-    idSpecSheet: {
+    idProductSheet: {
         type: DataTypes.INTEGER, allowNull: false,
-        references: { model: SpecSheet, key: 'idSpecsheet' }
+        references: { model: ProductSheet, key: 'idProductSheet' }
     },
     idEmployee: {
         type: DataTypes.INTEGER, allowNull: true,
