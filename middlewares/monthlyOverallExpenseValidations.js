@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const { body, param, validationResult } = require('express-validator');
 const MonthlyOverallExpense = require('../models/monthlyOverallExpense');
-const ExpenseType = require('../models/conceptSpent'); // Modelo de tipo de gasto
+const ExpenseType = require('../models/ExpenseType'); // Modelo de tipo de gasto
 
 // Validación para verificar si el tipo de gasto existe
 const validateExpenseTypeExistence = async (idExpenseType) => {

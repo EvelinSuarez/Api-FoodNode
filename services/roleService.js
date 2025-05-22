@@ -1,165 +1,191 @@
 // services/roleService.js
 const roleRepository = require('../repositories/roleRepository');
 const rolePrivilegesRepository = require('../repositories/rolePrivilegesRepository');
+const db = require('../models'); // Importa el objeto db que contiene todos los modelos y sequelize
 
-// --- IMPORTACIÓN CORREGIDA Y MODELO ADICIONAL ---
-const db = require('../models');
-// console.log("DEBUG: Contenido del objeto 'db' importado:", Object.keys(db)); // Puedes comentar/eliminar este log ahora si quieres
+const User = db.User; // Modelo User
+const Role = db.Role; // Modelo Role
+const RolePrivilegeModel = db.RolePrivilege; // Modelo para RolePrivileges
+const sequelize = db.sequelize; // Instancia de Sequelize
 
-const User = db.User;
-const RolePrivilegesModel = db.RolePrivilege; // <--- CORREGIDO AQUÍ: Debe ser 'RolePrivilege' (singular)
-const sequelize = db.sequelize;
-
-// ... (el resto de tu código de roleService.js permanece igual que la versión anterior que te di) ...
+const LOG_PREFIX_SERVICE = "[SERVICE RoleService]";
 
 const createRole = async (roleData) => {
-    const { roleName, status, rolePrivileges } = roleData;
-    let t; // Declara 't' fuera para que esté disponible en el catch
+    console.log(`${LOG_PREFIX_SERVICE} createRole - Datos recibidos:`, JSON.stringify(roleData, null, 2));
+    // roleData: { roleName, status?, privilegeAssignments?: [{ idPrivilege: number, idPermission?: number }] }
+    // La validación en roleValidations.js (validatePermissionsAndPrivilegesExistAndMatch)
+    // ya verificó que idPrivilege existe, y si idPermission se da, también existe y el privilegio pertenece al permiso.
+
+    const { roleName, status, privilegeAssignments } = roleData;
+    let t;
     try {
-        t = await sequelize.transaction(); // Inicia transacción
+        t = await sequelize.transaction();
+        console.log(`${LOG_PREFIX_SERVICE} createRole - Transacción iniciada.`);
 
-        const newRole = await roleRepository.createRole({ roleName, status: !!status }, { transaction: t });
+        const newRole = await roleRepository.createRole(
+            { roleName, status: status !== undefined ? status : true },
+            { transaction: t }
+        );
+        console.log(`${LOG_PREFIX_SERVICE} createRole - Rol base creado con ID: ${newRole.idRole}`);
 
-        if (rolePrivileges && Array.isArray(rolePrivileges) && rolePrivileges.length > 0) {
-             const assignmentsToCreate = rolePrivileges.map(priv => ({
-                idRole: newRole.idRole,
-                idPermission: priv.idPermission,
-                idPrivilege: priv.idPrivilege,
-            }));
-            await rolePrivilegesRepository.bulkCreate(assignmentsToCreate, { transaction: t });
+        if (privilegeAssignments && Array.isArray(privilegeAssignments) && privilegeAssignments.length > 0) {
+            // Para RolePrivileges, solo necesitamos idRole e idPrivilege
+            const assignmentsToCreateInDb = privilegeAssignments.map(inputAssignment => {
+                if (!inputAssignment || typeof inputAssignment.idPrivilege !== 'number') {
+                    console.error(`${LOG_PREFIX_SERVICE} createRole - Formato de asignación inválido:`, inputAssignment);
+                    throw new Error(`Formato de asignación inválido. Se esperaba idPrivilege como número.`);
+                }
+                return {
+                    idRole: newRole.idRole,
+                    idPrivilege: inputAssignment.idPrivilege, // Solo idPrivilege para la tabla RolePrivilege
+                };
+            });
+            console.log(`${LOG_PREFIX_SERVICE} createRole - Asignaciones para DB (bulkCreate):`, JSON.stringify(assignmentsToCreateInDb, null, 2));
+            await rolePrivilegesRepository.bulkCreate(assignmentsToCreateInDb, { transaction: t });
+            console.log(`${LOG_PREFIX_SERVICE} createRole - Asignaciones de privilegios creadas.`);
+        } else {
+            console.log(`${LOG_PREFIX_SERVICE} createRole - No se proporcionaron privilegeAssignments o está vacío.`);
         }
 
         await t.commit();
-        console.log(`Service: Role ${newRole.idRole} created successfully.`);
-        return newRole.toJSON();
+        console.log(`${LOG_PREFIX_SERVICE} createRole - Transacción commit. Rol ${newRole.idRole} creado.`);
+
+        // Devolver el rol con sus privilegios asignados podría ser útil
+        const roleWithDetails = await Role.findByPk(newRole.idRole, {
+            // include: [ { model: db.Privilege, as: 'assignedPrivileges' } ] // Si tienes esta asociación definida
+        });
+        return roleWithDetails ? roleWithDetails.toJSON() : newRole.toJSON();
 
     } catch (error) {
-        console.error("Service Error in createRole. Original error message:", error.message);
-        if (t && !t.finished) { // Verifica si 't' existe y la transacción no ha sido committed/rolled back
-            try {
-                await t.rollback();
-                console.log("Service createRole: Transaction rolled back successfully.");
-            } catch (rollbackError) {
-                console.error("Service createRole: Error during transaction rollback:", rollbackError);
-                // Aquí podrías lanzar un error que indique fallo en rollback si es crítico
-            }
+        console.error(`${LOG_PREFIX_SERVICE} createRole - ERROR: ${error.message}`, error.stack);
+        if (t && !t.finished) {
+            await t.rollback();
+            console.log(`${LOG_PREFIX_SERVICE} createRole - Transacción rollback.`);
         }
-        
-        // Personalizar el mensaje de error basado en el tipo de error de Sequelize
+
         if (error.name === 'SequelizeUniqueConstraintError' || (error.original && error.original.code === 'ER_DUP_ENTRY')) {
-            // Asumiendo que roleName tiene una restricción de unicidad
             throw new Error(`El rol con nombre '${roleName}' ya existe.`);
         } else if (error.name === 'SequelizeValidationError') {
-            // Errores de validación del modelo
             const messages = error.errors.map(e => e.message).join(', ');
             throw new Error(`Error de validación al crear el rol: ${messages}`);
         }
-        // Para el error de 'uuid' u otros no específicos:
-        throw new Error(`Error al crear el rol: ${error.message || "Ocurrió un error desconocido."}`);
+        throw new Error(error.message || `Error al crear el rol.`);
     }
 };
 
+// --- FUNCIÓN FALTANTE ---
 const getAllRoles = async () => {
-    return roleRepository.getAllRoles();
+    console.log(`${LOG_PREFIX_SERVICE} getAllRoles - Solicitado.`);
+    try {
+        const roles = await roleRepository.getAllRoles();
+        // Opcionalmente, aquí podrías mapear los roles para incluir sus privilegios si es necesario para la lista
+        // Por ejemplo:
+        // const rolesWithPrivileges = await Promise.all(roles.map(async (role) => {
+        //    const privileges = await getRoleEffectivePermissions(role.idRole); // O getRolePrivileges
+        //    return { ...role.toJSON(), privileges };
+        // }));
+        // return rolesWithPrivileges;
+        return roles; // Devuelve las instancias de Sequelize o roles.map(r => r.toJSON())
+    } catch (error) {
+        console.error(`${LOG_PREFIX_SERVICE} getAllRoles - Error:`, error);
+        throw new Error('Error al obtener todos los roles.');
+    }
 };
+// --- FIN FUNCIÓN FALTANTE ---
+
 
 const getRoleById = async (idRoleParam) => {
     const idRole = parseInt(idRoleParam, 10);
     if (isNaN(idRole)) {
         throw new Error('El ID del rol debe ser un número.');
     }
-    const role = await roleRepository.getRoleById(idRole);
+    // Podrías incluir los privilegios aquí también, como se sugirió en el comentario anterior
+    const role = await Role.findByPk(idRole, {
+        // include: [{
+        //     model: db.Privilege,
+        //     as: 'assignedPrivileges',
+        //     attributes: ['idPrivilege', 'privilegeName', 'privilegeKey', 'idPermission'],
+        //     through: { attributes: [] }
+        // }]
+    });
     if (!role) {
         throw new Error('Rol no encontrado');
     }
-    return role;
+    return role; // Devuelve la instancia de Sequelize
 };
 
-const getRoleEffectivePermissions = async (idRoleParam) => {
-    const idRole = parseInt(idRoleParam, 10);
-    if (isNaN(idRole)) {
-        throw new Error('El ID del rol debe ser un número.');
-    }
-    await getRoleById(idRole);
-
-    const flatPermissions = await rolePrivilegesRepository.getEffectiveKeysByRoleId(idRole);
-    const effectivePermissions = {};
-    flatPermissions.forEach(item => {
-        if (!effectivePermissions[item.permissionKey]) {
-            effectivePermissions[item.permissionKey] = [];
-        }
-        if (!effectivePermissions[item.permissionKey].includes(item.privilegeKey)) {
-             effectivePermissions[item.permissionKey].push(item.privilegeKey);
-        }
-    });
-    return effectivePermissions;
-};
 
 const updateRole = async (idRoleParam, roleData) => {
     const idRole = parseInt(idRoleParam, 10);
     if (isNaN(idRole)) {
+        console.error(`${LOG_PREFIX_SERVICE} updateRole - ID de rol no numérico: '${idRoleParam}'`);
         throw new Error('El ID del rol debe ser un número.');
     }
-    await getRoleById(idRole);
+    console.log(`${LOG_PREFIX_SERVICE} updateRole - Actualizando rol ID: ${idRole} con datos:`, JSON.stringify(roleData, null, 2));
 
-    return roleRepository.updateRole(idRole, {
-        roleName: roleData.roleName,
-        status: roleData.status
-    });
+    const role = await roleRepository.getRoleById(idRole); // Validar existencia usando el repo
+    if (!role) {
+        throw new Error('Rol no encontrado.');
+    }
+
+
+    const dataToUpdate = {};
+    if (roleData.roleName !== undefined) dataToUpdate.roleName = roleData.roleName;
+    if (roleData.status !== undefined) dataToUpdate.status = roleData.status;
+
+    if (Object.keys(dataToUpdate).length === 0) {
+        console.warn(`${LOG_PREFIX_SERVICE} updateRole - No hay datos válidos para actualizar para el rol ID: ${idRole}.`);
+        throw new Error("No se proporcionaron datos válidos para actualizar (nombre o estado).");
+    }
+    try {
+        // El repositorio updateRole solo actualiza nombre y estado
+        const [affectedRows] = await roleRepository.updateRole(idRole, dataToUpdate);
+        console.log(`${LOG_PREFIX_SERVICE} updateRole - Filas afectadas: ${affectedRows} para rol ID: ${idRole}`);
+        if (affectedRows === 0) {
+            const currentRole = await roleRepository.getRoleById(idRole);
+            if (!currentRole) throw new Error('Rol no encontrado durante la actualización.');
+            // Si existe y no hubo filas afectadas, los datos eran los mismos.
+        }
+        return roleRepository.getRoleById(idRole); // Devolver el rol actualizado
+    } catch (error) {
+        console.error(`${LOG_PREFIX_SERVICE} updateRole - Error al actualizar rol ID: ${idRole}`, error);
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            throw new Error(`El nombre de rol '${roleData.roleName}' ya está en uso.`);
+        }
+        throw new Error(`Error al actualizar el rol: ${error.message}`);
+    }
 };
-/**
- * Elimina un rol existente, asegurándose de eliminar primero sus privilegios asociados.
- * @param {string|number} idRoleParam - El ID del rol a eliminar.
- * @returns {Promise<number>} - El número de filas de roles eliminadas (debería ser 1 si tuvo éxito).
- * @throws {Error} - Si el rol no se encuentra, tiene usuarios asociados, o si ocurre otro error.
- */
+
+
 const deleteRole = async (idRoleParam) => {
     const idRole = parseInt(idRoleParam, 10);
     if (isNaN(idRole)) {
         throw new Error('El ID del rol debe ser un número.');
     }
+    console.log(`${LOG_PREFIX_SERVICE} deleteRole - Rol ID: ${idRole}`);
 
-    await getRoleById(idRole); // Validar que el rol existe
-
-    // Validar si tiene usuarios asociados
-    // console.log("DEBUG: En deleteRole, valor de User antes de count:", User); // Ya no es necesario este log específico de User
-    if (!User || typeof User.count !== 'function') {
-        console.error("CRITICAL ERROR: El modelo User no está definido o no tiene el método count en roleService.js");
-        throw new Error("Error interno del servidor: Configuración incorrecta del modelo User.");
+    const role = await roleRepository.getRoleById(idRole);
+    if (!role) {
+        throw new Error('Rol no encontrado');
     }
 
     const userCount = await User.count({ where: { idRole } });
     if (userCount > 0) {
-        throw new Error('No se puede eliminar el rol porque tiene usuarios asociados');
+        throw new Error('No se puede eliminar el rol porque tiene usuarios asociados.');
     }
 
-    // Iniciar una transacción para asegurar atomicidad
     const transaction = await sequelize.transaction();
     try {
-        // Paso 1: Eliminar todas las asignaciones de privilegios para este rol
-        console.log(`Servicio: Eliminando privilegios asociados al rol ID: ${idRole}`);
-        if (!RolePrivilegesModel || typeof RolePrivilegesModel.destroy !== 'function') {
-            // Este log ahora debería mostrar que RolePrivilegesModel está definido si la importación es correcta
-            console.log("DEBUG: Valor de RolePrivilegesModel justo antes de la verificación:", RolePrivilegesModel);
-            console.error("CRITICAL ERROR: El modelo RolePrivilege (RolePrivilegesModel) no está definido o no tiene el método destroy.");
-            throw new Error("Error interno del servidor: Configuración incorrecta del modelo RolePrivilege.");
-        }
-        await RolePrivilegesModel.destroy({
-            where: { idRole: idRole },
-            transaction: transaction
-        });
-
-        // Paso 2: Eliminar el rol
-        console.log(`Servicio: Procediendo a eliminar el rol ID: ${idRole} del repositorio.`);
-        const numDeletedRoles = await roleRepository.deleteRole(idRole, { transaction: transaction });
+        // rolePrivilegesRepository.deleteByRoleId ya maneja la eliminación de RolePrivilege
+        await rolePrivilegesRepository.deleteByRoleId(idRole, { transaction });
+        const numDeletedRoles = await roleRepository.deleteRole(idRole, { transaction }); // Pasar la transacción
 
         await transaction.commit();
-        console.log(`Servicio: Rol ID ${idRole} y sus privilegios asociados eliminados exitosamente.`);
+        console.log(`${LOG_PREFIX_SERVICE} deleteRole - Rol ID: ${idRole} eliminado. Filas: ${numDeletedRoles}`);
         return numDeletedRoles;
-
     } catch (error) {
         await transaction.rollback();
-        console.error(`Error durante la eliminación transaccional del rol ID ${idRole}:`, error);
+        console.error(`${LOG_PREFIX_SERVICE} deleteRole - Error transaccional Rol ID: ${idRole}`, error);
         throw new Error(`No se pudo eliminar el rol (ID: ${idRole}): ${error.message}`);
     }
 };
@@ -169,61 +195,118 @@ const changeRoleState = async (idRoleParam, status) => {
     if (isNaN(idRole)) {
         throw new Error('El ID del rol debe ser un número.');
     }
-    await getRoleById(idRole);
+    if (typeof status !== 'boolean') {
+        throw new Error('El estado debe ser un valor booleano (true/false).');
+    }
+    const role = await roleRepository.getRoleById(idRole); // Validar existencia
+    if (!role) {
+        throw new Error('Rol no encontrado.');
+    }
 
-    return roleRepository.changeRoleState(idRole, status);
+    const [affectedRows] = await roleRepository.changeRoleState(idRole, status);
+    if (affectedRows === 0) {
+        // Esto podría suceder si el estado ya era el que se intentó establecer
+        // o si el rol fue eliminado justo antes (menos probable si getRoleById se ejecutó bien)
+        const currentRole = await roleRepository.getRoleById(idRole);
+        if (!currentRole) throw new Error('Rol no encontrado después de intentar cambiar el estado.');
+    }
+    return roleRepository.getRoleById(idRole); // Devolver el rol actualizado
 };
 
+
+// Usado por roleController para GET /api/roles/:idRole/privileges
+// Devuelve [{idPermission, idPrivilege}, ...] para el FormPermissions.jsx
 const getRolePrivileges = async (idRoleParam) => {
     const idRole = parseInt(idRoleParam, 10);
     if (isNaN(idRole)) {
         throw new Error('El ID del rol debe ser un número.');
     }
-    await getRoleById(idRole);
-
-    return rolePrivilegesRepository.findByRoleId(idRole);
+    const role = await roleRepository.getRoleById(idRole); // Validar existencia
+    if (!role) {
+        throw new Error('Rol no encontrado.');
+    }
+    // Esta función del repo ya está corregida para incluir idPermission desde Privilege
+    return rolePrivilegesRepository.getRawAssignmentsByRoleId(idRole);
 };
 
-const assignPrivilegesToRole = async (idRoleParam, rolePrivilegesData) => {
+// Usado por roleController para PUT /api/roles/:idRole/privileges
+// rolePrivilegesInput: [{ idPrivilege: number, idPermission?: number }, ...]
+const assignPrivilegesToRole = async (idRoleParam, rolePrivilegesInput) => {
     const idRole = parseInt(idRoleParam, 10);
     if (isNaN(idRole)) {
         throw new Error('El ID del rol debe ser un número.');
     }
-
-    if (!Array.isArray(rolePrivilegesData)) {
-        throw new Error("Se esperaba un array para 'rolePrivileges'.");
+    if (!Array.isArray(rolePrivilegesInput)) {
+        throw new Error("Se esperaba un array para 'rolePrivilegesInput'.");
     }
+    console.log(`${LOG_PREFIX_SERVICE} assignPrivilegesToRole - Rol ID: ${idRole}, Datos:`, JSON.stringify(rolePrivilegesInput, null, 2));
 
     const t = await sequelize.transaction();
     try {
-        await getRoleById(idRole);
+        const role = await roleRepository.getRoleById(idRole); // Validar existencia
+        if (!role) {
+            throw new Error('Rol no encontrado.');
+        }
 
         await rolePrivilegesRepository.deleteByRoleId(idRole, { transaction: t });
 
-        if (rolePrivilegesData.length > 0) {
-            const assignmentsToCreate = rolePrivilegesData.map(priv => ({
-                idRole: idRole,
-                idPermission: priv.idPermission,
-                idPrivilege: priv.idPrivilege,
-            }));
-            await rolePrivilegesRepository.bulkCreate(assignmentsToCreate, { transaction: t });
+        if (rolePrivilegesInput.length > 0) {
+            // La validación (validatePermissionsAndPrivilegesExistAndMatch) ya se encargó de verificar
+            // que los idPrivilege son válidos y que si se da idPermission, el privilegio le pertenece.
+            // Ahora solo necesitamos los idPrivilege para la tabla RolePrivilege.
+            const assignmentsToCreateInDb = rolePrivilegesInput.map(inputAssignment => {
+                 if (!inputAssignment || typeof inputAssignment.idPrivilege !== 'number') {
+                    console.error(`${LOG_PREFIX_SERVICE} assignPrivilegesToRole - Formato de asignación inválido:`, inputAssignment);
+                    throw new Error(`Formato de asignación inválido. Se esperaba idPrivilege como número.`);
+                }
+                return {
+                    idRole: idRole,
+                    idPrivilege: inputAssignment.idPrivilege,
+                };
+            });
+            console.log(`${LOG_PREFIX_SERVICE} assignPrivilegesToRole - Asignaciones para DB (bulkCreate):`, JSON.stringify(assignmentsToCreateInDb, null, 2));
+            await rolePrivilegesRepository.bulkCreate(assignmentsToCreateInDb, { transaction: t });
         }
 
         await t.commit();
-        console.log(`Service: Privileges assigned successfully for role ${idRole}.`);
+        console.log(`${LOG_PREFIX_SERVICE} assignPrivilegesToRole - Transacción commit. Privilegios asignados Rol ID: ${idRole}`);
         return { success: true, message: 'Privilegios asignados correctamente.' };
 
     } catch (error) {
         await t.rollback();
-        console.error(`Service Error in assignPrivilegesToRole for role ${idRole}:`, error);
-        throw new Error(`Error al asignar privilegios: ${error.message}`);
+        console.error(`${LOG_PREFIX_SERVICE} assignPrivilegesToRole - Error Rol ID: ${idRole}`, error);
+        throw new Error(error.message || `Error al asignar privilegios.`);
     }
+};
+
+// getRoleEffectivePermissions se mantiene similar, usa getEffectiveKeysByRoleId del repo
+const getRoleEffectivePermissions = async (idRoleParam) => {
+    const idRole = parseInt(idRoleParam, 10);
+    if (isNaN(idRole)) {
+        throw new Error('El ID del rol debe ser un número.');
+    }
+    const role = await roleRepository.getRoleById(idRole); // Validar existencia
+    if (!role) {
+        throw new Error('Rol no encontrado.');
+    }
+
+    const flatPermissions = await rolePrivilegesRepository.getEffectiveKeysByRoleId(idRole); // Corregido
+    const effectivePermissions = {};
+    flatPermissions.forEach(item => {
+        if (!effectivePermissions[item.permissionKey]) {
+            effectivePermissions[item.permissionKey] = [];
+        }
+        if (!effectivePermissions[item.permissionKey].includes(item.privilegeKey)) {
+            effectivePermissions[item.permissionKey].push(item.privilegeKey);
+        }
+    });
+    return effectivePermissions;
 };
 
 
 module.exports = {
     createRole,
-    getAllRoles,
+    getAllRoles, // <--- AHORA ESTÁ DEFINIDA
     getRoleById,
     updateRole,
     deleteRole,
