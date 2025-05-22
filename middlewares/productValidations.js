@@ -10,6 +10,7 @@ const validateProductExistence = async (id) => {
   }
 }
 
+
 const validateUniqueProductName = async (productName) => {
   const existingProduct = await Product.findOne({ where: { productName } })
   if (existingProduct) {
