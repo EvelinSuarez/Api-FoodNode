@@ -2,8 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const specificConceptSpentController = require('../controllers/specificConceptSpentController');
-const validations = require('../middlewares/specificConceptSpentValidations');
+const validations = require('../middlewares/specificConceptSpentValidations'); // Asegúrate que el nombre del archivo es este
 
+// Path base podría ser /specific-concepts
 router.post('/', validations.createSpecificConceptSpentValidation, specificConceptSpentController.createSpecificConceptSpent);
 router.get('/', validations.getAllSpecificConceptSpentsQueryValidation, specificConceptSpentController.getAllSpecificConceptSpents);
 router.get('/:idSpecificConcept', validations.getSpecificConceptSpentByIdValidation, specificConceptSpentController.getSpecificConceptSpentById);

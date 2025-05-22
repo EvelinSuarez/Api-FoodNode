@@ -1,29 +1,19 @@
-// services/registerPurchaseService.js (BACKEND - Completo y Limpio)
-
+// services/registerPurchaseService.js
 const registerPurchaseRepository = require('../repositories/registerPurchaseRepository');
-// Importa los modelos necesarios para la lógica de negocio y la transacción
 const { RegisterPurchase, PurchaseDetail, Provider, Supplier, sequelize } = require('../models');
 
-/**
- * Procesa el envío de una compra: Crea o actualiza según proveedor/insumo.
- * @param {object} purchaseDataFromFrontend Datos de la compra {idProvider, purchaseDate, details:[{idInsumo, quantity, unitPrice}], totalAmount}.
- * @returns {Promise<object>} Objeto { purchase: (Compra final con detalles), created: (boolean) }.
- */
 const processPurchaseSubmission = async (purchaseDataFromFrontend) => {
-    const { idProvider, purchaseDate, details, totalAmount: frontendTotal } = purchaseDataFromFrontend;
+    const { idProvider, purchaseDate, category, details, totalAmount: frontendTotal } = purchaseDataFromFrontend;
 
-    // Validación básica de entrada
-    if (!idProvider || !purchaseDate || !details || !Array.isArray(details) || details.length === 0) {
-        throw new Error("Datos de compra incompletos o inválidos (proveedor, fecha o detalles faltantes).");
+    if (!idProvider || !purchaseDate || !category || !details || !Array.isArray(details) || details.length === 0) {
+        throw new Error("Datos de compra incompletos o inválidos (proveedor, fecha, categoría o detalles faltantes).");
     }
 
-    // Iniciar transacción
     const t = await sequelize.transaction();
     let purchaseIdToReturn = null;
-    let transactionCommitted = false; // Bandera para el catch
+    let transactionCommitted = false;
 
     try {
-        // --- Validaciones de Existencia (Proveedor e Insumos) ---
         const providerExists = await Provider.findByPk(idProvider, { transaction: t });
         if (!providerExists) {
             throw new Error(`Proveedor con ID ${idProvider} no encontrado.`);
@@ -41,38 +31,50 @@ const processPurchaseSubmission = async (purchaseDataFromFrontend) => {
             const missingId = insumoIds.find(id => !existingIdsSet.has(id));
             throw new Error(`Insumo con ID ${missingId || 'desconocido'} no encontrado.`);
         }
-        // --- Fin Validaciones ---
 
-        // 1. Buscar compra existente activa para el proveedor (ajusta el 'where' si es necesario)
+        // Lógica para encontrar o crear/actualizar la compra
+        // Asumimos que una compra para un proveedor es "única" si está PENDIENTE,
+        // o ajusta este 'where' según tu lógica de negocio para agrupar compras.
+        // Si la categoría también define la unicidad de la cabecera de compra, añádela al where.
+        // Ejemplo: where: { idProvider: idProvider, category: category, status: 'PENDIENTE' }
         let purchase = await RegisterPurchase.findOne({
-            where: { idProvider: idProvider /* , status: 'PENDIENTE' */ },
+            where: { idProvider: idProvider /*, status: 'PENDIENTE' */ }, // Considera si 'category' debe estar aquí
             include: [{ model: PurchaseDetail, as: 'details' }],
             transaction: t
         });
 
-        let wasCreated = false; // Flag
+        let wasCreated = false;
 
-        // 2. Si NO existe compra, crearla usando el repositorio
         if (!purchase) {
             wasCreated = true;
-            console.log(`INFO: Creando nueva compra para proveedor ${idProvider}`);
-            const newPurchaseData = { idProvider, purchaseDate, totalAmount: frontendTotal || 0, details };
-            // Llama a la función 'create' del repositorio
-            // Asegúrate que createRegisterPurchase en el repo acepte los datos así
+            console.log(`INFO: Creando nueva compra para proveedor ${idProvider}, categoría ${category}`);
+            const newPurchaseData = { idProvider, purchaseDate, category, totalAmount: frontendTotal || 0, details };
+            // El repositorio createRegisterPurchase maneja su propia transacción interna.
+            // Si falla, hará rollback y lanzará error.
             const createdPurchase = await registerPurchaseRepository.createRegisterPurchase(newPurchaseData);
-            // (Asume que createRegisterPurchase NO necesita la transacción explícita aquí si usa la suya propia o si no es necesario anidarla)
-
+            
             if (!createdPurchase || !createdPurchase.idRegisterPurchase) {
                  throw new Error("El repositorio no devolvió una compra válida después de crear.");
             }
             purchaseIdToReturn = createdPurchase.idRegisterPurchase;
-            purchase = createdPurchase; // Guardar referencia para obtener ID
+            purchase = createdPurchase; // Para consistencia, aunque no se use más abajo en este bloque
 
         } else {
-            // 3. Si SÍ existe compra, procesar/actualizar detalles
             purchaseIdToReturn = purchase.idRegisterPurchase;
             wasCreated = false;
             console.log(`INFO: Actualizando compra existente ID: ${purchaseIdToReturn}`);
+
+            // Actualizar campos de la cabecera si es necesario
+            let headerChanged = false;
+            if (purchase.category !== category) {
+                purchase.category = category;
+                headerChanged = true;
+            }
+            // Podrías querer actualizar purchaseDate también si es relevante
+            // if (purchase.purchaseDate !== purchaseDate) { // Cuidado con formatos de fecha
+            //     purchase.purchaseDate = purchaseDate;
+            //     headerChanged = true;
+            // }
 
             const existingDetailsMap = new Map();
             (purchase.details || []).forEach(detail => { existingDetailsMap.set(detail.idSupplier, detail); });
@@ -81,82 +83,87 @@ const processPurchaseSubmission = async (purchaseDataFromFrontend) => {
                 const insumoId = Number(detailFromFrontend.idInsumo);
                 const newQuantity = Number(detailFromFrontend.quantity);
                 const newUnitPrice = Number(detailFromFrontend.unitPrice);
+                
                 if (isNaN(insumoId) || insumoId <= 0 || isNaN(newQuantity) || newQuantity <= 0 || isNaN(newUnitPrice) || newUnitPrice < 0) {
                     console.warn("WARN: Detalle inválido omitido:", detailFromFrontend); continue;
                 }
 
                 const existingDetail = existingDetailsMap.get(insumoId);
-                if (existingDetail) { // Actualizar detalle
+                if (existingDetail) {
                     const currentQty = Number(existingDetail.quantity) || 0;
                     existingDetail.quantity = currentQty + newQuantity;
-                    existingDetail.unitPrice = newUnitPrice;
+                    existingDetail.unitPrice = newUnitPrice; // Siempre actualiza al precio más reciente
                     existingDetail.subtotal = (existingDetail.quantity * existingDetail.unitPrice).toFixed(2);
                     await existingDetail.save({ transaction: t });
-                } else { // Crear detalle nuevo
+                } else {
                     await PurchaseDetail.create({
                         idRegisterPurchase: purchase.idRegisterPurchase, idSupplier: insumoId,
                         quantity: newQuantity, unitPrice: newUnitPrice,
                         subtotal: (newQuantity * newUnitPrice).toFixed(2)
                     }, { transaction: t });
                 }
-            } // Fin bucle for detalles
+            }
 
-            // Recalcular y guardar total de la cabecera
-            const allFinalDetails = await PurchaseDetail.findAll({ where: { idRegisterPurchase: purchase.idRegisterPurchase }, attributes: ['subtotal'], transaction: t });
+            const allFinalDetails = await PurchaseDetail.findAll({
+                where: { idRegisterPurchase: purchase.idRegisterPurchase },
+                attributes: ['subtotal'], transaction: t
+            });
             const newTotalAmount = allFinalDetails.reduce((sum, d) => sum + (Number(d.subtotal) || 0), 0);
-            purchase.totalAmount = newTotalAmount.toFixed(2);
-            await purchase.save({ transaction: t });
-        } // Fin else (actualizar compra existente)
+            
+            if (purchase.totalAmount !== newTotalAmount.toFixed(2)) {
+                purchase.totalAmount = newTotalAmount.toFixed(2);
+                headerChanged = true;
+            }
 
-        // 5. Confirmar la transacción
+            if (headerChanged) {
+                await purchase.save({ transaction: t });
+            }
+        }
+
         if (!purchaseIdToReturn) throw new Error("ID de compra inválido antes del commit.");
-        console.log(`INFO: Confirmando transacción para compra ID: ${purchaseIdToReturn}`);
+        
         await t.commit();
-        transactionCommitted = true; // Marcar commit exitoso
-        console.log("INFO: Transacción confirmada.");
+        transactionCommitted = true;
 
-        // 6. Devolver la compra final completa (fuera de la transacción)
-        console.log(`INFO: Buscando compra final ID: ${purchaseIdToReturn}`);
-        // Usa la función del repositorio que ya configuramos para incluir todo
         const finalPurchaseData = await registerPurchaseRepository.getRegisterPurchaseById(purchaseIdToReturn);
-
         if (!finalPurchaseData) {
             console.error(`ERROR CRÍTICO: No se pudo recuperar la compra ID ${purchaseIdToReturn} después del commit.`);
             throw new Error(`No se pudo recuperar la compra final (ID: ${purchaseIdToReturn}) después de la operación.`);
         }
-
-        console.log(`INFO: Compra final recuperada exitosamente.`);
-        return { purchase: finalPurchaseData, created: wasCreated }; // Devolver resultado
+        return { purchase: finalPurchaseData, created: wasCreated };
 
     } catch (error) {
-        console.error("ERROR en servicio processPurchaseSubmission:", error.message);
-        // Solo hacer rollback si NO se hizo commit y la transacción existe y está activa
+        console.error("ERROR en servicio processPurchaseSubmission:", error.message, error.stack);
         if (!transactionCommitted && t && t.finished !== 'commit' && t.finished !== 'rollback') {
-             try {
-                 console.warn("WARN: Error ANTES del commit, revirtiendo transacción...");
-                 await t.rollback();
-                 console.log("INFO: Transacción revertida.");
-             } catch (rollbackError) {
-                 console.error("ERROR CRÍTICO: Falla durante el rollback:", rollbackError);
-             }
-        } else if (transactionCommitted) {
-             console.warn(`WARN: Error ocurrió DESPUÉS del commit. No se revierte.`);
+             try { await t.rollback(); } catch (rollbackError) { console.error("ERROR CRÍTICO: Falla durante el rollback:", rollbackError); }
         }
-        // Relanza el error original para que el controlador lo maneje
-        throw error;
+        throw error; // Relanza para que el controlador lo maneje
     }
 };
 
-// --- Exportaciones del Servicio (Usando la lógica centralizada) ---
+const getProvidersByCategory = async (categoryName) => {
+    if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
+        throw new Error("El nombre de la categoría es inválido o está vacío.");
+    }
+    return registerPurchaseRepository.getUniqueProvidersFromCategory(categoryName);
+};
+
+const updatePurchaseHeader = async (purchaseId, dataToUpdate) => {
+    // El repositorio updateRegisterPurchase ya filtra los campos permitidos.
+    // Aquí se podría añadir lógica de negocio específica antes de llamar al repo.
+    const updated = await registerPurchaseRepository.updateRegisterPurchase(purchaseId, dataToUpdate);
+    if (updated) {
+        return registerPurchaseRepository.getRegisterPurchaseById(purchaseId); // Devolver la compra actualizada
+    }
+    return null; // O false, si se prefiere indicar solo si hubo o no actualización
+};
+
 module.exports = {
-    // Exporta la función principal para crear/actualizar
     processPurchaseSubmission,
-    // Exporta las otras funciones que SÍ llaman directamente al repositorio
-    // y no están cubiertas por la lógica de processPurchaseSubmission
-    getAllRegisterPurchases: registerPurchaseRepository.getAllRegisterPurchases,
-    getRegisterPurchaseById: registerPurchaseRepository.getRegisterPurchaseById,
-    deleteRegisterPurchase: registerPurchaseRepository.deleteRegisterPurchase,
-    changeStateRegisterPurchase: registerPurchaseRepository.changeStateRegisterPurchase,
-    // updateRegisterPurchase: registerPurchaseRepository.updateRegisterPurchase, // Comentado o eliminado si ya no se necesita por separado
-    // createRegisterPurchase: registerPurchaseRepository.createRegisterPurchase, // Comentado o eliminado
+    getAllRegisterPurchases: () => registerPurchaseRepository.getAllRegisterPurchases(),
+    getRegisterPurchaseById: (id) => registerPurchaseRepository.getRegisterPurchaseById(id),
+    deleteRegisterPurchase: (id) => registerPurchaseRepository.deleteRegisterPurchase(id),
+    changeStateRegisterPurchase: (id, status) => registerPurchaseRepository.changeStateRegisterPurchase(id, status),
+    getProvidersByCategory,
+    updatePurchaseHeader, // Para la ruta PUT de solo actualizar cabecera
 };

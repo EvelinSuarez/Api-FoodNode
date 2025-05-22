@@ -1,43 +1,54 @@
+// models/MonthlyOverallExpense.js
+'use strict'; // Buena práctica
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-const ExpenseType = require('./ExpenseType'); // Referencia al modelo ExpenseType renombrado
+const sequelize = require('../config/database'); // <--- ¡IMPORTANTE! Importa tu instancia de Sequelize
 
-const MonthlyOverallExpense = sequelize.define('MonthlyOverallExpense', {
+// Opcional: Verificación para asegurar que sequelize se cargó
+if (!sequelize || typeof sequelize.define !== 'function') {
+  throw new Error('ERROR en MonthlyOverallExpense.js: La instancia de Sequelize no se cargó correctamente desde ../config/database.js');
+}
+
+const MonthlyOverallExpense = sequelize.define('MonthlyOverallExpense', { // Usa 'sequelize' importado
     idOverallMonth: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.INTEGER, // Usa DataTypes directamente
         primaryKey: true,
-        autoIncrement: true
-    },
-    idExpenseType: { // FK al TIPO DE GASTO GENERAL (ej: "Mano de Obra")
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: ExpenseType, // Referencia al modelo ExpenseType
-            key: 'idExpenseType' // A la PK de ExpenseType
-        }
+        autoIncrement: true,
+        allowNull: false
     },
     dateOverallExp: {
-        type: DataTypes.DATEONLY, // Mejor DATEONLY si no necesitas hora
-        allowNull: false // Debería ser no nulo
+        type: DataTypes.DATEONLY, // Usa DataTypes directamente
+        allowNull: false
     },
-    valueExpense: { // Este será la SUMA de los 'price' de todos los MonthlyExpenseItem asociados
-        type: DataTypes.DECIMAL(12, 2), // Usa DECIMAL o FLOAT para dinero
+    valueExpense: {
+        type: DataTypes.DECIMAL(12, 2), // Usa DataTypes directamente
         allowNull: false
     },
     novelty_expense: {
-        type: DataTypes.STRING(250),
-        allowNull: false
+        type: DataTypes.STRING(250), // Usa DataTypes directamente
+        allowNull: true
     },
     status: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
+        type: DataTypes.BOOLEAN, // Usa DataTypes directamente
+        defaultValue: true,
+        allowNull: false
     }
+    // createdAt y updatedAt son manejados por Sequelize debido a timestamps: true
 }, {
-    tableName: 'monthly_overall_expense'
+    tableName: 'monthly_overall_expenses',
+    timestamps: true // Mantiene la creación de createdAt y updatedAt
 });
 
-// Relación con ExpenseType (el tipo general del gasto mensual)
-MonthlyOverallExpense.belongsTo(ExpenseType, { foreignKey: 'idExpenseType', as: 'generalExpenseType' });
-ExpenseType.hasMany(MonthlyOverallExpense, { foreignKey: 'idExpenseType', as: 'monthlyRecords' });
+// Si planeas usar el bucle .associate en index.js (aunque tus asociaciones están centralizadas)
+// podrías añadir esto, pero es opcional si todas las asociaciones están en index.js
+// MonthlyOverallExpense.associate = function(models) {
+//   MonthlyOverallExpense.belongsTo(models.ExpenseCategory, {
+//     foreignKey: 'idExpenseCategory',
+//     as: 'categoryDetails' // Asegúrate que el alias coincida con index.js
+//   });
+//   MonthlyOverallExpense.hasMany(models.MonthlyExpenseItem, {
+//     foreignKey: 'idOverallMonth',
+//     as: 'expenseItems' // Asegúrate que el alias coincida con index.js
+//   });
+// };
 
-module.exports = MonthlyOverallExpense;
+module.exports = MonthlyOverallExpense; // <--- ¡IMPORTANTE! Exporta el modelo directamente
