@@ -83,9 +83,25 @@ const specSheetBaseValidation = [
     .isInt({ min: 1 })
     .withMessage("El ID del producto debe ser un número entero positivo")
     .custom(validateProductExistence),
+  body("quantity")
+    .isInt({ min: 1 })
+    .withMessage("La cantidad debe ser un número entero positivo"),
   body("startDate")
     .isISO8601()
     .withMessage("La fecha de inicio debe ser una fecha válida"),
+    //no puede aver una fecha de inicio menor a la fecha actual
+    body("startDate").custom((value, { req }) => {
+      if (new Date(value) < new Date()) {
+        throw new Error("La fecha de inicio no puede ser menor a la fecha actual");
+      }
+      return true
+    }),
+  //no puede ser una fecha superior a la fecha actual
+  body("endDate")
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage("La fecha de fin debe ser una fecha válida"),
+    
   body("status")
     .default(true)
     .isBoolean()

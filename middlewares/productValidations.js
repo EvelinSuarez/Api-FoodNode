@@ -28,9 +28,7 @@ const validateSupplierExists = async (idSupplier) => {
 const productBaseValidation = [
   body("productName")
     .isLength({ min: 3 })
-    .withMessage("El nombre del producto debe tener al menos 3 caracteres")
-    .matches(/^[a-zA-Z0-9\s]+$/)
-    .withMessage("El nombre solo puede contener letras, números y espacios"),
+    .withMessage("El nombre del producto debe tener al menos 3 caracteres"),
   body("status")
     .default(true)
     .isBoolean()
@@ -42,6 +40,8 @@ const productBaseValidation = [
 const createProductValidation = [
   ...productBaseValidation,
   body("productName").custom(validateUniqueProductName)
+    .isLength({ min: 3, max: 30})
+    .withMessage("El nombre del producto debe tener al menos 3 caracteres")
 ]
 
 // Validación para actualizar producto

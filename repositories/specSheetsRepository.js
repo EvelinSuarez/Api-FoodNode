@@ -44,15 +44,11 @@ const getSpecSheetById = async (idSpecsheet) => {
         {
           model: require("../models/supplier"), // Supplier, // Este es tu modelo Insumo (Supplier.js)
           as: "ingredients", // Alias de la relación SpecSheet.belongsToMany(Supplier)
-          attributes: [
-            'idSupplier', // O idSupplier
-            'SupplierName', // O supplierName
-           // Unidad general del insumo
-          ],
+          attributes: [ 'idSupplier', 'supplierName' ],
           through: {
             model: require("../models/productSheet"), // ProductSheet, // Este es tu modelo SpecSheetIngredient (ProductSheet.js)
             as: 'usedInFichas',       // Alias para los atributos de la tabla de unión
-            attributes: ['quantity', 'measurementUnit'] // Cantidad y unidad ESPECÍFICA de la receta
+            attributes: ['quantity', 'measurementUnit', 'idSpecSheet', 'idSupplier']
           }
         },
         {
@@ -68,16 +64,22 @@ const getSpecSheetById = async (idSpecsheet) => {
       ]
     });
 
-    if (!sheet) {
-      return null; // O lanzar un error si prefieres
+    if (plainSheet.processes) {
+      plainSheet.processes = plainSheet.processes.map(process => {
+        // 'process' es un objeto Process
+        // Los atributos de ProcessDetail estarán en process.ProcessDetail (o el alias de 'through')
+        const stepDetails = process.ProcessDetail; // o process.stepDetails si usaste 'as' en through
+        return {
+          processName: process.processName,
+          processDescription: process.description, // o el nombre correcto
+          processOrder: stepDetails ? stepDetails.processOrder : 0
+        };
+      }).sort((a, b) => a.processOrder - b.processOrder);
     }
 
-    // No es necesario un formateo complejo aquí si los 'includes' y 'attributes' están bien definidos.
-    // Sequelize anidará los objetos correctamente.
-    // El frontend accederá a los ingredientes como sheet.ingredients
-    // y dentro de cada ingrediente: ing.quantity, ing.measurementUnit, ing.supplier.idSupplier, ing.supplier.supplierName
+    console.log("Datos formateados:", JSON.stringify(plainSheet, null, 2));
+    return plainSheet;
 
-    return sheet.toJSON(); // Convertir a JSON plano es buena práctica
   } catch (error) {
     console.error(`Error al obtener ficha técnica por ID ${idSpecsheet}:`, error);
     throw error;
@@ -150,23 +152,49 @@ const getSpecSheetsByProduct = async (idProduct) => {
       throw new Error("No se encontraron fichas técnicas para este producto");
     }
 
-    // Formatear la respuesta para incluir los productos y sus proveedores
-    const formattedSpecSheets = specSheets.map((sheet) => ({
-      ...sheet.toJSON(),
-      suppliers:
-        sheet.ProductSheets?.map((ps) => ({
-          id: ps.Supplier.idSupplier,
-          name: ps.Supplier.name,
-          quantity: ps.quantity,
-        })) || [],
-    }));
-
-    return formattedSpecSheets;
-  } catch (error) {
-    console.error("Error detallado:", error);
-    throw error;
-  }
-};
+      // Formatear la respuesta para que el frontend la consuma fácilmente
+      const formattedSpecSheets = specSheets.map((sheetInstance) => {
+        const sheet = sheetInstance.toJSON(); // Convertir a objeto plano
+  
+        // Ajustar la estructura de 'ingredients'
+        if (sheet.ingredients && Array.isArray(sheet.ingredients)) {
+          sheet.ingredients = sheet.ingredients.map(ingredient => {
+            // 'ingredient' es un objeto Supplier (Insumo)
+            // Los atributos de ProductSheet estarán en ingredient.ProductSheet (por defecto) o ingredient.details (si usaste as:'details' en through)
+            const unionTableData = ingredient.ProductSheet || ingredient.details; // Adaptar según el alias o el comportamiento por defecto
+            return {
+              idSupplier: ingredient.idSupplier, // Del Insumo
+              supplierNameDisplay: ingredient.supplierName, // Del Insumo
+              quantity: unionTableData ? unionTableData.quantity : 0, // De ProductSheet (tabla de unión)
+              measurementUnit: unionTableData ? unionTableData.measurementUnit : '' // De ProductSheet (tabla de unión)
+            };
+          });
+        } else {
+          sheet.ingredients = [];
+        }
+  
+        // Ajustar la estructura de 'processes' (si los incluiste)
+        if (sheet.processes && Array.isArray(sheet.processes)) {
+          sheet.processes = sheet.processes.map(process => {
+            const unionTableData = process.ProcessDetail || process.stepInfo; // Adaptar
+            return {
+              processName: process.processName,
+              processDescription: process.description, // O el nombre correcto
+              processOrder: unionTableData ? unionTableData.processOrder : 0
+            };
+          }).sort((a,b) => a.processOrder - b.processOrder);
+        } else {
+          sheet.processes = [];
+        }
+        return sheet;
+      });
+  
+      return formattedSpecSheets;
+    } catch (error) {
+      console.error("Error detallado en getSpecSheetsByProduct:", error);
+      throw error;
+    }
+  };
 
 module.exports = {
   createSpecSheet,

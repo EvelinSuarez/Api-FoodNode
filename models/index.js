@@ -1,12 +1,19 @@
+// models/index.js
 'use strict';
 
 const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const sequelize = require('../config/database'); // Tu instancia de Sequelize
 const db = {};
 
-// Carga de modelos
+// Carga de modelos (asegúrate que las rutas y nombres sean correctos)
+db.Product = require('./Product');
+db.SpecSheet = require('./specSheet');
+db.ProductSheet = require('./productSheet');
+db.Supplier = require('./supplier');    
+db.Process = require('./process');
+db.ProcessDetail = require('./processDetail');
+// ... carga todos tus otros modelos de la misma forma ...
 db.Provider = require('./provider');
-db.Supplier = require('./supplier');
 db.RegisterPurchase = require('./registerPurchase');
 db.PurchaseDetail = require('./purchaseDetail');
 db.Role = require('./role');
@@ -14,207 +21,112 @@ db.User = require('./user');
 db.Permission = require('./permission');
 db.Privilege = require('./privilege');
 db.RolePrivilege = require('./rolePrivileges');
-db.Provider = require('./provider');
-db.Product = require('./Product');
-db.SpecSheet = require('./specSheet');
-db.ProductSheet = require('./productSheet');
-db.Supplier = require('./supplier');
 db.ProductionOrder = require('./productionOrder');
 db.Employee = require('./employee');
-db.Process = require('./process');
-db.ProcessDetail = require('./processDetail');
-   
-
-// Extraer modelos para uso en asociaciones
-const {
-    Provider, Supplier, RegisterPurchase, PurchaseDetail,
-    Role, User, Permission, Privilege, RolePrivilege, Product, SpecSheet, ProductSheet, ProductionOrder, Employee, Process, ProcessDetail
-} = db;
-
-// Product <-> SpecSheet (Relación Uno-a-Muchos directa)
-Product.hasMany(SpecSheet, { foreignKey: 'idProduct', as: 'specSheets' });
-SpecSheet.belongsTo(Product);
 
 
+// --- Definición de Asociaciones ---
 
+// 1. Product <-> SpecSheet (Un Producto final tiene muchas Fichas Técnicas)
+db.Product.hasMany(db.SpecSheet, { foreignKey: 'idProduct', as: 'specSheets' });
+db.SpecSheet.belongsTo(db.Product, { foreignKey: 'idProduct', as: 'product' });
 
-SpecSheet.belongsToMany(Supplier, { 
-    through: ProductSheet,         
-    foreignKey: 'idSpecSheet',     
-    otherKey: 'idSupplier',         
-    as: 'ingredients'              
-                                    
+// 2. SpecSheet <-> Supplier (InsumoMaestro) via ProductSheet (Muchos-a-Muchos para Ingredientes)
+//    Una Ficha Técnica (SpecSheet) usa muchos InsumosMaestros (Supplier),
+//    y un InsumoMaestro (Supplier) puede estar en muchas Fichas Técnicas.
+//    ProductSheet es la tabla de unión que contiene cantidad y unidad específica.
+db.SpecSheet.belongsToMany(db.Supplier, { // Supplier es tu InsumoMaestro
+    through: db.ProductSheet,           // ProductSheet es la tabla de unión
+    foreignKey: 'idSpecSheet',          // FK en ProductSheet que apunta a SpecSheet
+    otherKey: 'idSupplier',             // FK en ProductSheet que apunta a Supplier (InsumoMaestro)
+    as: 'ingredients'                   // Cuando obtienes SpecSheet, sus insumos vendrán como 'ingredients'
 });
-
-Supplier.belongsToMany(SpecSheet, {
-    through: ProductSheet,          
-    foreignKey: 'idSupplier',       
-    otherKey: 'idSpecSheet',        
-    as: 'usedInFichas'          
-});
-
-
-
-SpecSheet.belongsToMany(Process, {
-    through: ProcessDetail,
-    foreignKey: 'idSpecSheet',
-    otherKey: 'idProcess',
-    as: 'processes'
-});
-Process.belongsToMany(SpecSheet, {
-    through: ProcessDetail,
-    foreignKey: 'idProcess',
+db.Supplier.belongsToMany(db.SpecSheet, { // InsumoMaestro está en muchas SpecSheets
+    through: db.ProductSheet,
+    foreignKey: 'idSupplier',
     otherKey: 'idSpecSheet',
     as: 'usedInSpecSheets'
 });
+// Es buena práctica que ProductSheet también defina sus belongsTo si es un modelo explícito:
+// db.ProductSheet.belongsTo(db.SpecSheet, { foreignKey: 'idSpecSheet' });
+// db.ProductSheet.belongsTo(db.Supplier, { foreignKey: 'idSupplier' });
 
 
-
-
-ProductSheet.hasMany(ProcessDetail, {foreignKey: 'idProductSheet', as: 'processDetails'});
-ProcessDetail.belongsTo(ProductSheet);
-
-Employee.hasMany(ProcessDetail, { foreignKey: 'idEmployee', as: 'assignedProcessDetails' });
-ProcessDetail.belongsTo(Employee);
-
-
-
-
-// ProductionOrder relaciones
-ProductionOrder.belongsTo(Product, { foreignKey: 'idProduct', as: 'productOrdered' }); // 'product' ya usado
-
-ProductionOrder.hasMany(db.ProcessDetail ,{ foreignKey: 'idProductionOrder', as: 'steps' });
-
-// ProcessDetail relaciones
-db.ProcessDetail.belongsTo(ProductionOrder, { foreignKey: 'idProductionOrder', as: 'productionOrder' });
-db.ProcessDetail.belongsTo(Process, { foreignKey: 'idProcess', as: 'masterProcess' });
-db.ProcessDetail.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'relatedSpecSheet' }); // 'specSheet' ya usado
-db.ProcessDetail.belongsTo(Employee, { foreignKey: 'idEmployee', as: 'assignedEmployee' });
-
-
-// Employee relaciones
-Employee.hasMany(ProcessDetail, { foreignKey: 'idEmployee', as: 'assignedTasks' }); // 'assignedProcessDetails' ya usado
-
-// Tus asociaciones existentes (asegúrate que usen los modelos de 'db' o los desestructurados)
-Provider.hasMany(RegisterPurchase, { foreignKey: { name: 'idProvider', allowNull: false }, as: 'purchases' });
-
-
-RegisterPurchase.belongsTo(Provider, {
-    foreignKey: 'idProvider',
-    as: 'provider'
+// 3. SpecSheet <-> Process via ProcessDetail (Muchos-a-Muchos para Pasos de Proceso de la Ficha)
+//    Una Ficha Técnica (SpecSheet) tiene muchos Pasos de Proceso (Process),
+//    y un Proceso maestro puede estar en muchas Fichas Técnicas.
+//    ProcessDetail es la tabla de unión que contiene el orden y detalles específicos del proceso para esa ficha.
+db.SpecSheet.belongsToMany(db.Process, {
+    through: db.ProcessDetail,          // ProcessDetail es la tabla de unión
+    foreignKey: 'idSpecSheet',          // FK en ProcessDetail que apunta a SpecSheet
+    otherKey: 'idProcess',              // FK en ProcessDetail que apunta a Process (maestro)
+    as: 'processes'                     // Cuando obtienes SpecSheet, sus pasos de proceso vendrán como 'processes'
 });
-
-RegisterPurchase.hasMany(PurchaseDetail, {
-    foreignKey: { name: 'idRegisterPurchase', allowNull: false },
-    as: 'details',
-    onDelete: 'CASCADE'
+db.Process.belongsToMany(db.SpecSheet, {
+    through: db.ProcessDetail,
+    foreignKey: 'idProcess',
+    otherKey: 'idSpecSheet',
+    as: 'usedInSpecSheetsForProcess' // Renombrado para evitar conflicto con el 'as' anterior
 });
-PurchaseDetail.belongsTo(RegisterPurchase, {
-    foreignKey: 'idRegisterPurchase',
-    as: 'purchase'
-});
-
-Supplier.hasMany(PurchaseDetail, {
-    foreignKey: { name: 'idSupplier', allowNull: false },
-    as: 'purchaseOccurrences'
-});
-PurchaseDetail.belongsTo(Supplier, {
-    foreignKey: 'idSupplier',
-    as: 'insumo'
-});
-
-// --- Asociaciones: Roles y Usuarios ---
-Role.hasMany(User, { foreignKey: 'idRole', as: 'users' });
-User.belongsTo(Role, { foreignKey: 'idRole', as: 'role' });
-
-// --- Asociaciones: Roles con Permisos y Privilegios (muchos a muchos) ---
-// Role <-> Permission
-Role.belongsToMany(Permission, {
-    through: RolePrivilege,
-    foreignKey: 'idRole',
-    otherKey: 'idPermission',
-    as: 'permissions'
-});
-Permission.belongsToMany(Role, {
-    through: RolePrivilege,
-    foreignKey: 'idPermission',
-    otherKey: 'idRole',
-    as: 'rolesWithPermission'
-});
-
-// Role <-> Privilege
-Role.belongsToMany(Privilege, {
-    through: RolePrivilege,
-    foreignKey: 'idRole',
-    otherKey: 'idPrivilege',
-    as: 'privileges'
-});
-Privilege.belongsToMany(Role, {
-    through: RolePrivilege,
-    foreignKey: 'idPrivilege',
-    otherKey: 'idRole',
-    as: 'rolesWithPrivilege'
+// Asociaciones de ProcessDetail (asegúrate que estas FKs existan en ProcessDetail)
+// db.ProcessDetail.belongsTo(db.SpecSheet, { foreignKey: 'idSpecSheet' });
+// db.ProcessDetail.belongsTo(db.Process, { foreignKey: 'idProcess' });
 
 
-});
-if (db.ProductionOrder && db.Product) {
-    console.log("Definiendo ProductionOrder.belongsTo(Product)");
-    db.ProductionOrder.belongsTo(db.Product, { foreignKey: 'idProduct', as: 'product' });
-} else {
-    console.error("Error al definir ProductionOrder -> Product: Modelos no listos.");
-    if(!db.ProductionOrder) console.error("db.ProductionOrder es undefined");
-    if(!db.Product) console.error("db.Product es undefined");
-}
+// --- Compras (RegisterPurchase, PurchaseDetail) ---
+// Un Proveedor (Provider) real tiene muchas Compras Registradas
+db.Provider.hasMany(db.RegisterPurchase, { foreignKey: 'idProvider', as: 'purchases' });
+db.RegisterPurchase.belongsTo(db.Provider, { foreignKey: 'idProvider', as: 'provider' });
 
-if (db.ProductionOrder && db.SpecSheet) {
-    console.log("Definiendo ProductionOrder.belongsTo(SpecSheet)");
-    db.ProductionOrder.belongsTo(db.SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheetUsed' });
-} else {
-    console.error("Error al definir ProductionOrder -> SpecSheet: Modelos no listos.");
-    if(!db.ProductionOrder) console.error("db.ProductionOrder es undefined");
-    if(!db.SpecSheet) console.error("db.SpecSheet es undefined");
-}
+// Una Compra Registrada tiene muchos Detalles de Compra
+db.RegisterPurchase.hasMany(db.PurchaseDetail, { foreignKey: 'idRegisterPurchase', as: 'details', onDelete: 'CASCADE' });
+db.PurchaseDetail.belongsTo(db.RegisterPurchase, { foreignKey: 'idRegisterPurchase', as: 'purchase' });
 
-console.log("\n--- ANTES de ProductionOrder.hasMany(ProcessDetail) ---");
-
-console.log("Verificando db.ProductionOrder:");
-if (db.ProductionOrder) {
-    console.log("  Tipo:", typeof db.ProductionOrder);
-    console.log("  Nombre del Modelo:", db.ProductionOrder.name);
-    console.log("  Es instancia de Sequelize.Model:", db.ProductionOrder instanceof Sequelize.Model);
-    console.log("  Tiene método hasMany:", typeof db.ProductionOrder.hasMany === 'function');
-} else {
-    console.log("  db.ProductionOrder es UNDEFINED");
-}
-
-console.log("Verificando db.ProcessDetail:"); // <--- ¡USA db.ProcessDetail AQUÍ!
-if (db.ProcessDetail) {
-    console.log("  Tipo:", typeof db.ProcessDetail);
-    console.log("  Nombre del Modelo:", db.ProcessDetail.name);
-    console.log("  Es instancia de Sequelize.Model:", db.ProcessDetail instanceof Sequelize.Model);
-} else {
-    console.log("  db.ProcessDetail es UNDEFINED");
-}
-console.log("----------------------------------------------------");
-
-// Línea 113 o la del error:
-if (db.ProductionOrder && db.ProductionOrder.hasMany && db.ProcessDetail instanceof Sequelize.Model) {
-    db.ProductionOrder.hasMany(db.ProcessDetail, { foreignKey: 'idProductionOrder', as: 'steps' });
-    console.log("Asociación ProductionOrder.hasMany(ProcessDetail) definida con ÉXITO.");
-} else {
-    console.error("FALLO al definir ProductionOrder.hasMany(ProcessDetail).");
-    // ... (más logs detallados de por qué falló, como te mostré antes)
-}
-// No olvides las asociaciones inversas también para Product, SpecSheet, ProcessDetail si las necesitas
-// Por ejemplo, en la sección de Product:
-if (db.Product && db.ProductionOrder) {
-    console.log("Definiendo Product.hasMany(ProductionOrder)");
-    db.Product.hasMany(db.ProductionOrder, { foreignKey: 'idProduct', as: 'productionOrders' });
-};
+// Un Detalle de Compra se refiere a un InsumoMaestro (Supplier)
+// ESTA ES LA RELACIÓN CLAVE: ¿Qué estás comprando? Respuesta: Un InsumoMaestro (Supplier)
+db.Supplier.hasMany(db.PurchaseDetail, { foreignKey: 'idSupplier', as: 'purchaseLineItems' }); // Un Insumo puede estar en muchas líneas de compra
+db.PurchaseDetail.belongsTo(db.Supplier, { foreignKey: 'idSupplier', as: 'insumoPurchased' }); // Cada línea de compra es de UN Insumo
 
 
-// Agrega instancias a db
+// --- ProductionOrder y sus relaciones ---
+db.ProductionOrder.belongsTo(db.Product, { foreignKey: 'idProduct', as: 'productOrdered' }); // El producto final a producir
+db.ProductionOrder.belongsTo(db.SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheetUsed' }); // La ficha técnica usada
+
+// La siguiente relación de ProductionOrder con ProcessDetail debe ser revisada.
+// Si ProcessDetail es la tabla de unión para SpecSheet <-> Process, entonces ProductionOrder no debería tener hasMany ProcessDetail
+// a menos que ProcessDetail también tenga una FK a ProductionOrder (lo cual lo haría complejo).
+// Es más común que ProductionOrder tenga sus propios "Pasos de Ejecución" que podrían referenciar a ProcessDetail o Process.
+// Por ahora, la mantendré como la tienes, pero podría ser un punto de refactorización.
+db.ProductionOrder.hasMany(db.ProcessDetail, { foreignKey: 'idProductionOrder', as: 'productionSteps' }); // Renombrado 'steps' a 'productionSteps'
+db.ProcessDetail.belongsTo(db.ProductionOrder, { foreignKey: 'idProductionOrder', as: 'productionOrderInstance' }); // Renombrado
+
+
+// --- Relaciones de ProcessDetail con Employee ---
+// (Manteniendo tus definiciones, asumiendo que ProcessDetail tiene idEmployee)
+db.Employee.hasMany(db.ProcessDetail, { foreignKey: 'idEmployee', as: 'assignedTasks' });
+db.ProcessDetail.belongsTo(db.Employee, { foreignKey: 'idEmployee', as: 'assignedEmployee' });
+
+
+// --- Roles, Usuarios, Permisos, Privilegios --- (Manteniendo tus definiciones)
+db.Role.hasMany(db.User, { foreignKey: 'idRole', as: 'users' });
+db.User.belongsTo(db.Role, { foreignKey: 'idRole', as: 'role' });
+
+db.Role.belongsToMany(db.Permission, { through: db.RolePrivilege, foreignKey: 'idRole', otherKey: 'idPermission', as: 'permissions' });
+db.Permission.belongsToMany(db.Role, { through: db.RolePrivilege, foreignKey: 'idPermission', otherKey: 'idRole', as: 'rolesWithPermission' });
+
+db.Role.belongsToMany(db.Privilege, { through: db.RolePrivilege, foreignKey: 'idRole', otherKey: 'idPrivilege', as: 'privileges' });
+db.Privilege.belongsToMany(db.Role, { through: db.RolePrivilege, foreignKey: 'idPrivilege', otherKey: 'idRole', as: 'rolesWithPrivilege' });
+
+
+// Sincronización y exportación
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
+
+// Llamar a los métodos associate si existen
+Object.keys(db).forEach(modelName => {
+  if (db[modelName] && db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
 
 module.exports = db;
