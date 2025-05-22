@@ -1,123 +1,157 @@
+// middlewares/monthlyOverallExpenseValidations.js
 const { Op } = require('sequelize');
-const { body, param, validationResult } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const MonthlyOverallExpense = require('../models/monthlyOverallExpense');
-const ExpenseType = require('../models/ExpenseType'); // Modelo de tipo de gasto
-
-// Validación para verificar si el tipo de gasto existe
-const validateExpenseTypeExistence = async (idExpenseType) => {
-    const expenseType = await ExpenseType.findByPk(idExpenseType);
-    if (!expenseType) {
-        return Promise.reject('El tipo de gasto no existe');
-    }
-};
+// ExpenseCategory ya no se necesita aquí para validar la cabecera del MonthlyOverallExpense
 
 // Validación para verificar si el gasto mensual existe
-const validateMonthlyOverallExpenseExistence = async (idOverallMonth) => {
-    const expense = await MonthlyOverallExpense.findByPk(idOverallMonth);
+const validateMonthlyOverallExpenseExistence = async (idOverallMonth, { req }) => {
+    const expense = await MonthlyOverallExpense.findByPk(parseInt(idOverallMonth, 10));
     if (!expense) {
-        return Promise.reject('El registro de gasto mensual no existe');
+        const error = new Error('El registro de gasto mensual no existe.');
+        error.statusCode = 404;
+        return Promise.reject(error);
     }
+    req.monthlyOverallExpense = expense;
+    return true;
 };
 
-// Validación para verificar si ya existe un gasto con el mismo idExpenseType en el mismo mes
-const validateUniqueExpenseTypeInMonth = async (value, { req }) => {
-    const { dateOverallExp, idExpenseType } = req.body;
-    
-    if (!dateOverallExp || !idExpenseType) {
-        return Promise.reject('La fecha y el tipo de gasto son obligatorios');
-    }
-
-    // Extraer año y mes de la fecha ingresada
-    const date = new Date(dateOverallExp);
-    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-
-    // Verificar si ya existe un registro con el mismo idExpenseType en el mismo mes
-    const existingExpense = await MonthlyOverallExpense.findOne({
-        where: {
-            idExpenseType,
-            dateOverallExp: {
-                [Op.between]: [startOfMonth, endOfMonth],
-            },
-        },
-    });
-
-    if (existingExpense) {
-        return Promise.reject('Ya existe un gasto con este tipo en el mismo mes');
-    }
-};
+// validateUniqueExpenseCategoryInMonth YA NO APLICA para MonthlyOverallExpense
+// porque ya no tiene idExpenseCategory.
 
 // Validaciones base para el gasto mensual
-const monthlyOverallExpenseBaseValidation = [
-    body('idExpenseType')
-        .isInt({ min: 1 }).withMessage('El id del tipo de gasto debe ser un número entero positivo')
-        .custom(validateExpenseTypeExistence)
-        .custom(validateUniqueExpenseTypeInMonth), // Nueva validación
+const monthlyOverallExpenseBaseValidation = () => [
+    // idExpenseCategory eliminado de aquí
     body('dateOverallExp')
-        .optional()
-        .isISO8601().withMessage('La fecha de gasto debe ser válida (ISO 8601)'),
-    body('valueExpense')
-        .isInt({ min: 1 }).withMessage('El valor del gasto debe ser un número entero positivo'),
-    body('novelty_expense')
-        .isString().withMessage('La novedad del gasto debe ser un texto')
-        .isLength({ min: 1 }).withMessage('La novedad del gasto no puede estar vacía'),
+        .notEmpty().withMessage('La fecha de gasto es obligatoria.')
+        .isISO8601({ strict: true, strictSeparator: true }).withMessage('La fecha de gasto debe ser válida (YYYY-MM-DD).')
+        .toDate(),
+    body('valueExpense') // Este es el total de los ítems, enviado desde el frontend
+        .notEmpty().withMessage('El valor del gasto es obligatorio.')
+        .isDecimal({ decimal_digits: '0,2', force_decimal: false }).withMessage('El valor del gasto debe ser un número decimal válido (ej: 100 o 100.50).')
+        .toFloat(),
+    body('noveltyExpense') // Asumiendo que el frontend envía noveltyExpense (camelCase)
+        .optional({ nullable: true, checkFalsy: true })
+        .isString().withMessage('La novedad del gasto debe ser texto.')
+        .trim()
+        .isLength({ max: 250 }).withMessage('La novedad del gasto no debe exceder los 250 caracteres.'),
     body('status')
-        .isBoolean().withMessage('El estado debe ser un booleano'),
+        .optional()
+        .isBoolean().withMessage('El estado debe ser un valor booleano.')
+        .customSanitizer(value => { // Asegurar que sea booleano
+            if (typeof value === 'string') return value.toLowerCase() === 'true';
+            return !!value;
+        }),
+    // Validaciones para los ítems
+    body('expenseItems')
+        .notEmpty().withMessage('Debe haber al menos un ítem de gasto.')
+        .isArray({ min: 1 }).withMessage('Debe haber al menos un ítem de gasto en el array.'),
+    body('expenseItems.*.idSpecificConcept')
+        .notEmpty().withMessage('El ID del concepto específico del ítem es obligatorio.')
+        .isInt({ min: 1 }).withMessage('Cada ítem de gasto debe tener un idSpecificConcept válido.'),
+    body('expenseItems.*.price')
+        .notEmpty().withMessage('El precio del ítem es obligatorio.')
+        .isDecimal({ decimal_digits: '0,2', force_decimal: false }).withMessage('El precio de cada ítem de gasto debe ser un decimal válido.')
+        .toFloat(),
+    body('expenseItems.*.baseSalary')
+        .optional({ nullable: true })
+        .isDecimal({ decimal_digits: '0,2', force_decimal: false }).withMessage('El salario base debe ser un decimal válido si se provee.')
+        .toFloat(),
+    body('expenseItems.*.numEmployees')
+        .optional({ nullable: true })
+        .isInt({ min: 1 }).withMessage('El número de empleados debe ser un entero positivo si se provee.'),
+    body('expenseItems.*.hasBonus')
+        .optional()
+        .isBoolean().withMessage('hasBonus debe ser booleano.'),
+    body('expenseItems.*.bonusAmountValue')
+        .optional({ nullable: true })
+        .isDecimal({ decimal_digits: '0,2', force_decimal: false }).withMessage('El monto del bono debe ser un decimal válido si se provee.')
+        .toFloat(),
 ];
 
-// Validación para crear un nuevo gasto mensual
 const createMonthlyOverallExpenseValidation = [
-    ...monthlyOverallExpenseBaseValidation,
+    ...monthlyOverallExpenseBaseValidation(),
 ];
 
-// Validación para actualizar un gasto mensual
 const updateMonthlyOverallExpenseValidation = [
     param('idOverallMonth')
-        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .isInt({ min: 1 }).withMessage('El ID del registro de gasto mensual debe ser un número entero positivo.')
+        .bail()
         .custom(validateMonthlyOverallExpenseExistence),
-    ...monthlyOverallExpenseBaseValidation,
+    // Para update, solo se actualizan los campos de la cabecera.
+    // Los items se manejarían por separado si se quisiera edición de items.
+    // Por ahora, el update se enfoca en dateOverallExp, noveltyExpense, status.
+    // valueExpense se recalcularía si los items cambian, lo cual es más complejo para un simple PUT.
+    body('dateOverallExp')
+        .optional()
+        .isISO8601({ strict: true, strictSeparator: true }).withMessage('La fecha de gasto debe ser válida (YYYY-MM-DD).')
+        .toDate(),
+    // valueExpense no se actualiza directamente aquí, se actualiza si los items cambian.
+    // Si solo se actualiza la cabecera, valueExpense no debería cambiar a menos que sea un recálculo.
+    body('noveltyExpense')
+        .optional({ nullable: true, checkFalsy: true })
+        .isString().withMessage('La novedad del gasto debe ser texto.')
+        .trim()
+        .isLength({ max: 250 }).withMessage('La novedad del gasto no debe exceder los 250 caracteres.'),
+    body('status')
+        .optional()
+        .isBoolean().withMessage('El estado debe ser un valor booleano.')
+        .customSanitizer(value => {
+            if (typeof value === 'string') return value.toLowerCase() === 'true';
+            return !!value;
+        }),
+    // No se validan expenseItems en el update de la cabecera.
 ];
 
-// Validación para eliminar un gasto mensual
 const deleteMonthlyOverallExpenseValidation = [
     param('idOverallMonth')
-        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo.')
+        .bail()
         .custom(validateMonthlyOverallExpenseExistence),
 ];
 
-// Validación para obtener un gasto mensual por ID
 const getMonthlyOverallExpenseByIdValidation = [
     param('idOverallMonth')
-        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo.')
+        .bail()
         .custom(validateMonthlyOverallExpenseExistence),
 ];
 
-// Validación para cambiar el estado de un gasto mensual
 const changeStateValidation = [
     param('idOverallMonth')
-        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo')
+        .isInt({ min: 1 }).withMessage('El ID debe ser un número entero positivo.')
+        .bail()
         .custom(validateMonthlyOverallExpenseExistence),
     body('status')
-        .isBoolean().withMessage('El estado debe ser un booleano'),
+        .exists({ checkFalsy: false }).withMessage('El campo status es requerido y no puede ser nulo.')
+        .isBoolean().withMessage('El estado debe ser un valor booleano (true o false).')
+        .customSanitizer(value => {
+            if (typeof value === 'string') return value.toLowerCase() === 'true';
+            return !!value;
+        }),
 ];
 
-//Validaciones para los nuevos endpoints
+const getAllMonthlyOverallExpensesValidation = [
+    query('status').optional().isBoolean().withMessage('El filtro status debe ser booleano (true/false).').customSanitizer(value => {
+        if (typeof value === 'string') return value.toLowerCase() === 'true';
+        return !!value;
+    }),
+    // idExpenseCategory eliminado de los filtros de query para la cabecera
+    query('year').optional().isInt({ min: 2000, max: new Date().getFullYear() + 10 }).withMessage('El filtro año debe ser un entero válido.').toInt(),
+    query('month').optional().isInt({ min: 1, max: 12 }).withMessage('El filtro mes debe ser un entero entre 1 y 12.').toInt(),
+];
+
 const getTotalExpenseByMonthValidation = [
     param('year')
-        .isInt({ min: 2000, max: 2100 }).withMessage('El año debe ser un número entero entre 2000 y 2100'),
+        .isInt({ min: 2000, max: new Date().getFullYear() + 10 }).withMessage(`El año debe ser un número entero entre 2000 y ${new Date().getFullYear() + 10}.`)
+        .toInt(),
     param('month')
-        .isInt({ min: 1, max: 12 }).withMessage('El mes debe ser un número entero entre 1 y 12'),
+        .isInt({ min: 1, max: 12 }).withMessage('El mes debe ser un número entero entre 1 y 12.')
+        .toInt(),
 ];
 
-const getTotalExpenseByTypeAndMonthValidation = [
-    param('year')
-        .isInt({ min: 2000, max: 2100 }).withMessage('El año debe ser un número entero entre 2000 y 2100'),
-    param('month')
-        .isInt({ min: 1, max: 12 }).withMessage('El mes debe ser un número entero entre 1 y 12'),
-    param('idExpenseType')
-        .isInt({ min: 1 }).withMessage('El ID del tipo de gasto debe ser un número entero positivo')
-        .custom(validateExpenseTypeExistence),
-];
+// getTotalExpenseByCategoryAndMonthValidation ya no aplica a la cabecera.
+// Si se necesita esta funcionalidad, se haría sumando los ítems.
 
 module.exports = {
     createMonthlyOverallExpenseValidation,
@@ -125,6 +159,7 @@ module.exports = {
     deleteMonthlyOverallExpenseValidation,
     getMonthlyOverallExpenseByIdValidation,
     changeStateValidation,
+    getAllMonthlyOverallExpensesValidation,
     getTotalExpenseByMonthValidation,
-    getTotalExpenseByTypeAndMonthValidation,
+    // getTotalExpenseByCategoryAndMonthValidation, // Comentado/Eliminado
 };

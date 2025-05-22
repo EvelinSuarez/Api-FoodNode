@@ -1,110 +1,101 @@
-// repositories/monthlyExpenseItemRepository.js
-const MonthlyExpenseItem = require('../models/MonthlyExpenseItem');
-const SpecificConceptSpent = require('../models/SpecificConceptSpent'); // Para includes si es necesario al leer items
+// repositories/monthlyOverallExpenseRepository.js
 const { Op } = require('sequelize');
+const MonthlyOverallExpense = require('../models/monthlyOverallExpense');
+const ExpenseCategory = require('../models/ExpenseCategory'); // Para includes
 
-/**
- * Crea múltiples ítems de gasto mensual en bloque.
- * @param {Array<Object>} items - Un array de objetos, cada uno representando un MonthlyExpenseItem.
- * @param {Object} [options={}] - Opciones de Sequelize (ej. { transaction }).
- * @returns {Promise<Array<MonthlyExpenseItem>>} - Promesa que resuelve a un array de los ítems creados.
- */
-const bulkCreate = async (items, options = {}) => {
-    return MonthlyExpenseItem.bulkCreate(items, options);
+const create = async (data) => {
+    return MonthlyOverallExpense.create(data);
 };
 
-/**
- * Encuentra todos los ítems de gasto mensual asociados a un idOverallMonth.
- * @param {number} idOverallMonth - El ID del MonthlyOverallExpense padre.
- * @param {Object} [options={}] - Opciones de Sequelize (ej. { transaction }).
- * @returns {Promise<Array<MonthlyExpenseItem>>} - Promesa que resuelve a un array de ítems.
- */
-const findAllByOverallMonthId = async (idOverallMonth, options = {}) => {
-    return MonthlyExpenseItem.findAll({
-        where: { idOverallMonth },
-        include: [
-            {
-                model: SpecificConceptSpent, // Asumiendo que tu modelo de item tiene la relación
-                as: 'concept',      // Asegúrate que el alias 'concept' esté definido en MonthlyExpenseItem.belongsTo(SpecificConceptSpent)
-                attributes: ['idSpecificConcept', 'name', 'requiresEmployeeCalculation']
-            }
-        ],
-        order: [['idMonthlyExpenseItem', 'ASC']], // O el orden que prefieras
-        ...options
+const findAll = async (filters = {}) => { // Añadir filtros
+    const queryOptions = {
+        include: [{
+            model: ExpenseCategory,
+            as: 'categoryDetails', // Asegúrate que este alias esté definido en models/index.js
+            attributes: ['idExpenseCategory', 'name']
+        }],
+        order: [['dateOverallExp', 'DESC'], ['idExpenseCategory', 'ASC']],
+        where: {}
+    };
+    if (filters.status !== undefined) {
+        queryOptions.where.status = filters.status;
+    }
+    if (filters.idExpenseCategory) {
+        queryOptions.where.idExpenseCategory = filters.idExpenseCategory;
+    }
+    if (filters.year && filters.month) {
+        const year = parseInt(filters.year);
+        const month = parseInt(filters.month) -1; // Meses en JS son 0-indexados
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        queryOptions.where.dateOverallExp = { [Op.between]: [startDate, endDate] };
+    }
+
+
+    return MonthlyOverallExpense.findAll(queryOptions);
+};
+
+const findById = async (idOverallMonth) => {
+    return MonthlyOverallExpense.findByPk(idOverallMonth, {
+        include: [{
+            model: ExpenseCategory,
+            as: 'categoryDetails',
+            attributes: ['idExpenseCategory', 'name']
+        }]
     });
 };
 
-/**
- * Encuentra un ítem de gasto mensual específico por su PK.
- * @param {number} idMonthlyExpenseItem - El ID del ítem.
- * @param {Object} [options={}] - Opciones de Sequelize.
- * @returns {Promise<MonthlyExpenseItem|null>}
- */
-const findById = async (idMonthlyExpenseItem, options = {}) => {
-    return MonthlyExpenseItem.findByPk(idMonthlyExpenseItem, {
-        include: [
-            {
-                model: SpecificConceptSpent,
-                as: 'concept',
-                attributes: ['idSpecificConcept', 'name', 'requiresEmployeeCalculation']
-            }
-        ],
-        ...options
+const update = async (idOverallMonth, data) => {
+    const [numberOfAffectedRows] = await MonthlyOverallExpense.update(data, {
+        where: { idOverallMonth }
+    });
+    return numberOfAffectedRows;
+};
+
+const deleteById = async (idOverallMonth) => {
+    // Considerar si se deben eliminar MonthlyExpenseItems asociados (onDelete: 'CASCADE' en el modelo)
+    return MonthlyOverallExpense.destroy({
+        where: { idOverallMonth }
     });
 };
 
+// Funciones para totales
+const sumValueExpenseByMonth = async (year, month) => {
+    const startDate = new Date(year, month - 1, 1); // Mes -1 para Date object
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Último día del mes
 
-/**
- * Actualiza un ítem de gasto mensual específico.
- * @param {number} idMonthlyExpenseItem - El ID del ítem a actualizar.
- * @param {number} idOverallMonth - El ID del MonthlyOverallExpense padre (para seguridad).
- * @param {Object} dataToUpdate - Los campos a actualizar en el ítem.
- * @param {Object} [options={}] - Opciones de Sequelize (ej. { transaction }).
- * @returns {Promise<Array<number>>} - Promesa que resuelve al número de filas afectadas.
- */
-const updateByIdAndOverallMonthId = async (idMonthlyExpenseItem, idOverallMonth, dataToUpdate, options = {}) => {
-    return MonthlyExpenseItem.update(dataToUpdate, {
+    const result = await MonthlyOverallExpense.sum('valueExpense', {
         where: {
-            idMonthlyExpenseItem,
-            idOverallMonth
+            dateOverallExp: {
+                [Op.between]: [startDate, endDate],
+            },
+            // Podrías añadir filtro de status: true si solo quieres sumar los activos
         },
-        ...options
     });
+    return result || 0; // Devolver 0 si no hay gastos
 };
 
-/**
- * Elimina todos los ítems de gasto mensual asociados a un idOverallMonth.
- * Útil cuando se elimina el MonthlyOverallExpense padre y no hay ON DELETE CASCADE.
- * @param {number} idOverallMonth - El ID del MonthlyOverallExpense padre.
- * @param {Object} [options={}] - Opciones de Sequelize (ej. { transaction }).
- * @returns {Promise<number>} - Promesa que resuelve al número de ítems eliminados.
- */
-const deleteByOverallMonthId = async (idOverallMonth, options = {}) => {
-    return MonthlyExpenseItem.destroy({
-        where: { idOverallMonth },
-        ...options
-    });
-};
+const sumValueExpenseByCategoryAndMonth = async (year, month, idExpenseCategory) => { // CAMBIO
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-/**
- * Elimina un ítem de gasto mensual específico por su PK.
- * @param {number} idMonthlyExpenseItem - El ID del ítem a eliminar.
- * @param {Object} [options={}] - Opciones de Sequelize.
- * @returns {Promise<number>} - Número de filas eliminadas.
- */
-const deleteById = async (idMonthlyExpenseItem, options = {}) => {
-    return MonthlyExpenseItem.destroy({
-        where: { idMonthlyExpenseItem },
-        ...options
+    const result = await MonthlyOverallExpense.sum('valueExpense', {
+        where: {
+            idExpenseCategory: idExpenseCategory, // CAMBIO
+            dateOverallExp: {
+                [Op.between]: [startDate, endDate],
+            },
+        },
     });
+    return result || 0;
 };
-
 
 module.exports = {
-    bulkCreate,
-    findAllByOverallMonthId,
+    create,
+    findAll,
     findById,
-    updateByIdAndOverallMonthId, // Para la actualización de un ítem específico
-    deleteByOverallMonthId,
-    deleteById, // Si necesitas borrar un ítem individual directamente
+    update,
+    deleteById,
+    sumValueExpenseByMonth,
+    sumValueExpenseByCategoryAndMonth, // CAMBIO
 };

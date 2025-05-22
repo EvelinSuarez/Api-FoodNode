@@ -32,7 +32,7 @@ const providerRoutes = require("./routes/providerRoutes");
 // 1. Rutas para los Tipos de Gasto Generales (lo que antes era tu 'conceptSpentRoutes')
 //    Asegúrate de que el archivo 'expenseTypeRoutes.js' exista y contenga las rutas para ExpenseType.
 //    Si renombraste tu 'conceptSpentRoutes.js' a 'expenseTypeRoutes.js', esta línea es correcta.
-const expenseTypeRoutes = require("./routes/expenseTypeRoutes"); // ANTES: const conceptSpentRoutes = require("./routes/conceptSpentRoutes");
+const expenseCategoryRoutes = require("./routes/expenseCategoryRoutes"); // ANTES: const conceptSpentRoutes = require("./routes/conceptSpentRoutes");
 
 // 2. Rutas para los Conceptos de Gasto Específicos (NUEVA ENTIDAD)
 //    Asegúrate de que el archivo 'specificConceptSpentRoutes.js' exista.
@@ -74,7 +74,7 @@ app.use("/provider", providerRoutes);
 //    Si tu frontend llamaba a "/conceptSpent" para los tipos generales, puedes mantener ese endpoint
 //    y apuntarlo al nuevo router de 'expenseTypeRoutes'.
 //    O puedes cambiar el endpoint si prefieres. Aquí mantengo "/conceptSpent" apuntando a los tipos generales.
-app.use("/conceptSpent", expenseTypeRoutes); // Ruta para los Tipos de Gasto Generales (antes tu 'conceptSpent')
+app.use("/conceptSpent", expenseCategoryRoutes); // Ruta para los Tipos de Gasto Generales (antes tu 'conceptSpent')
 
 // 2. Montaje para Conceptos de Gasto Específicos (NUEVA RUTA)
 //    Este es un nuevo endpoint para la nueva entidad.

@@ -1,49 +1,56 @@
-// models/SpecificConceptSpent.js (NUEVO)
+// models/SpecificConceptSpent.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const ExpenseType = require('./ExpenseType'); // Importar el tipo de gasto general
+const ExpenseCategory = require('./ExpenseCategory'); // Importar para la definición de FK y asociación
 
 const SpecificConceptSpent = sequelize.define('SpecificConceptSpent', {
-    idSpecificConcept: { // PK para este concepto específico
+    idSpecificConcept: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
+        allowNull: false
     },
-    idExpenseType: { // FK a ExpenseType, indica a qué categoría general pertenece
+    idExpenseCategory: { // Clave foránea directa
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: false, // Un concepto DEBE tener una categoría
         references: {
-            model: ExpenseType,
-            key: 'idExpenseType'
+            model: ExpenseCategory, // Referencia directa al modelo importado
+            key: 'idExpenseCategory'
         }
     },
-    name: { // Ej: "Sueldo Empleado Aux", "Sueldo Jefe Cocina", "Pago Luz"
+    name: {
         type: DataTypes.STRING(100),
         allowNull: false
     },
-    // Puedes añadir un campo para saber si requiere lógica de empleados/bono
+    description: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
     requiresEmployeeCalculation: {
         type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false
+    },
+    isBimonthly: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
         defaultValue: false
     },
     status: {
         type: DataTypes.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
+        allowNull: false
     }
-    // Otros campos relevantes para un concepto específico si los tienes
 }, {
     tableName: 'specific_concept_spent',
-    // Considera un índice unique compuesto para (idExpenseType, name) si los nombres deben ser únicos dentro de un tipo
     indexes: [
+        // Índice para asegurar que el nombre sea único DENTRO de cada categoría
         {
             unique: true,
-            fields: ['idExpenseType', 'name']
+            fields: ['idExpenseCategory', 'name'],
+            name: 'uq_concept_name_in_category' // Nombre corto y explícito
         }
     ]
 });
-
-// Relaciones
-SpecificConceptSpent.belongsTo(ExpenseType, { foreignKey: 'idExpenseType', as: 'expenseType' });
-ExpenseType.hasMany(SpecificConceptSpent, { foreignKey: 'idExpenseType', as: 'specificConcepts' });
 
 module.exports = SpecificConceptSpent;

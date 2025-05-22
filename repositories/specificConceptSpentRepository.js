@@ -1,63 +1,74 @@
 // repositories/specificConceptSpentRepository.js
-const SpecificConceptSpent = require('../models/SpecificConceptSpent');
-const ExpenseType = require('../models/ExpenseType');
 const { Op } = require('sequelize');
+const SpecificConceptSpent = require('../models/SpecificConceptSpent');
+const ExpenseCategory = require('../models/ExpenseCategory'); // Para includes
 
-const create = async (data) => {
-    return SpecificConceptSpent.create(data);
+const create = async (data, options = {}) => {
+    // 'data' ya debe incluir idExpenseCategory
+    return SpecificConceptSpent.create(data, options);
 };
 
-const findAll = async (filters = {}) => {
-    const whereClause = {};
-    if (filters.idExpenseType) {
-        whereClause.idExpenseType = filters.idExpenseType;
-    }
+const findAllWithOptions = async (filters = {}) => { // Renombrado para generalizar
+    const queryOptions = {
+        include: [{
+            model: ExpenseCategory,
+            as: 'expenseCategoryDetails', // El alias definido en la asociación 1-M en index.js
+            attributes: ['idExpenseCategory', 'name'],
+            required: false // LEFT JOIN para mostrar el concepto aunque la categoría no exista (aunque no debería pasar con FK)
+        }],
+        where: {},
+        order: [['name', 'ASC']]
+    };
+
     if (filters.status !== undefined) {
-        whereClause.status = filters.status;
+        queryOptions.where.status = filters.status;
     }
     if (filters.requiresEmployeeCalculation !== undefined) {
-        whereClause.requiresEmployeeCalculation = filters.requiresEmployeeCalculation;
+        queryOptions.where.requiresEmployeeCalculation = filters.requiresEmployeeCalculation;
+    }
+    if (filters.isBimonthly !== undefined) {
+        queryOptions.where.isBimonthly = filters.isBimonthly;
     }
 
-    console.log('[REPOSITORY - ANTES DE FINDALL] Objeto Filters recibido:', JSON.stringify(filters));
-    console.log('[REPOSITORY - ANTES DE FINDALL] WhereClause construida para Sequelize:', JSON.stringify(whereClause));
+    // Filtrar por idExpenseCategory directamente en SpecificConceptSpent
+    if (filters.expenseCategoryId) {
+        queryOptions.where.idExpenseCategory = filters.expenseCategoryId;
+    }
 
-    return SpecificConceptSpent.findAll({
-        where: whereClause,
-        include: [{
-            model: ExpenseType,
-            as: 'expenseType',
-            attributes: ['idExpenseType', 'name']
-        }],
-        order: [
-            ['idExpenseType', 'ASC'],
-            ['name', 'ASC']
-        ]
-    });
+    console.log('[REPOSITORY scs] findAllWithOptions QueryOptions:', JSON.stringify(queryOptions, null, 2));
+    return SpecificConceptSpent.findAll(queryOptions);
 };
 
-const findById = async (idSpecificConcept) => {
+const findByIdWithDetails = async (idSpecificConcept) => { // Renombrado
     return SpecificConceptSpent.findByPk(idSpecificConcept, {
         include: [{
-            model: ExpenseType,
-            as: 'expenseType',
-            attributes: ['idExpenseType', 'name']
+            model: ExpenseCategory,
+            as: 'expenseCategoryDetails',
+            attributes: ['idExpenseCategory', 'name'],
         }]
     });
 };
 
-const update = async (idSpecificConcept, data) => {
-    return SpecificConceptSpent.update(data, { where: { idSpecificConcept } });
+const update = async (idSpecificConcept, data, options = {}) => {
+    // 'data' puede incluir idExpenseCategory para cambiar la categoría
+    const [numberOfAffectedRows] = await SpecificConceptSpent.update(data, {
+        where: { idSpecificConcept },
+        ...options
+    });
+    return numberOfAffectedRows;
 };
 
-const deleteById = async (idSpecificConcept) => {
-    return SpecificConceptSpent.destroy({ where: { idSpecificConcept } });
+const deleteById = async (idSpecificConcept, options = {}) => {
+    return SpecificConceptSpent.destroy({
+        where: { idSpecificConcept },
+        ...options
+    });
 };
 
 module.exports = {
     create,
-    findAll,
-    findById,
+    findAllWithOptions,
+    findByIdWithDetails,
     update,
     deleteById,
 };
