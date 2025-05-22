@@ -98,7 +98,7 @@ if (Supplier && ProductSheet) {
 // ProductionOrder <-> Product
 if (ProductionOrder && Product) {
     console.log("Definiendo asociación ProductionOrder <-> Product (productOrdered)");
-    ProductionOrder.belongsTo(Product, { foreignKey: 'idProduct', as: 'productOrdered' });
+    ProductionOrder.belongsTo(Product, { foreignKey: 'idProduct', as: 'productOrdes' });
     // La inversa Product.hasMany(ProductionOrder)
     Product.hasMany(ProductionOrder, { foreignKey: 'idProduct', as: 'productionOrders' });
 }
@@ -144,7 +144,7 @@ db.PurchaseDetail.belongsTo(db.Supplier, { foreignKey: 'idSupplier', as: 'insumo
 
 // --- ProductionOrder y sus relaciones ---
 db.ProductionOrder.belongsTo(db.Product, { foreignKey: 'idProduct', as: 'productOrdered' }); // El producto final a producir
-db.ProductionOrder.belongsTo(db.SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheetUsed' }); // La ficha técnica usada
+db.ProductionOrder.belongsTo(db.SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheetUseds'}); // La ficha técnica usada
 
 // La siguiente relación de ProductionOrder con ProcessDetail debe ser revisada.
 // Si ProcessDetail es la tabla de unión para SpecSheet <-> Process, entonces ProductionOrder no debería tener hasMany ProcessDetail
