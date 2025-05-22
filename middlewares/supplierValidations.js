@@ -26,7 +26,7 @@ const validateUniqueSupplierName = async (supplierName) => {
 // Validaciones base para insumos
 const supplierBaseValidation = [
   body("supplierName")
-    .isLength({ min: 3 })
+    .isLength({ min: 3, max: 100 })
     .withMessage("El nombre del insumo debe tener al menos 3 caracteres")
     .matches(/^[a-zA-Z0-9\s]+$/)
     .withMessage("El nombre solo puede contener letras, números y espacios"),
