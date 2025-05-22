@@ -22,7 +22,7 @@ const getCombinedPermissionsByRoleId = async (idRole) => {
             include: [
                 {
                     model: Privilege,
-                    as: 'privilegeDetails', // Correcto: Coincide con la definición de la asociación
+                    as: 'privilegeDetailsInRoleLink', // Correcto: Coincide con la definición de la asociación
                     attributes: ['privilegeKey', 'status'],
                     required: true,
                     where: { status: true },
@@ -40,7 +40,7 @@ const getCombinedPermissionsByRoleId = async (idRole) => {
         });
 
         const combinedPermissions = results.map(entry => {
-            const priv = entry.privilegeDetails; // Correcto: Accede usando el alias del include
+            const priv = entry.privilegeDetailsInRoleLink; // Correcto: Accede usando el alias del include
             if (!priv || !priv.permission) {
                 console.warn(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Entrada incompleta o sin permiso anidado:`, entry.toJSON ? entry.toJSON() : entry);
                 return null;
@@ -82,7 +82,7 @@ const getPermissionKeyPrivilegeKeyPairsByRoleId = async (idRole) => {
             include: [
                 {
                     model: Privilege,
-                    as: 'privilegeDetails', // Correcto: Coincide con la definición de la asociación
+                    as: 'privilegeDetailsInRoleLink', // Correcto: Coincide con la definición de la asociación
                     attributes: ['privilegeKey', 'status'],
                     required: true,
                     where: { status: true },
@@ -100,7 +100,7 @@ const getPermissionKeyPrivilegeKeyPairsByRoleId = async (idRole) => {
         });
 
         const permissionKeyPrivilegeKeyPairs = results.map(entry => {
-            const priv = entry.privilegeDetails; // Correcto: Accede usando el alias del include
+            const priv = entry.privilegeDetailsInRoleLink; // Correcto: Accede usando el alias del include
             if (!priv || !priv.permission) {
                 console.warn(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Entrada incompleta o sin permiso anidado:`, entry.toJSON ? entry.toJSON() : entry);
                 return null;
@@ -143,14 +143,14 @@ const getRawAssignmentsByRoleId = async (idRole) => {
             attributes: ['idPrivilege'],
             include: [{
                 model: Privilege,
-                as: 'privilegeDetails', // Correcto: Coincide con la definición de la asociación
+                as: 'privilegeDetailsInRoleLink', // Correcto: Coincide con la definición de la asociación
                 attributes: ['idPermission'],
                 required: true
             }]
         });
         return assignments.map(a => ({
             idPrivilege: a.idPrivilege,
-            idPermission: a.privilegeDetails.idPermission // Correcto: Accede usando el alias del include
+            idPermission: a.privilegeDetailsInRoleLink.idPermission // Correcto: Accede usando el alias del include
         }));
     } catch (error) {
         console.error(`${LOG_REPO_RP} Error en getRawAssignmentsByRoleId para rol ${idRole}:`, error);

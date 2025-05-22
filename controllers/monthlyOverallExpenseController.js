@@ -1,3 +1,4 @@
+// controllers/monthlyOverallExpenseController.js
 const { validationResult } = require('express-validator');
 const monthlyOverallExpenseService = require('../services/monthlyOverallExpenseService');
 
@@ -7,21 +8,52 @@ const createMonthlyOverallExpense = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const monthlyOverallExpense = await monthlyOverallExpenseService.createMonthlyOverallExpense(req.body);
+        // req.body ya no contendrá idExpenseCategory en el nivel principal.
+        // Contendrá dateOverallExp, valueExpense, noveltyExpense, status, y expenseItems.
+        // Las validaciones ya se hicieron cargo de la estructura de expenseItems.
+        // El frontend envía 'noveltyExpense', el modelo puede tener 'novelty_expense'.
+        // El servicio y repositorio deberían manejar la propiedad con el nombre que espera el modelo.
+        // Si el modelo espera 'novelty_expense', hay que mapearlo.
+        // Por ahora, asumo que el payload del frontend y el modelo usan 'noveltyExpense' (camelCase)
+        // o que el ORM maneja el mapeo si hay `field: 'novelty_expense'` en el modelo.
+
+        const dataToCreate = { ...req.body };
+        // Si tu modelo MonthlyOverallExpense usa 'novelty_expense' (snake_case)
+        // pero el frontend envía 'noveltyExpense' (camelCase), necesitas mapear:
+        if (dataToCreate.hasOwnProperty('noveltyExpense') && !dataToCreate.hasOwnProperty('novelty_expense')) {
+            dataToCreate.novelty_expense = dataToCreate.noveltyExpense;
+            delete dataToCreate.noveltyExpense;
+        }
+
+
+        const monthlyOverallExpense = await monthlyOverallExpenseService.createMonthlyOverallExpense(dataToCreate);
         res.status(201).json(monthlyOverallExpense);
     } catch (error) {
-        console.error("Error al crear gasto mensual:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
+        console.error("Error al crear gasto mensual:", error.response?.data || error.message);
+        const errorMsg = error.response?.data?.message || error.message || "Error interno del servidor";
+        const statusCode = error.response?.status || error.statusCode || 500;
+        res.status(statusCode).json({ message: errorMsg, errors: error.response?.data?.errors });
     }
 };
 
 const getAllMonthlyOverallExpenses = async (req, res) => {
+    const errors = validationResult(req); // Para los query params
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
     try {
-        const monthlyOverallExpenses = await monthlyOverallExpenseService.getAllMonthlyOverallExpenses();
+        const filters = {};
+        const { status, year, month } = req.query; // idExpenseCategory eliminado de aquí
+
+        if (status !== undefined) filters.status = (status === 'true' || status === '1' || status === true);
+        if (year) filters.year = parseInt(year, 10);
+        if (month) filters.month = parseInt(month, 10);
+
+        const monthlyOverallExpenses = await monthlyOverallExpenseService.getAllMonthlyOverallExpenses(filters);
         res.status(200).json(monthlyOverallExpenses);
     } catch (error) {
         console.error("Error al obtener gastos mensuales:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
+        res.status(error.statusCode || 500).json({ message: error.message || "Error interno del servidor" });
     }
 };
 
@@ -30,22 +62,8 @@ const getMonthlyOverallExpenseById = async (req, res) => {
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-        return res.status(400).json({ message: "El ID debe ser un número válido" });
-    }
-
-    try {
-        const monthlyOverallExpense = await monthlyOverallExpenseService.getMonthlyOverallExpenseById(id);
-        if (!monthlyOverallExpense) {
-            return res.status(404).json({ message: "Gasto mensual no encontrado" });
-        }
-        res.status(200).json(monthlyOverallExpense);
-    } catch (error) {
-        console.error("Error al obtener gasto mensual por ID:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
-    }
+    // req.monthlyOverallExpense es adjuntado por el middleware si existe
+    res.status(200).json(req.monthlyOverallExpense);
 };
 
 const updateMonthlyOverallExpense = async (req, res) => {
@@ -53,21 +71,39 @@ const updateMonthlyOverallExpense = async (req, res) => {
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-
     const idOverallMonth = parseInt(req.params.idOverallMonth, 10);
-    if (isNaN(idOverallMonth)) {
-        return res.status(400).json({ message: "El ID debe ser un número válido" });
+    // req.body solo debe contener campos de la cabecera: dateOverallExp, noveltyExpense, status
+    // valueExpense no se actualiza directamente aquí.
+    const { dateOverallExp, noveltyExpense, status } = req.body;
+    const dataToUpdate = {};
+    if (dateOverallExp !== undefined) dataToUpdate.dateOverallExp = dateOverallExp;
+    if (noveltyExpense !== undefined) { // Mapeo si es necesario
+        // Si el modelo es novelty_expense
+        // dataToUpdate.novelty_expense = noveltyExpense;
+        dataToUpdate.noveltyExpense = noveltyExpense; // Si el modelo es noveltyExpense
+    }
+    if (status !== undefined) dataToUpdate.status = status;
+
+
+    if (Object.keys(dataToUpdate).length === 0) {
+        return res.status(400).json({ message: "No se proporcionaron datos para actualizar." });
     }
 
     try {
-        const updated = await monthlyOverallExpenseService.updateMonthlyOverallExpense(idOverallMonth, req.body);
-        if (!updated) {
-            return res.status(404).json({ message: "Gasto mensual no encontrado" });
+        const affectedRows = await monthlyOverallExpenseService.updateMonthlyOverallExpense(idOverallMonth, dataToUpdate);
+
+        if (affectedRows === 0) {
+            // El middleware validateMonthlyOverallExpenseExistence ya se encargó del 404
+            // Si existe pero no hubo cambios, devolver el registro actual.
+            const existingExpense = await monthlyOverallExpenseService.getMonthlyOverallExpenseById(idOverallMonth);
+            return res.status(200).json({ message: "No se realizaron cambios.", data: existingExpense });
         }
-        res.status(204).end();
+
+        const updatedExpense = await monthlyOverallExpenseService.getMonthlyOverallExpenseById(idOverallMonth);
+        res.status(200).json(updatedExpense);
     } catch (error) {
         console.error("Error al actualizar gasto mensual:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
+        res.status(error.statusCode || 500).json({ message: error.message || "Error interno del servidor" });
     }
 };
 
@@ -76,21 +112,17 @@ const deleteMonthlyOverallExpense = async (req, res) => {
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-        return res.status(400).json({ message: "El ID debe ser un número válido" });
-    }
+    const idOverallMonth = parseInt(req.params.idOverallMonth, 10);
 
     try {
-        const deleted = await monthlyOverallExpenseService.deleteMonthlyOverallExpense(id);
-        if (!deleted) {
-            return res.status(404).json({ message: "Gasto mensual no encontrado" });
-        }
+        // El servicio ahora maneja la lógica de ítems y el 404 si no existe
+        await monthlyOverallExpenseService.deleteMonthlyOverallExpense(idOverallMonth);
         res.status(204).end();
     } catch (error) {
         console.error("Error al eliminar gasto mensual:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
+        const errorMsg = error.message || "Error interno del servidor";
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({ message: errorMsg });
     }
 };
 
@@ -99,69 +131,40 @@ const changeStateMonthlyOverallExpense = async (req, res) => {
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-        return res.status(400).json({ message: "El ID debe ser un número válido" });
-    }
+    const idOverallMonth = parseInt(req.params.idOverallMonth, 10);
+    const { status } = req.body;
 
     try {
-        const updated = await monthlyOverallExpenseService.changeStateMonthlyOverallExpense(id, req.body.state);
-        if (!updated) {
-            return res.status(404).json({ message: "Gasto mensual no encontrado" });
+        await monthlyOverallExpenseService.changeStateMonthlyOverallExpense(idOverallMonth, status);
+        const updatedExpense = await monthlyOverallExpenseService.getMonthlyOverallExpenseById(idOverallMonth);
+        if (!updatedExpense) { // Doble check por si acaso
+             return res.status(404).json({ message: "Gasto mensual no encontrado después de cambiar estado." });
         }
-        res.status(204).end();
+        res.status(200).json(updatedExpense);
     } catch (error) {
         console.error("Error al cambiar estado del gasto mensual:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
+        res.status(error.statusCode || 500).json({ message: error.message || "Error interno del servidor" });
     }
 };
 
-// Nuevos endpoints
 const getTotalExpenseByMonth = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
     try {
         const { year, month } = req.params;
-
-        const parsedYear = parseInt(year, 10);
-        const parsedMonth = parseInt(month, 10);
-
-        if (isNaN(parsedYear) || isNaN(parsedMonth)) {
-            return res.status(400).json({ message: 'Año y mes deben ser números válidos.' });
-        }
-
-        const totalExpense = await monthlyOverallExpenseService.getTotalExpenseByMonth(parsedYear, parsedMonth);
-        res.status(200).json({ year: parsedYear, month: parsedMonth, totalExpense });
+        const totalExpense = await monthlyOverallExpenseService.getTotalExpenseByMonth(parseInt(year), parseInt(month));
+        res.status(200).json({ year: parseInt(year), month: parseInt(month), totalExpense });
     } catch (error) {
         console.error("Error al obtener el total de gastos por mes:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
+        res.status(error.statusCode || 500).json({ message: error.message || "Error interno del servidor" });
     }
 };
 
-const getTotalExpenseByTypeAndMonth = async (req, res) => {
-    try {
-        const { year, month, idExpenseType } = req.params;
-
-        const parsedYear = parseInt(year, 10);
-        const parsedMonth = parseInt(month, 10);
-        const parsedIdExpenseType = parseInt(idExpenseType, 10);
-
-        if (isNaN(parsedYear) || isNaN(parsedMonth) || isNaN(parsedIdExpenseType)) {
-            return res.status(400).json({ message: 'Año, mes e idExpenseType deben ser números válidos.' });
-        }
-
-        const totalExpense = await monthlyOverallExpenseService.getTotalExpenseByTypeAndMonth(parsedYear, parsedMonth, parsedIdExpenseType);
-        res.status(200).json({
-            year: parsedYear,
-            month: parsedMonth,
-            idExpenseType: parsedIdExpenseType,
-            totalExpense
-        });
-    } catch (error) {
-        console.error("Error al obtener el total de gastos por tipo y mes:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
-    }
-};
-
+// getTotalExpenseByCategoryAndMonth ya no aplica directamente a la cabecera.
+// Si se requiere, se debe crear una nueva ruta/controlador/servicio que sume los items
+// agrupados por su categoría (SpecificConceptSpent -> ExpenseCategory).
 
 module.exports = {
     createMonthlyOverallExpense,
@@ -171,5 +174,5 @@ module.exports = {
     deleteMonthlyOverallExpense,
     changeStateMonthlyOverallExpense,
     getTotalExpenseByMonth,
-    getTotalExpenseByTypeAndMonth, // Exporta la nueva función
+    // getTotalExpenseByCategoryAndMonth, // Comentado/Eliminado
 };
