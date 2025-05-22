@@ -23,6 +23,7 @@ const ProductSheet = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    measurementUnit: { type: DataTypes.STRING(20), allowNull: false }
   
   },
   {

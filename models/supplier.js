@@ -9,7 +9,7 @@ const Supplier = sequelize.define('Supplier', {
         allowNull: false 
     },
     supplierName: { 
-        type: DataTypes.STRING(60), 
+        type: DataTypes.STRING(30),
         allowNull: false 
     },
     measurementUnit: {    

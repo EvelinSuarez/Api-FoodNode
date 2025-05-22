@@ -35,10 +35,10 @@ const ProductionOrder = sequelize.define('ProductionOrder', {
         type: DataTypes.DOUBLE,
         allowNull: true
     },
-    // initialWeight: { // Si necesitas este campo
-    //     type: DataTypes.DOUBLE,
-    //     allowNull: true
-    // },
+    initialWeight: { // Si necesitas este campo
+        type: DataTypes.DOUBLE,
+        allowNull: true
+    },
     observations: {
         type: DataTypes.TEXT,
         allowNull: true
