@@ -10,14 +10,6 @@ const validations = require('../middlewares/roleValidations'); // Middlewares de
 const verifyToken = require('../middlewares/verifyToken');      // Middleware para verificar el JWT y establecer req.user
 const authorize = require('../middlewares/authPermissions');    // Middleware para verificar permisos basados en req.user.idRole
 
-console.log("BACKEND: roleRoutes.js - Definición de rutas de roles cargada.");
-
-/*
- * ==========================================================================
- * Rutas para la Gestión de Roles (CRUD)
- * Todas estas rutas requieren autenticación y permisos específicos.
- * ==========================================================================
- */
 
 // POST /api/role - Crear un nuevo rol y sus privilegios iniciales (si se envían)
 router.post('/',

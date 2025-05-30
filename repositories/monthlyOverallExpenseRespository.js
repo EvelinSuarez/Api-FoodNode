@@ -51,11 +51,11 @@ const getAllMonthlyOverallExpenses = async (filters = {}) => {
                 include: [
                     {
                         model: SpecificConceptSpent,
-                        as: 'specificConceptDetails',
+                        as: 'specificConceptSpent',
                         include: [
                             {
                                 model: ExpenseCategory,
-                                as: 'expenseCategoryDetails',
+                                as: 'expenseCategory',
                                 attributes: ['idExpenseCategory', 'name']
                             }
                         ],
@@ -79,11 +79,11 @@ const getMonthlyOverallExpenseById = async (idOverallMonth) => {
                 include: [
                     {
                         model: SpecificConceptSpent,
-                        as: 'specificConceptDetails',
+                        as: 'specificConceptSpent',
                         include: [
                             {
                                 model: ExpenseCategory,
-                                as: 'expenseCategoryDetails',
+                                as: 'expenseCategory',
                                 attributes: ['idExpenseCategory', 'name']
                             }
                         ],

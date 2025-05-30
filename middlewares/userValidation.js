@@ -1,171 +1,80 @@
-// src/validators/userValidator.js (o donde tengas este archivo)
+// middlewares/userValidation.js
+const { body, param, validationResult: expressValidationResult } = require('express-validator');
+const { Op } = require('sequelize');
+const { user: User, role: Role } = require('../models'); // Ajusta la ruta
 
-const { body, param, validationResult } = require('express-validator');
-const User = require('../models/user'); // Asegúrate que la ruta al modelo es correcta
-const Role = require('../models/role'); // Necesario para validar idRole si lo haces
-
-// --- Funciones de Validación Personalizada (Mantenidas como estaban) ---
-const validateUserExistence = async (id) => {
-    const user = await User.findByPk(id);
+const validateUserExistence = async (idUserValue, { req }) => {
+    if (!idUserValue || isNaN(parseInt(idUserValue, 10)) || parseInt(idUserValue, 10) <= 0) {
+      // Esto no debería ocurrir si la validación .isInt({gt:0}) ya se aplicó al param.
+      // Pero es una salvaguarda.
+      return Promise.reject('ID de usuario inválido en la URL.');
+    }
+    const user = await User.findByPk(idUserValue);
     if (!user) {
-        return Promise.reject('El usuario no existe');
+        return Promise.reject('El usuario especificado no existe.');
+    }
+    // req.foundUser = user; // Opcional
+};
+
+const validateUniqueField = async (value, { req, path }) => {
+    if (!value) return;
+    const userIdFromParams = req.params.idUser; // Correcto: usa idUser
+    const field = path;
+    const whereClause = { [field]: value };
+    if (userIdFromParams) { // Solo para actualizaciones
+        whereClause.idUsers = { [Op.ne]: userIdFromParams }; // Asume que PK es idUsers
+    }
+    const existingUser = await User.findOne({ where: whereClause });
+    if (existingUser) {
+        const fieldName = field === 'email' ? 'correo electrónico' : 'documento';
+        return Promise.reject(`El ${fieldName} '${value}' ya está registrado por otro usuario.`);
     }
 };
 
-const validateUniqueUserDocument = async (document, { req }) => {
-    // Al editar, permite el documento del usuario actual
-    const userId = req.params?.id; // Obtiene ID de la ruta si existe (para editar)
-    const whereClause = { document };
-    if (userId) {
-        whereClause.idUsers = { [require('sequelize').Op.ne]: userId }; // Excluye al usuario actual
-    }
-    const user = await User.findOne({ where: whereClause });
-    if (user) {
-        return Promise.reject('El documento ya está registrado por otro usuario');
-    }
-};
-
-const validateUniqueUserEmail = async (email, { req }) => {
-     // Al editar, permite el email del usuario actual
-    const userId = req.params?.id; // Obtiene ID de la ruta si existe (para editar)
-    const whereClause = { email };
-     if (userId) {
-        whereClause.idUsers = { [require('sequelize').Op.ne]: userId }; // Excluye al usuario actual
-    }
-    const user = await User.findOne({ where: whereClause });
-    if (user) {
-        return Promise.reject('El correo electrónico ya está registrado por otro usuario');
-    }
-};
-
-// Validador opcional para idRole (si quieres asegurar que el ID exista en la tabla Roles)
 const validateRoleExists = async (idRole) => {
-    if (!idRole) return; // Si es opcional y no se envía, pasa
-    const role = await Role.findByPk(idRole);
-    if (!role) {
-        return Promise.reject('El rol seleccionado no existe');
-    }
+    if (idRole === null || idRole === undefined || idRole === '') return;
+    const roleId = parseInt(idRole, 10);
+    if (isNaN(roleId) || roleId <= 0) return Promise.reject('ID de rol inválido.');
+    const role = await Role.findByPk(roleId);
+    if (!role) return Promise.reject('El rol seleccionado no existe o es inválido.');
+    if (!role.status) return Promise.reject('El rol seleccionado no está activo.');
 };
 
-// --- Validación para CREAR Usuario (Corregida) ---
 const createUserValidation = [
-    body('document_type')
-        .notEmpty().withMessage('El tipo de documento es obligatorio')
-        .isString().withMessage('Tipo de documento debe ser texto')
-        .trim()
-        .isLength({ max: 30 }).withMessage('Tipo de documento demasiado largo (máx 30)'),
-
-    body('document')
-        .notEmpty().withMessage('El número de documento es obligatorio')
-        .isString().withMessage('Número de documento debe ser texto')
-        .trim()
-        .isLength({ max: 30 }).withMessage('Número de documento demasiado largo (máx 30)')
-        .custom(validateUniqueUserDocument), // Valida unicidad
-
-    body('cellphone')
-        .notEmpty().withMessage('El número de celular es obligatorio')
-        .isString().withMessage('Celular debe ser texto')
-        .trim()
-        .matches(/^\d{7,15}$/).withMessage('Celular debe tener entre 7 y 15 dígitos') // Más específico que isLength
-        .isLength({ max: 15 }), // Redundante pero no daña
-
-    body('full_name')
-        .notEmpty().withMessage('El nombre completo es obligatorio')
-        .isString().withMessage('Nombre completo debe ser texto')
-        .trim()
-        .isLength({ max: 60 }).withMessage('Nombre completo demasiado largo (máx 60)'),
-
-    body('email')
-        .notEmpty().withMessage('El correo electrónico es obligatorio')
-        .isEmail().withMessage('Formato de correo inválido')
-        .normalizeEmail() // Buena práctica: normaliza el email
-        .isLength({ max: 255 }).withMessage('Correo demasiado largo (máx 255)')
-        .custom(validateUniqueUserEmail), // Valida unicidad
-
-    body('password')
-        .notEmpty().withMessage('La contraseña es obligatoria')
-        .isLength({ min: 10, max: 10 }).withMessage('La contraseña debe tener exactamente 10 caracteres')
-        // *** AÑADIDO: Validación de tipos de caracteres con Regex ***
-        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10}$/)
-        .withMessage('La contraseña debe incluir mayúscula, minúscula, número y símbolo (@$!%*?&)'),
-
-    body('idRole')
-        // Si el rol es OBLIGATORIO al crear, cambia .optional() por .notEmpty()
-        .notEmpty().withMessage('El rol es obligatorio') // Asumiendo que es obligatorio
-        .isInt({ gt: 0 }).withMessage('El ID del rol debe ser un número entero positivo')
-        .custom(validateRoleExists), // Opcional: Valida que el rol exista
-
-    body('status')
-        .optional() // Es opcional porque tiene defaultValue en el modelo
-        .isBoolean().withMessage('El estado debe ser un valor booleano (true/false)'),
+    body('full_name').notEmpty().withMessage('El nombre completo es obligatorio.').isString().trim().isLength({ min: 3, max: 60 }),
+    body('document_type').notEmpty().withMessage('El tipo de documento es obligatorio.').isString().trim().isIn(['CC', 'CE', 'PA', 'PEP']).withMessage('Tipo de documento inválido.').isLength({ max: 30 }),
+    body('document').notEmpty().withMessage('El número de documento es obligatorio.').isString().trim().isLength({ min: 3, max: 30 }).matches(/^[a-zA-Z0-9-]+$/).withMessage('Documento solo letras, números, guiones.').custom(validateUniqueField),
+    body('email').notEmpty().withMessage('El correo es obligatorio.').isEmail().normalizeEmail().isLength({ max: 255 }).custom(validateUniqueField),
+    body('cellphone').notEmpty().withMessage('El celular es obligatorio.').isString().trim().matches(/^\d{7,15}$/).withMessage('Celular debe tener 7-15 dígitos.'),
+    body('password').notEmpty().withMessage('La contraseña es obligatoria.').isString().isLength({ min: 10, max: 10 }).withMessage('Contraseña debe tener 10 caracteres.').matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10}$/).withMessage('Contraseña: 1 mayús, 1 minús, 1 núm, 1 símbolo.'),
+    body('idRole').notEmpty().withMessage('El rol es obligatorio.').custom(validateRoleExists),
+    body('status').optional({ checkFalsy: true }).isBoolean().withMessage('Estado debe ser booleano.').toBoolean(),
 ];
 
-// --- Validación para ACTUALIZAR Usuario (Ajustada para validar unicidad excluyendo al propio usuario) ---
 const updateUserValidation = [
-    param('id')
-        .isInt({ gt: 0 }).withMessage('El ID de usuario debe ser un número entero positivo')
-        .custom(validateUserExistence), // Valida que el usuario a editar exista
-
-    // Validaciones opcionales para los campos que se pueden actualizar
-    // Nota: No validamos password aquí, usualmente se hace en una ruta separada.
-    body('document_type')
-        .optional()
-        .isString().withMessage('Tipo de documento debe ser texto').trim()
-        .isLength({ max: 30 }).withMessage('Tipo de documento demasiado largo (máx 30)'),
-
-    body('document')
-        .optional()
-        .isString().withMessage('Número de documento debe ser texto').trim()
-        .isLength({ max: 30 }).withMessage('Número de documento demasiado largo (máx 30)')
-        .custom(validateUniqueUserDocument), // Valida unicidad (excluyendo al usuario actual)
-
-    body('cellphone')
-        .optional()
-        .isString().withMessage('Celular debe ser texto').trim()
-        .matches(/^\d{7,15}$/).withMessage('Celular debe tener entre 7 y 15 dígitos'),
-
-    body('full_name')
-        .optional()
-        .isString().withMessage('Nombre completo debe ser texto').trim()
-        .isLength({ max: 60 }).withMessage('Nombre completo demasiado largo (máx 60)'),
-
-    body('email')
-        .optional()
-        .isEmail().withMessage('Formato de correo inválido').normalizeEmail()
-        .isLength({ max: 255 }).withMessage('Correo demasiado largo (máx 255)')
-        .custom(validateUniqueUserEmail), // Valida unicidad (excluyendo al usuario actual)
-
-    body('idRole')
-        .optional()
-        .isInt({ gt: 0 }).withMessage('El ID del rol debe ser un número entero positivo')
-        .custom(validateRoleExists), // Opcional: Valida que el rol exista
-
-    body('status')
-        .optional()
-        .isBoolean().withMessage('El estado debe ser un valor booleano (true/false)'),
-
-    // Asegurarse de que al menos un campo se envíe para actualizar (o permitir actualizaciones vacías?)
-    // Esto es más complejo, podría requerir una validación personalizada al final.
+    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence), // Usa idUser
+    body('full_name').optional().isString().trim().isLength({ min: 3, max: 60 }),
+    body('document_type').optional().isString().trim().isIn(['CC', 'CE', 'PA', 'PEP']).withMessage('Tipo de documento inválido.').isLength({ max: 30 }),
+    body('document').optional().isString().trim().isLength({ min: 3, max: 30 }).matches(/^[a-zA-Z0-9-]+$/).withMessage('Documento solo letras, números, guiones.').custom(validateUniqueField),
+    body('email').optional().isEmail().normalizeEmail().isLength({ max: 255 }).custom(validateUniqueField),
+    body('cellphone').optional().isString().trim().matches(/^\d{7,15}$/).withMessage('Celular debe tener 7-15 dígitos.'),
+    body('password').optional({ checkFalsy: true }).if(body('password').notEmpty()).isString().isLength({ min: 10, max: 10 }).withMessage('Nueva contraseña debe tener 10 caracteres.').matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10}$/).withMessage('Nueva contraseña: 1 mayús, 1 minús, 1 núm, 1 símbolo.'),
+    body('idRole').optional({ checkFalsy: true }).custom(validateRoleExists),
+    body('status').optional().isBoolean().withMessage('Estado debe ser booleano.').toBoolean(),
 ];
 
-
-
-// --- Validaciones para DELETE y GET por ID (Mantenidas como estaban) ---
 const deleteUserValidation = [
-    param('id').isInt({ gt: 0 }).withMessage('El ID debe ser un número entero positivo').custom(validateUserExistence),
+    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence), // Usa idUser
 ];
 
 const getUserByIdValidation = [
-    param('id').isInt({ gt: 0 }).withMessage('El ID debe ser un número entero positivo').custom(validateUserExistence),
+    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence), // Usa idUser
 ];
 
-// --- Validación para Cambiar Estado (Mantenida como estaba) ---
 const changeStateValidation = [
-     param('id').isInt({ gt: 0 }).withMessage('El ID debe ser un número entero positivo').custom(validateUserExistence),
-     // El estado viene en el body, no como param
-    body('status').exists().withMessage('El estado es requerido').isBoolean().withMessage('El estado debe ser un valor booleano (true/false)'),
+    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence), // Usa idUser
+    body('status').exists({ checkFalsy: false }).withMessage('El estado es requerido (true o false).').isBoolean().withMessage('El estado debe ser un valor booleano (true o false).').toBoolean(),
 ];
-
 
 module.exports = {
     createUserValidation,
@@ -173,4 +82,5 @@ module.exports = {
     deleteUserValidation,
     getUserByIdValidation,
     changeStateValidation,
+    validationResult: expressValidationResult
 };

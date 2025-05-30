@@ -1,210 +1,246 @@
 // models/index.js
 'use strict';
 
-const { Sequelize, DataTypes } = require('sequelize');
+const { Sequelize } = require('sequelize');
 const sequelize = require('../config/database');
+const fs = require('fs');
+const path = require('path');
+const basename = path.basename(__filename);
 const db = {};
 
-// --- 1. Carga de Todos los Modelos ---
-try {
-    db.Role = require('./role');
-    db.User = require('./user');
-    db.Permission = require('./permission');
-    db.Privilege = require('./privilege');
-    db.RolePrivilege = require('./rolePrivileges');
-    db.Provider = require('./provider');
-    db.Supplier = require('./supplier');
-    db.RegisterPurchase = require('./registerPurchase');
-    db.PurchaseDetail = require('./purchaseDetail');
-    db.Product = require('./Product');
-    db.SpecSheet = require('./specSheet');
-    db.ProductSheet = require('./productSheet');
-    db.ProductionOrder = require('./productionOrder');
-    db.Employee = require('./employee');
-    db.Process = require('./process');
-    db.ProcessDetail = require('./processDetail');
+// --- 1. Carga Dinámica de Modelos ---
+fs
+  .readdirSync(__dirname)
+  .filter(file => {
+    return (
+      file.indexOf('.') !== 0 &&
+      file !== basename &&
+      file.slice(-3) === '.js' &&
+      file.indexOf('.test.js') === -1
+    );
+  })
+  .forEach(file => {
+    try { // Añadir try-catch para mejor diagnóstico de carga de modelo
+        const model = require(path.join(__dirname, file));
+        if (model && model.name) {
+            db[model.name] = model;
+            console.log(`MODELOS/INDEX.JS: Modelo ${model.name} cargado desde ${file}. (typeof: ${typeof model})`);
+        } else {
+            console.warn(`MODELOS/INDEX.JS: El archivo ${file} no parece exportar un modelo de Sequelize válido (falta model.name o model es undefined). Model:`, model);
+        }
+    } catch (e) {
+        console.error(`MODELOS/INDEX.JS: Error cargando modelo desde ${file}:`, e);
+    }
+  });
 
-    // === MODELOS PARA GASTOS ===
-    db.ExpenseCategory = require('./ExpenseCategory');
-    db.SpecificConceptSpent = require('./SpecificConceptSpent'); // Este modelo tiene idExpenseCategory
-    db.MonthlyOverallExpense = require('./monthlyOverallExpense'); // Este modelo YA NO tiene idExpenseCategory
-    db.MonthlyExpenseItem = require('./monthlyExpenseItem');
-
-    console.log("MODELOS/INDEX.JS: Todos los modelos cargados correctamente.");
-
-} catch (error) {
-    console.error("MODELOS/INDEX.JS: Error al cargar uno o más modelos:", error);
-    throw error;
+if (Object.keys(db).length === 0) {
+    console.error("MODELOS/INDEX.JS: No se cargaron modelos. Verifica la estructura de tus archivos de modelo y su exportación.");
+} else {
+    console.log("MODELOS/INDEX.JS: Todos los modelos disponibles cargados en 'db'. Modelos cargados:", Object.keys(db).join(', '));
 }
 
-// --- 2. Definición Explícita de Asociaciones (Centralizada) ---
+// --- 2. Definición de Asociaciones (Centralizada) ---
+// Desestructurar directamente de db para asegurar que usamos lo que se cargó
 const {
-    Role, User, Permission, Privilege, RolePrivilege,
-    Provider, Supplier, RegisterPurchase, PurchaseDetail,
-    Product, SpecSheet, ProductSheet, ProductionOrder, Employee, Process, ProcessDetail,
+     user: User,
+    role: Role,
+    permission: Permission,
+    privilege: Privilege,
+    // Modelos que ya están en CamelCase en db (según tus logs)
+    RolePrivilege,
+    Provider, Supply, RegisterPurchase, PurchaseDetail, // Supply debería estar aquí ahora
+    Product, SpecSheet, SpecSheetSupply, SpecSheetProcess, Process,
+    ProductionOrder, ProductionOrderDetail, ProductionOrderSupply, Employee,
     ExpenseCategory, SpecificConceptSpent, MonthlyOverallExpense, MonthlyExpenseItem
-} = db;
+} = db; // Tomar de db
 
-const modelosExisten = (...modelos) => modelos.every(modelo => !!modelo);
+const modelosExisten = (...modelos) => modelos.every(modelo => {
+    if (!modelo) console.warn("MODELOS/INDEX.JS: Un modelo es undefined durante la comprobación de existencia para asociaciones.");
+    return !!modelo;
+});
 
-// --- Tus asociaciones existentes (sin cambios) ---
+// ... (otras asociaciones sin cambios) ...
 if (modelosExisten(Role, User)) {
     Role.hasMany(User, { foreignKey: 'idRole', as: 'users' });
     User.belongsTo(Role, { foreignKey: 'idRole', as: 'role' });
+    // console.log("MODELOS/INDEX.JS: Asociaciones User<=>Role definidas."); // Comentado para reducir logs
 }
+
 if (modelosExisten(Permission, Privilege)) {
     Permission.hasMany(Privilege, { foreignKey: 'idPermission', as: 'privileges' });
     Privilege.belongsTo(Permission, { foreignKey: 'idPermission', as: 'permission' });
+    // console.log("MODELOS/INDEX.JS: Asociaciones Permission<=>Privilege definidas.");
 }
+
 if (modelosExisten(Role, Privilege, RolePrivilege)) {
-    Role.belongsToMany(Privilege, {
-        through: RolePrivilege,
-        foreignKey: 'idRole',
-        otherKey: 'idPrivilege',
-        as: 'assignedPrivileges'
-    });
-    Privilege.belongsToMany(Role, {
-        through: RolePrivilege,
-        foreignKey: 'idPrivilege',
-        otherKey: 'idRole',
-        as: 'assignedToRoles'
-    });
-    RolePrivilege.belongsTo(Role, { foreignKey: 'idRole', as: 'roleDetailsInPrivilegeLink' });
-    RolePrivilege.belongsTo(Privilege, { foreignKey: 'idPrivilege', as: 'privilegeDetailsInRoleLink' });
-    Role.hasMany(RolePrivilege, { foreignKey: 'idRole', as: 'rolePrivilegeLinkEntries'});
-    Privilege.hasMany(RolePrivilege, { foreignKey: 'idPrivilege', as: 'privilegeInRolesLinkEntries'});
+    Role.belongsToMany(Privilege, { through: RolePrivilege, foreignKey: 'idRole', otherKey: 'idPrivilege', as: 'privileges'});
+    Privilege.belongsToMany(Role, { through: RolePrivilege, foreignKey: 'idPrivilege', otherKey: 'idRole', as: 'roles'});
+    Role.hasMany(RolePrivilege, { foreignKey: 'idRole', as: 'rolePrivilegeEntries' });
+    RolePrivilege.belongsTo(Role, { foreignKey: 'idRole', as: 'roleDetails' });
+    Privilege.hasMany(RolePrivilege, { foreignKey: 'idPrivilege', as: 'rolePrivilegeEntries' });
+    RolePrivilege.belongsTo(Privilege, { foreignKey: 'idPrivilege', as: 'privilegeDetails' });
+    // console.log("MODELOS/INDEX.JS: Asociaciones Role<=>Privilege (many-to-many) y con RolePrivilege definidas.");
 }
+
 if (modelosExisten(Product, SpecSheet)) {
-    Product.hasMany(SpecSheet, { foreignKey: 'idProduct', as: 'specSheets' });
+    Product.hasMany(SpecSheet, { foreignKey: 'idProduct', as: 'specSheets', onDelete: 'CASCADE' });
     SpecSheet.belongsTo(Product, { foreignKey: 'idProduct', as: 'product' });
 }
-if (modelosExisten(SpecSheet, ProductSheet)) {
-    SpecSheet.hasMany(ProductSheet, { foreignKey: 'idSpecSheet', as: 'ingredients' });
-    ProductSheet.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheet' });
+if (modelosExisten(SpecSheet, Supply, SpecSheetSupply)) {
+    SpecSheet.belongsToMany(Supply, { through: SpecSheetSupply, foreignKey: 'idSpecSheet', otherKey: 'idSupply', as: 'supplies' });
+    Supply.belongsToMany(SpecSheet, { through: SpecSheetSupply, foreignKey: 'idSupply', otherKey: 'idSpecSheet', as: 'specSheetsThroughSupplies' });
+    SpecSheet.hasMany(SpecSheetSupply, { foreignKey: 'idSpecSheet', as: 'specSheetSupplies' });
+    SpecSheetSupply.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheet' });
+    SpecSheetSupply.belongsTo(Supply, { foreignKey: 'idSupply', as: 'supply' });
 }
-if (modelosExisten(Supplier, ProductSheet)) {
-    Supplier.hasMany(ProductSheet, { foreignKey: 'idSupplier', as: 'supplierIngredients' });
-    ProductSheet.belongsTo(Supplier, { foreignKey: 'idSupplier', as: 'supplier' });
+
+if (modelosExisten(SpecSheet, SpecSheetProcess)) {
+    SpecSheet.hasMany(SpecSheetProcess, {foreignKey: 'idSpecSheet', as: 'specSheetProcesses', onDelete: 'CASCADE', hooks: true });
+    SpecSheetProcess.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheet'});
+    // console.log("MODELOS/INDEX.JS: Asociaciones SpecSheet<=>SpecSheetProcess definidas.");
 }
-if (modelosExisten(ProductionOrder, Product)) {
-    ProductionOrder.belongsTo(Product, { foreignKey: 'idProduct', as: 'productOrdered' });
-    Product.hasMany(ProductionOrder, { foreignKey: 'idProduct', as: 'productionOrders' });
+
+
+if (modelosExisten(SpecSheetProcess, Process)) {
+    SpecSheetProcess.belongsTo(Process, { foreignKey: 'idProcess', as: 'masterProcessData', allowNull: true });
+    // console.log("MODELOS/INDEX.JS: Asociaciones SpecSheetProcess<=>Process definidas.");
 }
-if (modelosExisten(ProductionOrder, SpecSheet)) {
-    ProductionOrder.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheetUsed' });
+
+if (modelosExisten(Product, ProductionOrder)) {
+    Product.hasMany(ProductionOrder, { foreignKey: 'idProduct', as: 'productionOrdersFromProduct', onDelete: 'RESTRICT' });
+    ProductionOrder.belongsTo(Product, { foreignKey: 'idProduct', as: 'product' });
 }
-if (modelosExisten(ProductionOrder, ProcessDetail)) {
-    ProductionOrder.hasMany(ProcessDetail, { foreignKey: 'idProductionOrder', as: 'steps' });
+if (modelosExisten(SpecSheet, ProductionOrder)) {
+    SpecSheet.hasMany(ProductionOrder, { foreignKey: 'idSpecSheet', as: 'productionOrdersUsingSpec', onDelete: 'RESTRICT' });
+    ProductionOrder.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'specSheet' });
 }
-if (modelosExisten(ProcessDetail, ProductionOrder)) {
-    ProcessDetail.belongsTo(ProductionOrder, { foreignKey: 'idProductionOrder', as: 'productionOrder' });
+if (modelosExisten(Employee, ProductionOrder)) {
+    Employee.hasMany(ProductionOrder, { foreignKey: 'idEmployeeRegistered', as: 'createdProductionOrders' });
+    ProductionOrder.belongsTo(Employee, { foreignKey: 'idEmployeeRegistered', as: 'employeeRegistered' });
 }
-if (modelosExisten(ProcessDetail, Process)) {
-    ProcessDetail.belongsTo(Process, { foreignKey: 'idProcess', as: 'masterProcess' });
+if (modelosExisten(Provider, ProductionOrder)) {
+    Provider.hasMany(ProductionOrder, { foreignKey: 'idProvider', as: 'productionOrdersForProvider' });
+    ProductionOrder.belongsTo(Provider, { foreignKey: 'idProvider', as: 'provider', allowNull: true });
 }
-if (modelosExisten(ProcessDetail, SpecSheet)) {
-    ProcessDetail.belongsTo(SpecSheet, { foreignKey: 'idSpecSheet', as: 'relatedSpecSheet' });
+if (modelosExisten(ProductionOrder, ProductionOrderDetail)) {
+    ProductionOrder.hasMany(ProductionOrderDetail, { foreignKey: 'idProductionOrder', as: 'productionOrderDetails', onDelete: 'CASCADE' });
+    ProductionOrderDetail.belongsTo(ProductionOrder, { foreignKey: 'idProductionOrder', as: 'productionOrder' });
 }
-if (modelosExisten(ProcessDetail, Employee)) {
-    ProcessDetail.belongsTo(Employee, { foreignKey: 'idEmployee', as: 'assignedEmployee' });
+if (modelosExisten(Process, ProductionOrderDetail)) {
+    Process.hasMany(ProductionOrderDetail, { foreignKey: 'idProcess', as: 'stepsInOrders', onDelete: 'RESTRICT' });
+    ProductionOrderDetail.belongsTo(Process, { foreignKey: 'idProcess', as: 'processDetails' });
 }
-if (modelosExisten(Employee, ProcessDetail)) {
-    Employee.hasMany(ProcessDetail, { foreignKey: 'idEmployee', as: 'assignedTasks' });
+if (modelosExisten(Employee, ProductionOrderDetail)) {
+    Employee.hasMany(ProductionOrderDetail, { foreignKey: 'idEmployeeAssigned', as: 'assignedSteps' });
+    ProductionOrderDetail.belongsTo(Employee, { foreignKey: 'idEmployeeAssigned', as: 'employeeAssigned', allowNull: true });
 }
+if (modelosExisten(ProductionOrder, Supply, ProductionOrderSupply)) {
+    ProductionOrder.belongsToMany(Supply, { through: ProductionOrderSupply, foreignKey: 'idProductionOrder', otherKey: 'idSupply', as: 'consumedSupplies' });
+    Supply.belongsToMany(ProductionOrder, { through: ProductionOrderSupply, foreignKey: 'idSupply', otherKey: 'idProductionOrder', as: 'productionOrdersConsumedIn' });
+    ProductionOrder.hasMany(ProductionOrderSupply, { foreignKey: 'idProductionOrder', as: 'productionOrderSupplies' });
+    ProductionOrderSupply.belongsTo(ProductionOrder, { foreignKey: 'idProductionOrder', as: 'productionOrder' });
+    ProductionOrderSupply.belongsTo(Supply, { foreignKey: 'idSupply', as: 'supply' });
+}
+
+
+// --- Asociaciones de Compras ---
 if (modelosExisten(Provider, RegisterPurchase)) {
     Provider.hasMany(RegisterPurchase, { foreignKey: { name: 'idProvider', allowNull: false }, as: 'purchases' });
-    RegisterPurchase.belongsTo(Provider, { foreignKey: 'idProvider', as: 'provider' });
+    RegisterPurchase.belongsTo(Provider, { foreignKey: { name: 'idProvider', allowNull: false }, as: 'provider' });
+    console.log("MODELOS/INDEX.JS: Asociaciones Provider<=>RegisterPurchase definidas.");
 }
 if (modelosExisten(RegisterPurchase, PurchaseDetail)) {
-    RegisterPurchase.hasMany(PurchaseDetail, {
-        foreignKey: { name: 'idRegisterPurchase', allowNull: false },
-        as: 'details',
-        onDelete: 'CASCADE'
-    });
-    PurchaseDetail.belongsTo(RegisterPurchase, { foreignKey: 'idRegisterPurchase', as: 'purchase' });
+    RegisterPurchase.hasMany(PurchaseDetail, { foreignKey: { name: 'idRegisterPurchase', allowNull: false }, as: 'details' }); // CAMBIO: alias 'details' para consistencia con el servicio de recálculo
+    PurchaseDetail.belongsTo(RegisterPurchase, { foreignKey: { name: 'idRegisterPurchase', allowNull: false }, as: 'registerPurchase' });
+    console.log("MODELOS/INDEX.JS: Asociaciones RegisterPurchase<=>PurchaseDetail definidas.");
 }
-if (modelosExisten(Supplier, PurchaseDetail)) {
-    Supplier.hasMany(PurchaseDetail, { foreignKey: { name: 'idSupplier', allowNull: false }, as: 'purchaseOccurrences' });
-    PurchaseDetail.belongsTo(Supplier, { foreignKey: 'idSupplier', as: 'insumoSupplier' });
+if (modelosExisten(Supply, PurchaseDetail)) { // Asegúrate que Supply sea el modelo correcto de db.Supply
+    if (typeof Supply.hasMany !== 'function' || typeof PurchaseDetail.belongsTo !== 'function') {
+        console.error("MODELOS/INDEX.JS: ERROR - Supply o PurchaseDetail no son modelos válidos para la asociación de Compras.");
+    } else {
+        Supply.hasMany(PurchaseDetail, { foreignKey: { name: 'idSupply', allowNull: false }, as: 'purchaseDetailsForSupply' });
+        // Usar 'supply' como alias para cuando se incluye desde PurchaseDetail
+        PurchaseDetail.belongsTo(Supply, { foreignKey: { name: 'idSupply', allowNull: false }, as: 'supply' }); 
+        console.log("MODELOS/INDEX.JS: Asociaciones Supply<=>PurchaseDetail definidas.");
+    }
+} else {
+     console.warn("MODELOS/INDEX.JS: Los modelos Supply o PurchaseDetail no existen, no se definirán sus asociaciones.");
 }
-// --- Fin de tus asociaciones existentes ---
 
-// === ASOCIACIONES PARA EL MÓDULO DE GASTOS ===
-
-// Un SpecificConceptSpent pertenece a UNA ExpenseCategory.
-// Una ExpenseCategory tiene MUCHOS SpecificConceptSpent.
+// --- Asociaciones de Gastos ---
 if (modelosExisten(SpecificConceptSpent, ExpenseCategory)) {
-    console.log("MODELOS/INDEX.JS: Definiendo asociación SpecificConceptSpent <-> ExpenseCategory (1-M)");
-
-    SpecificConceptSpent.belongsTo(ExpenseCategory, {
-        foreignKey: 'idExpenseCategory',
-        as: 'expenseCategoryDetails', // Alias para acceder a la categoría desde un concepto
-        // allowNull: false, // Ya está en el modelo SpecificConceptSpent
-    });
-
-    ExpenseCategory.hasMany(SpecificConceptSpent, {
-        foreignKey: 'idExpenseCategory',
-        as: 'specificConcepts' // Alias para acceder a los conceptos desde una categoría
-    });
-} else {
-    console.error("MODELOS/INDEX.JS: Faltan modelos SpecificConceptSpent o ExpenseCategory para la asociación 1-M.");
-    // ... (logs de error más detallados si es necesario) ...
+    ExpenseCategory.hasMany(SpecificConceptSpent, { foreignKey: 'idExpenseCategory', as: 'specificConcepts' });
+    SpecificConceptSpent.belongsTo(ExpenseCategory, { foreignKey: 'idExpenseCategory', as: 'expenseCategory' });
 }
-
-// ELIMINADA LA ASOCIACIÓN DIRECTA: MonthlyOverallExpense <-> ExpenseCategory
-// PORQUE MonthlyOverallExpense YA NO TIENE idExpenseCategory.
-// La "categoría" de un MonthlyOverallExpense se infiere de sus MonthlyExpenseItems.
-
-
-// Un MonthlyExpenseItem pertenece a UN MonthlyOverallExpense.
-// Un MonthlyOverallExpense tiene MUCHOS MonthlyExpenseItem.
 if (modelosExisten(MonthlyExpenseItem, MonthlyOverallExpense)) {
-    console.log("MODELOS/INDEX.JS: Definiendo asociación MonthlyExpenseItem <-> MonthlyOverallExpense (1-M)");
-    MonthlyOverallExpense.hasMany(MonthlyExpenseItem, {
-        foreignKey: 'idOverallMonth',
-        as: 'expenseItems', // Este alias es usado por el frontend para incluir los ítems
-        onDelete: 'CASCADE'
-    });
-    MonthlyExpenseItem.belongsTo(MonthlyOverallExpense, {
-        foreignKey: 'idOverallMonth',
-        as: 'overallMonthRecord',
-        // allowNull: false, // Ya está en el modelo MonthlyExpenseItem
-    });
-} else {
-    console.error("MODELOS/INDEX.JS: Faltan modelos MonthlyExpenseItem o MonthlyOverallExpense para la asociación.");
-    // ... (logs de error más detallados si es necesario) ...
+    MonthlyOverallExpense.hasMany(MonthlyExpenseItem, { foreignKey: 'idOverallMonth', as: 'expenseItems', onDelete: 'CASCADE' });
+    MonthlyExpenseItem.belongsTo(MonthlyOverallExpense, { foreignKey: 'idOverallMonth', as: 'monthlyOverallExpense' });
 }
-
-// Un MonthlyExpenseItem usa UN SpecificConceptSpent.
-// Un SpecificConceptSpent puede estar en MUCHOS MonthlyExpenseItem.
 if (modelosExisten(MonthlyExpenseItem, SpecificConceptSpent)) {
-    console.log("MODELOS/INDEX.JS: Definiendo asociación MonthlyExpenseItem <-> SpecificConceptSpent (1-M)");
-    MonthlyExpenseItem.belongsTo(SpecificConceptSpent, {
-        foreignKey: 'idSpecificConcept',
-        as: 'specificConceptDetails', // Alias para acceder al concepto desde un ítem
-        // allowNull: false, // Ya está en el modelo MonthlyExpenseItem
-    });
-    SpecificConceptSpent.hasMany(MonthlyExpenseItem, {
-        foreignKey: 'idSpecificConcept',
-        as: 'monthlyItems' // Alias para acceder a los ítems desde un concepto
-    });
-} else {
-    console.error("MODELOS/INDEX.JS: Faltan modelos MonthlyExpenseItem o SpecificConceptSpent para la asociación.");
-    // ... (logs de error más detallados si es necesario) ...
+    SpecificConceptSpent.hasMany(MonthlyExpenseItem, { foreignKey: 'idSpecificConcept', as: 'monthlyItems' });
+    MonthlyExpenseItem.belongsTo(SpecificConceptSpent, { foreignKey: 'idSpecificConcept', as: 'specificConceptSpent' });
 }
-// === FIN ASOCIACIONES DE GASTOS ===
 
-// --- 3. Bucle 'associate' (Si algún modelo individual define asociaciones) ---
-Object.keys(db).forEach(modelName => {
-  if (db[modelName] && typeof db[modelName].associate === 'function') {
-    // console.log(`MODELOS/INDEX.JS: Aplicando 'associate' para el modelo ${modelName}`);
-    db[modelName].associate(db);
-  }m 
-});
+// --- 3. Hooks ---
+if (db.RegisterPurchase && db.PurchaseDetail && db.sequelize) { // Usar db.sequelize
+    const updatePurchaseTotals = async (instanceOrPk, options) => {
+        let idRegisterPurchase;
+        if (typeof instanceOrPk === 'number' || typeof instanceOrPk === 'string') {
+            const detail = await db.PurchaseDetail.findByPk(instanceOrPk, { attributes: ['idRegisterPurchase'], transaction: options.transaction });
+            if (detail) idRegisterPurchase = detail.idRegisterPurchase;
+        } else if (instanceOrPk && instanceOrPk.idRegisterPurchase) {
+            idRegisterPurchase = instanceOrPk.idRegisterPurchase;
+        } else if (options && options.where && options.where.idRegisterPurchase) {
+            idRegisterPurchase = options.where.idRegisterPurchase;
+        } else if (options && options.instance && options.instance.idRegisterPurchase) {
+             idRegisterPurchase = options.instance.idRegisterPurchase;
+        }
+
+        if (!idRegisterPurchase) {
+            console.warn("HOOK updatePurchaseTotals: No se pudo determinar idRegisterPurchase.");
+            return;
+        }
+        const transaction = options && options.transaction;
+        try {
+            const purchaseHeader = await db.RegisterPurchase.findByPk(idRegisterPurchase, { transaction });
+            if (!purchaseHeader) {
+                console.warn(`HOOK updatePurchaseTotals: RegisterPurchase con ID ${idRegisterPurchase} no encontrado.`);
+                return;
+            }
+            // Asegurarse que el alias 'details' en RegisterPurchase es el correcto si el hook lo usa implícitamente
+            // o si se usa para obtener los detalles para el cálculo.
+            // El hook afterCreate/Update/Destroy en PurchaseDetail es el que lo llama,
+            // así que el contexto es el detalle. El cálculo aquí es independiente del alias del include.
+            const result = await db.PurchaseDetail.findOne({
+                where: { idRegisterPurchase },
+                attributes: [ [db.sequelize.fn('SUM', db.sequelize.col('subtotal')), 'calculatedSubtotal'] ], // Usar db.sequelize
+                transaction,
+                raw: true
+            });
+            const calculatedSubtotal = parseFloat(result.calculatedSubtotal || 0);
+            const calculatedTotalAmount = calculatedSubtotal;
+            await purchaseHeader.update({
+                subtotalAmount: calculatedSubtotal.toFixed(2),
+                totalAmount: calculatedTotalAmount.toFixed(2)
+            }, { transaction });
+             // console.log(`HOOK updatePurchaseTotals: Totales actualizados para RegisterPurchase ID ${idRegisterPurchase}.`);
+        } catch (error) {
+            console.error(`HOOK updatePurchaseTotals: Error actualizando totales para RegisterPurchase ID ${idRegisterPurchase}:`, error);
+        }
+    };
+    db.PurchaseDetail.afterCreate('updateTotalsOnDetailCreate', updatePurchaseTotals);
+    db.PurchaseDetail.afterUpdate('updateTotalsOnDetailUpdate', (instance, options) => {
+        if (options.fields && (options.fields.includes('subtotal') || options.fields.includes('quantity') || options.fields.includes('unitPrice'))) {
+            return updatePurchaseTotals(instance, options);
+        }
+        return Promise.resolve();
+    });
+    db.PurchaseDetail.afterDestroy('updateTotalsOnDetailDestroy', updatePurchaseTotals);
+}
 
 // --- 4. Exportar ---
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
+db.sequelize = sequelize; // Usar la instancia importada
+db.Sequelize = Sequelize; // Exportar la clase Sequelize
 
-console.log("MODELOS/INDEX.JS: Configuración de modelos y asociaciones completada.");
+console.log("MODELOS/INDEX.JS: Configuración de modelos, asociaciones y hooks completada. Exportando db.");
 module.exports = db;

@@ -1,26 +1,30 @@
+// models/process.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Process = sequelize.define('process', {
-    idProcess: { 
-        type: DataTypes.INTEGER, 
-        primaryKey: true, 
-        autoIncrement: true, 
-        allowNull: false 
+const Process = sequelize.define('Process', {
+    idProcess: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+        allowNull: false
     },
-    processName: { 
-        type: DataTypes.STRING(100), 
-        allowNull: false 
+    processName: {
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        unique: true
     },
-    description: { 
-        type: DataTypes.STRING(255), 
-        allowNull: true 
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: true
     },
-    status: { 
-        type: DataTypes.BOOLEAN, 
-        defaultValue: true 
+    // Otros campos como: defaultDuration, category, etc.
+    status: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
     }
 }, {
+    tableName: 'Processes',
     timestamps: true
 });
 

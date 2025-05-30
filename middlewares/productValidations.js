@@ -1,6 +1,6 @@
 const { body, param, validationResult } = require("express-validator")
-const Product = require("../models/Product")
-const Supplier = require("../models/supplier")
+const Product = require("../models/product")
+const Supplier = require("../models/supply")
 
 // Validaciones auxiliares
 const validateProductExistence = async (id) => {

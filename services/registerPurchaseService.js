@@ -1,169 +1,304 @@
-// services/registerPurchaseService.js
+// services/registerPurchaseService.js (Backend)
 const registerPurchaseRepository = require('../repositories/registerPurchaseRepository');
-const { RegisterPurchase, PurchaseDetail, Provider, Supplier, sequelize } = require('../models');
+const { RegisterPurchase, Provider, Supply, sequelize, PurchaseDetail } = require('../models');
+const { Op } = require('sequelize'); // <--- AÑADE O ASEGÚRATE DE ESTA LÍNEA
 
-const processPurchaseSubmission = async (purchaseDataFromFrontend) => {
-    const { idProvider, purchaseDate, category, details, totalAmount: frontendTotal } = purchaseDataFromFrontend;
+const processFullPurchase = async (purchaseDataFromFrontend) => {
+    const {
+        idProvider,
+        purchaseDate,
+        category,
+        invoiceNumber,
+        receptionDate,
+        observations,
+        status,
+        paymentStatus,
+        details // Esto vendrá con objetos que tienen { idSupply, quantity, unitPrice }
+    } = purchaseDataFromFrontend;
 
-    if (!idProvider || !purchaseDate || !category || !details || !Array.isArray(details) || details.length === 0) {
-        throw new Error("Datos de compra incompletos o inválidos (proveedor, fecha, categoría o detalles faltantes).");
+    // 1. Validar Proveedor
+    if (idProvider === undefined || idProvider === null) {
+        throw Object.assign(new Error(`El idProvider es obligatorio.`), { statusCode: 400 });
+    }
+    const providerExists = await Provider.findByPk(idProvider);
+    if (!providerExists) {
+        throw Object.assign(new Error(`Proveedor con ID ${idProvider} no encontrado.`), { statusCode: 404 });
+    }
+    if (!providerExists.status) {
+        throw Object.assign(new Error(`El proveedor '${providerExists.company}' (ID: ${idProvider}) no está activo.`), { statusCode: 400 });
+    }
+
+    // 2. Validar Categoría
+    if (category === undefined || category === null || String(category).trim() === '') {
+        throw Object.assign(new Error(`La categoría es obligatoria.`), { statusCode: 400 });
+    }
+    if (!RegisterPurchase.ALLOWED_CATEGORIES.includes(String(category).toUpperCase())) {
+         throw Object.assign(new Error(`Categoría '${category}' no es válida. Permitidas: ${RegisterPurchase.ALLOWED_CATEGORIES.join(', ')}`), { statusCode: 400 });
+    }
+
+    // 3. Validar Insumos (Supplies)
+    if (!details || !Array.isArray(details) || details.length === 0) {
+        throw Object.assign(new Error("Se requiere al menos un detalle de compra."), { statusCode: 400 });
+    }
+
+    // Leer idSupply de cada detalle
+    const supplyIdsFromFrontend = details.map(d => Number(d.idSupply)).filter(id => !isNaN(id) && id > 0);
+
+    if (supplyIdsFromFrontend.length !== details.length || supplyIdsFromFrontend.some(id => id <= 0)) {
+        throw Object.assign(new Error("ID de insumo (idSupply) inválido o faltante en uno de los detalles."), { statusCode: 400 });
+    }
+    
+    if (!Supply || typeof Supply.findAll !== 'function') {
+        console.error("ERROR CRÍTICO EN SERVICE: Modelo Supply no es una función o es undefined.");
+        throw Object.assign(new Error("Error interno del servidor al procesar insumos."), { statusCode: 500 });
+    }
+
+    // Validar existencia y estado de todos los insumos de una vez (más eficiente)
+    const existingAndActiveSupplies = await Supply.findAll({
+        where: {
+            idSupply: { [Op.in]: supplyIdsFromFrontend },
+            status: true
+        }
+    });
+
+    if (existingAndActiveSupplies.length !== supplyIdsFromFrontend.length) {
+        const foundActiveIds = existingAndActiveSupplies.map(s => s.idSupply);
+        const missingOrInactiveIds = supplyIdsFromFrontend.filter(id => !foundActiveIds.includes(id));
+        throw Object.assign(new Error(`Los siguientes insumos no existen o no están activos: ${missingOrInactiveIds.join(', ')}.`), { statusCode: 400 });
+    }
+    
+    const t = await sequelize.transaction();
+    try {
+        const purchaseHeaderInput = {
+            idProvider: Number(idProvider),
+            purchaseDate,
+            category: String(category).toUpperCase(),
+            invoiceNumber: invoiceNumber !== null && invoiceNumber !== undefined ? String(invoiceNumber) : null,
+            receptionDate: receptionDate !== null && receptionDate !== undefined ? receptionDate : null,
+            observations: observations !== null && observations !== undefined ? String(observations) : null,
+            ...(status !== undefined && { status: String(status) }),
+            ...(paymentStatus !== undefined && { paymentStatus: String(paymentStatus) })
+        };
+
+        // ---------- LA CORRECCIÓN ESTÁ AQUÍ ----------
+        const detailsForRepository = details.map(d => ({
+            idSupply: Number(d.idSupply),   // <<< DEBE SER d.idSupply
+            quantity: Number(d.quantity),
+            unitPrice: Number(d.unitPrice),
+        }));
+        // --------------------------------------------
+
+        // console.log("SERVICE processFullPurchase - detailsForRepository:", JSON.stringify(detailsForRepository, null, 2)); // DEBUG
+
+        const createdPurchaseHeader = await registerPurchaseRepository.createRegisterPurchaseWithDetails(
+            purchaseHeaderInput,
+            detailsForRepository,
+            t
+        );
+        
+        await recalculateAndSaveTotals(createdPurchaseHeader.idRegisterPurchase, t);
+        await t.commit();
+        
+        return registerPurchaseRepository.getRegisterPurchaseById(createdPurchaseHeader.idRegisterPurchase);
+
+    } catch (error) {
+        await t.rollback();
+        console.error("Error en servicio processFullPurchase (transacción):", error.message, error.stack);
+        if (error.name && error.name.startsWith('Sequelize') && !error.statusCode) {
+            const messages = error.errors ? error.errors.map(e => `${e.path || 'Campo'} ${e.message.replace(e.path || '', '').trim()}`).join('; ') : error.message;
+            throw Object.assign(new Error(`Error de base de datos: ${messages}`), { statusCode: 400 });
+        }
+        const statusCode = error.statusCode || 500;
+        const message = error.message || "Error interno del servidor al procesar la compra.";
+        throw Object.assign(new Error(message), { statusCode });
+    }
+};
+
+const recalculateAndSaveTotals = async (purchaseId, transaction) => {
+    const purchaseInstance = await RegisterPurchase.findByPk(purchaseId, {
+        include: [{ model: PurchaseDetail, as: 'details' }], // Asegúrate que el alias 'details' es correcto
+        transaction
+    });
+
+    if (!purchaseInstance) {
+        console.warn(`WARN: Compra con ID ${purchaseId} no encontrada para recalcular totales.`);
+        return; 
+    }
+
+    let calculatedSubtotal = 0;
+    if (purchaseInstance.details && purchaseInstance.details.length > 0) {
+        calculatedSubtotal = purchaseInstance.details.reduce((sum, detail) => {
+            // El subtotal del detalle ya debería estar calculado por el hook de PurchaseDetail
+            const detailSubtotal = parseFloat(detail.subtotal);
+            return sum + (isNaN(detailSubtotal) ? 0 : detailSubtotal);
+        }, 0);
+    }
+    
+    // Asumiendo que no hay impuestos/descuentos a nivel de cabecera de compra por ahora
+    const calculatedTotal = calculatedSubtotal;
+
+    await purchaseInstance.update({
+        subtotalAmount: calculatedSubtotal.toFixed(2),
+        totalAmount: calculatedTotal.toFixed(2)
+    }, {
+        transaction
+    });
+};
+
+const getAll = async () => {
+    // Asegúrate que el repositorio incluya Provider y Details (con Supply)
+    return registerPurchaseRepository.getAllRegisterPurchases();
+};
+
+const getById = async (id) => {
+    const purchase = await registerPurchaseRepository.getRegisterPurchaseById(id);
+    if (!purchase) {
+        throw Object.assign(new Error(`Compra con ID ${id} no encontrada.`), { statusCode: 404 });
+    }
+    return purchase;
+};
+
+const updateHeader = async (idPurchase, headerDataToUpdate) => {
+    const purchase = await RegisterPurchase.findByPk(idPurchase);
+    if (!purchase) {
+        throw Object.assign(new Error(`Compra con ID ${idPurchase} no encontrada para actualizar.`), { statusCode: 404 });
+    }
+
+    const allowedFields = ['purchaseDate', 'category', 'invoiceNumber', 'receptionDate', 'observations', 'status', 'paymentStatus', 'idProvider'];
+    const validData = {};
+
+    for (const key of allowedFields) {
+        if (headerDataToUpdate.hasOwnProperty(key) && headerDataToUpdate[key] !== undefined) {
+            if (key === 'idProvider') {
+                const providerId = parseInt(headerDataToUpdate.idProvider, 10);
+                 // Solo actualizar si el idProvider es diferente y válido
+                if (purchase.idProvider !== providerId) {
+                    if (isNaN(providerId) || providerId <= 0) {
+                         throw Object.assign(new Error(`El ID del proveedor proporcionado no es válido.`), { statusCode: 400 });
+                    }
+                    const newProvider = await Provider.findByPk(providerId);
+                    if (!newProvider) throw Object.assign(new Error(`Proveedor con ID ${providerId} no encontrado.`), { statusCode: 404 });
+                    if (!newProvider.status) throw Object.assign(new Error(`El proveedor '${newProvider.company}' (ID: ${providerId}) no está activo.`), { statusCode: 400 });
+                    validData.idProvider = providerId;
+                }
+            } else if (key === 'category') {
+                const categoryValue = String(headerDataToUpdate[key]).toUpperCase();
+                if (!RegisterPurchase.ALLOWED_CATEGORIES.includes(categoryValue)) {
+                    throw Object.assign(new Error(`Categoría '${headerDataToUpdate[key]}' no es válida.`), { statusCode: 400 });
+                }
+                validData[key] = categoryValue;
+            } else { // Para los demás campos permitidos
+                validData[key] = headerDataToUpdate[key];
+            }
+        }
+    }
+
+    if (Object.keys(validData).length === 0) {
+        throw Object.assign(new Error("No se proporcionaron datos válidos para actualizar la cabecera de la compra."), { statusCode: 400 });
+    }
+    
+    const t = await sequelize.transaction();
+    try {
+        await registerPurchaseRepository.updateRegisterPurchaseHeader(idPurchase, validData, t);
+        // No es necesario recalcular totales si solo se actualiza la cabecera
+        // a menos que la actualización de la cabecera pueda afectar los detalles (no es común).
+        await t.commit();
+        return registerPurchaseRepository.getRegisterPurchaseById(idPurchase);
+    } catch (error) {
+        await t.rollback();
+        console.error("Error en servicio updateHeader:", error.message, error.stack);
+         if (error.name && error.name.startsWith('Sequelize') && !error.statusCode) {
+            const messages = error.errors ? error.errors.map(e => `${e.path || 'Campo'} ${e.message.replace(e.path || '', '').trim()}`).join('; ') : error.message;
+            throw Object.assign(new Error(`Error de base de datos: ${messages}`), { statusCode: 400 });
+        }
+        const statusCode = error.statusCode || 500;
+        const message = error.message || "Error interno del servidor al actualizar la cabecera.";
+        throw Object.assign(new Error(message), { statusCode });
+    }
+};
+
+const deleteById = async (id) => {
+    const purchase = await RegisterPurchase.findByPk(id);
+    if (!purchase) {
+        throw Object.assign(new Error(`Compra con ID ${id} no encontrada para eliminar.`), { statusCode: 404 });
     }
 
     const t = await sequelize.transaction();
-    let purchaseIdToReturn = null;
-    let transactionCommitted = false;
-
     try {
-        const providerExists = await Provider.findByPk(idProvider, { transaction: t });
-        if (!providerExists) {
-            throw new Error(`Proveedor con ID ${idProvider} no encontrado.`);
+        const deleted = await registerPurchaseRepository.deleteRegisterPurchaseAndDetails(id, t);
+        if (!deleted) { 
+            throw Object.assign(new Error("No se pudo eliminar la compra."), { statusCode: 404 }); // Mensaje más genérico
         }
-
-        const insumoIds = details.map(d => Number(d.idInsumo)).filter(id => !isNaN(id) && id > 0);
-        if (insumoIds.length !== details.length) {
-             throw new Error("ID de insumo inválido o faltante en uno de los detalles.");
-        }
-        const existingInsumos = await Supplier.findAll({
-            where: { idSupplier: insumoIds }, attributes: ['idSupplier'], transaction: t
-        });
-        if (existingInsumos.length !== insumoIds.length) {
-            const existingIdsSet = new Set(existingInsumos.map(i => i.idSupplier));
-            const missingId = insumoIds.find(id => !existingIdsSet.has(id));
-            throw new Error(`Insumo con ID ${missingId || 'desconocido'} no encontrado.`);
-        }
-
-        // Lógica para encontrar o crear/actualizar la compra
-        // Asumimos que una compra para un proveedor es "única" si está PENDIENTE,
-        // o ajusta este 'where' según tu lógica de negocio para agrupar compras.
-        // Si la categoría también define la unicidad de la cabecera de compra, añádela al where.
-        // Ejemplo: where: { idProvider: idProvider, category: category, status: 'PENDIENTE' }
-        let purchase = await RegisterPurchase.findOne({
-            where: { idProvider: idProvider /*, status: 'PENDIENTE' */ }, // Considera si 'category' debe estar aquí
-            include: [{ model: PurchaseDetail, as: 'details' }],
-            transaction: t
-        });
-
-        let wasCreated = false;
-
-        if (!purchase) {
-            wasCreated = true;
-            console.log(`INFO: Creando nueva compra para proveedor ${idProvider}, categoría ${category}`);
-            const newPurchaseData = { idProvider, purchaseDate, category, totalAmount: frontendTotal || 0, details };
-            // El repositorio createRegisterPurchase maneja su propia transacción interna.
-            // Si falla, hará rollback y lanzará error.
-            const createdPurchase = await registerPurchaseRepository.createRegisterPurchase(newPurchaseData);
-            
-            if (!createdPurchase || !createdPurchase.idRegisterPurchase) {
-                 throw new Error("El repositorio no devolvió una compra válida después de crear.");
-            }
-            purchaseIdToReturn = createdPurchase.idRegisterPurchase;
-            purchase = createdPurchase; // Para consistencia, aunque no se use más abajo en este bloque
-
-        } else {
-            purchaseIdToReturn = purchase.idRegisterPurchase;
-            wasCreated = false;
-            console.log(`INFO: Actualizando compra existente ID: ${purchaseIdToReturn}`);
-
-            // Actualizar campos de la cabecera si es necesario
-            let headerChanged = false;
-            if (purchase.category !== category) {
-                purchase.category = category;
-                headerChanged = true;
-            }
-            // Podrías querer actualizar purchaseDate también si es relevante
-            // if (purchase.purchaseDate !== purchaseDate) { // Cuidado con formatos de fecha
-            //     purchase.purchaseDate = purchaseDate;
-            //     headerChanged = true;
-            // }
-
-            const existingDetailsMap = new Map();
-            (purchase.details || []).forEach(detail => { existingDetailsMap.set(detail.idSupplier, detail); });
-
-            for (const detailFromFrontend of details) {
-                const insumoId = Number(detailFromFrontend.idInsumo);
-                const newQuantity = Number(detailFromFrontend.quantity);
-                const newUnitPrice = Number(detailFromFrontend.unitPrice);
-                
-                if (isNaN(insumoId) || insumoId <= 0 || isNaN(newQuantity) || newQuantity <= 0 || isNaN(newUnitPrice) || newUnitPrice < 0) {
-                    console.warn("WARN: Detalle inválido omitido:", detailFromFrontend); continue;
-                }
-
-                const existingDetail = existingDetailsMap.get(insumoId);
-                if (existingDetail) {
-                    const currentQty = Number(existingDetail.quantity) || 0;
-                    existingDetail.quantity = currentQty + newQuantity;
-                    existingDetail.unitPrice = newUnitPrice; // Siempre actualiza al precio más reciente
-                    existingDetail.subtotal = (existingDetail.quantity * existingDetail.unitPrice).toFixed(2);
-                    await existingDetail.save({ transaction: t });
-                } else {
-                    await PurchaseDetail.create({
-                        idRegisterPurchase: purchase.idRegisterPurchase, idSupplier: insumoId,
-                        quantity: newQuantity, unitPrice: newUnitPrice,
-                        subtotal: (newQuantity * newUnitPrice).toFixed(2)
-                    }, { transaction: t });
-                }
-            }
-
-            const allFinalDetails = await PurchaseDetail.findAll({
-                where: { idRegisterPurchase: purchase.idRegisterPurchase },
-                attributes: ['subtotal'], transaction: t
-            });
-            const newTotalAmount = allFinalDetails.reduce((sum, d) => sum + (Number(d.subtotal) || 0), 0);
-            
-            if (purchase.totalAmount !== newTotalAmount.toFixed(2)) {
-                purchase.totalAmount = newTotalAmount.toFixed(2);
-                headerChanged = true;
-            }
-
-            if (headerChanged) {
-                await purchase.save({ transaction: t });
-            }
-        }
-
-        if (!purchaseIdToReturn) throw new Error("ID de compra inválido antes del commit.");
-        
         await t.commit();
-        transactionCommitted = true;
-
-        const finalPurchaseData = await registerPurchaseRepository.getRegisterPurchaseById(purchaseIdToReturn);
-        if (!finalPurchaseData) {
-            console.error(`ERROR CRÍTICO: No se pudo recuperar la compra ID ${purchaseIdToReturn} después del commit.`);
-            throw new Error(`No se pudo recuperar la compra final (ID: ${purchaseIdToReturn}) después de la operación.`);
-        }
-        return { purchase: finalPurchaseData, created: wasCreated };
-
+        return { message: "Compra eliminada exitosamente." };
     } catch (error) {
-        console.error("ERROR en servicio processPurchaseSubmission:", error.message, error.stack);
-        if (!transactionCommitted && t && t.finished !== 'commit' && t.finished !== 'rollback') {
-             try { await t.rollback(); } catch (rollbackError) { console.error("ERROR CRÍTICO: Falla durante el rollback:", rollbackError); }
+        await t.rollback();
+        console.error("Error en servicio deleteById:", error.message, error.stack);
+        const statusCode = error.statusCode || 500;
+        const message = error.message || "Error interno del servidor al eliminar la compra.";
+        throw Object.assign(new Error(message), { statusCode });
+    }
+};
+
+const updatePurchaseStatus = async (idPurchase, { status, paymentStatus }) => {
+    const purchase = await RegisterPurchase.findByPk(idPurchase);
+    if (!purchase) {
+      throw Object.assign(new Error(`Compra con ID ${idPurchase} no encontrada.`), { statusCode: 404 });
+    }
+  
+    const fieldsToUpdate = {};
+    // Usar los valores ENUM definidos en el modelo para la validación
+    const validStatuses = RegisterPurchase.getAttributes().status.values;
+    const validPaymentStatuses = RegisterPurchase.getAttributes().paymentStatus.values;
+
+    if (status !== undefined) {
+        if (!validStatuses.includes(status.toUpperCase())) { // Convertir a mayúsculas para comparar con ENUMs
+             throw Object.assign(new Error(`Valor de estado '${status}' no es válido. Válidos: ${validStatuses.join(', ')}`), { statusCode: 400 });
         }
-        throw error; // Relanza para que el controlador lo maneje
+        fieldsToUpdate.status = status.toUpperCase();
+    }
+    if (paymentStatus !== undefined) {
+         if (!validPaymentStatuses.includes(paymentStatus.toUpperCase())) {
+             throw Object.assign(new Error(`Valor de estado de pago '${paymentStatus}' no es válido. Válidos: ${validPaymentStatuses.join(', ')}`), { statusCode: 400 });
+        }
+        fieldsToUpdate.paymentStatus = paymentStatus.toUpperCase();
+    }
+  
+    if (Object.keys(fieldsToUpdate).length === 0) {
+      throw Object.assign(new Error('No se especificó ningún estado (status o paymentStatus) para actualizar.'), { statusCode: 400 });
+    }
+      
+    const t = await sequelize.transaction();
+    try {
+        await registerPurchaseRepository.updateStatus(idPurchase, fieldsToUpdate, t);
+        await t.commit();
+        return registerPurchaseRepository.getRegisterPurchaseById(idPurchase);
+    } catch (error) {
+        await t.rollback();
+        console.error("Error en servicio updatePurchaseStatus:", error.message, error.stack);
+        const statusCode = error.statusCode || 500;
+        const message = error.message || "Error interno del servidor al actualizar estado de compra.";
+        throw Object.assign(new Error(message), { statusCode });
     }
 };
 
 const getProvidersByCategory = async (categoryName) => {
-    if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
-        throw new Error("El nombre de la categoría es inválido o está vacío.");
+    const upperCategoryName = categoryName.toUpperCase();
+    if (!RegisterPurchase.ALLOWED_CATEGORIES.includes(upperCategoryName)) {
+        throw Object.assign(new Error(`Categoría '${categoryName}' no es válida.`), { statusCode: 400 });
     }
-    return registerPurchaseRepository.getUniqueProvidersFromCategory(categoryName);
-};
-
-const updatePurchaseHeader = async (purchaseId, dataToUpdate) => {
-    // El repositorio updateRegisterPurchase ya filtra los campos permitidos.
-    // Aquí se podría añadir lógica de negocio específica antes de llamar al repo.
-    const updated = await registerPurchaseRepository.updateRegisterPurchase(purchaseId, dataToUpdate);
-    if (updated) {
-        return registerPurchaseRepository.getRegisterPurchaseById(purchaseId); // Devolver la compra actualizada
-    }
-    return null; // O false, si se prefiere indicar solo si hubo o no actualización
+    // Asumiendo que el repositorio se encarga de filtrar proveedores por categoría.
+    // Si necesitas una lógica más compleja (ej. proveedores que ofrecen insumos de esa categoría),
+    // se haría aquí o en el repositorio.
+    return registerPurchaseRepository.getProvidersByCategory(upperCategoryName);
 };
 
 module.exports = {
-    processPurchaseSubmission,
-    getAllRegisterPurchases: () => registerPurchaseRepository.getAllRegisterPurchases(),
-    getRegisterPurchaseById: (id) => registerPurchaseRepository.getRegisterPurchaseById(id),
-    deleteRegisterPurchase: (id) => registerPurchaseRepository.deleteRegisterPurchase(id),
-    changeStateRegisterPurchase: (id, status) => registerPurchaseRepository.changeStateRegisterPurchase(id, status),
+    processFullPurchase,
+    getAll,
+    getById,
+    updateHeader,
+    deleteById,
+    updatePurchaseStatus,
     getProvidersByCategory,
-    updatePurchaseHeader, // Para la ruta PUT de solo actualizar cabecera
 };

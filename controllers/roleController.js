@@ -98,7 +98,6 @@ const updateRole = async (req, res) => {
 
 // DELETE /api/roles/:idRole
 const deleteRole = async (req, res) => {
-    // ... (Tu lógica actual parece correcta, asumiendo que roleService.deleteRole maneja "no encontrado" y dependencias)
     const { idRole } = req.params;
     console.log(`${LOG_PREFIX_CONTROLLER} deleteRole - Solicitud DELETE /api/roles/${idRole} recibida.`);
     const errors = validationResult(req);
@@ -106,11 +105,16 @@ const deleteRole = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        await roleService.deleteRole(idRole);
+        // La validación (validateRoleExistence, validateRoleHasNoUsers) ya se ejecutó
+        // y si req.foundRole fue establecido, podrías usarlo, pero el servicio debería revalidar.
+
+        // La llamada al servicio deleteRole es la que internamente intentará hacer el User.count
+        await roleService.deleteRole(idRole); // <--- El error está ocurriendo DENTRO de esta llamada
+        
         console.log(`${LOG_PREFIX_CONTROLLER} deleteRole - Rol ID ${idRole} eliminado.`);
         res.status(204).end();
-    } catch (error)        {
-        console.error(`${LOG_PREFIX_CONTROLLER} deleteRole - Error para ID ${idRole}: ${error.message}`);
+    } catch (error) {
+        console.error(`${LOG_PREFIX_CONTROLLER} deleteRole - Error para ID ${idRole}: ${error.message}`); // <--- ESTE ES TU LOG
         if (error.message.includes('Rol no encontrado')) {
             res.status(404).json({ message: error.message });
         } else if (error.message.includes('usuarios asociados')) {
