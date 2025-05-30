@@ -1,7 +1,7 @@
 const { body, param } = require('express-validator');
 const PurchaseDetail = require('../models/purchaseDetail');
 const RegisterPurchase = require('../models/registerPurchase'); 
-const Supply = require('../models/supplier'); 
+const Supply = require('../models/supply'); 
 
 // Validación para verificar si la compra existe
 const validateRegisterPurchaseExistence = async (idPurchase) => {

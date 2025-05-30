@@ -12,7 +12,7 @@ const findAllWithOptions = async (filters = {}) => { // Renombrado para generali
     const queryOptions = {
         include: [{
             model: ExpenseCategory,
-            as: 'expenseCategoryDetails', // El alias definido en la asociación 1-M en index.js
+            as: 'expenseCategory', // El alias definido en la asociación 1-M en index.js
             attributes: ['idExpenseCategory', 'name'],
             required: false // LEFT JOIN para mostrar el concepto aunque la categoría no exista (aunque no debería pasar con FK)
         }],
@@ -43,7 +43,7 @@ const findByIdWithDetails = async (idSpecificConcept) => { // Renombrado
     return SpecificConceptSpent.findByPk(idSpecificConcept, {
         include: [{
             model: ExpenseCategory,
-            as: 'expenseCategoryDetails',
+            as: 'expenseCategory',
             attributes: ['idExpenseCategory', 'name'],
         }]
     });

@@ -1,8 +1,19 @@
 // middlewares/roleValidations.js
 const { body, param, validationResult } = require('express-validator');
-const { Role, User, Permission, Privilege } = require('../models'); // Asegúrate que los modelos están correctamente exportados desde /models (probablemente /models/index.js)
-const { Op } = require('sequelize');
+const db = require('../models'); // Importa el objeto 'db' que contiene todos los modelos
+const Role = db.role;             // Accede al modelo Role a través de db.role
+const User = db.user;             // Accede al modelo User a través de db.user
+const Permission = db.permission;   // Accede al modelo Permission a través de db.permission
+const Privilege = db.privilege;   // Accede al modelo Privilege a través de db.privilege
 
+// Verifica que los modelos se cargaron correctamente
+if (!Role || !User || !Permission || !Privilege) {
+    console.error("ERROR CRÍTICO en roleValidations.js: Uno o más modelos (Role, User, Permission, Privilege) son undefined después de intentar accederlos desde 'db'.");
+} else {
+    console.log("Modelos (Role, User, Permission, Privilege) cargados correctamente en roleValidations.js.");
+}
+
+const { Op } = require('sequelize');
 const LOG_VALIDATION_PREFIX_MW = "[MW RoleValidation]";
 
 // --- Funciones de Validación Personalizadas ---
@@ -23,12 +34,16 @@ const validateRoleExistence = async (idRoleValue, { req }) => {
     }
 
     try {
+        if (!Role) {
+             console.error(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - ¡¡¡El modelo Role es UNDEFINED aquí!!!`);
+             return Promise.reject('Error interno crítico: Modelo Role no disponible en validación.');
+        }
         const role = await Role.findByPk(numericIdRole);
         if (!role) {
             console.warn(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - Rol con ID ${numericIdRole} NO encontrado.`);
             return Promise.reject('El rol especificado no existe.');
         }
-        req.foundRole = role; // Adjuntar el rol encontrado
+        req.foundRole = role;
         console.log(`${LOG_VALIDATION_PREFIX_MW} validateRoleExistence - Rol con ID ${numericIdRole} ENCONTRADO.`);
         return Promise.resolve();
     } catch (dbError) {
@@ -52,7 +67,7 @@ const validateUniqueRoleNameOnUpdate = async (roleName, { req }) => {
     const role = await Role.findOne({
         where: {
             roleName,
-            idRole: { [Op.ne]: Number(roleIdToExclude) } // Asegurar que sea número
+            idRole: { [Op.ne]: Number(roleIdToExclude) }
         }
     });
     if (role) {
@@ -61,14 +76,31 @@ const validateUniqueRoleNameOnUpdate = async (roleName, { req }) => {
     return Promise.resolve();
 };
 
-const validateRoleHasNoUsers = async (idRole) => {
+const validateRoleHasNoUsers = async (idRoleValue, { req }) => {
+    const idRole = Number(String(idRoleValue).trim());
     console.log(`${LOG_VALIDATION_PREFIX_MW} validateRoleHasNoUsers - Verificando usuarios para rol ID: ${idRole}`);
-    const count = await User.count({ where: { idRole: Number(idRole) } }); // Asegurar que sea número
-    if (count > 0) {
-        return Promise.reject('No se puede eliminar el rol porque tiene usuarios asociados.');
+
+    if (isNaN(idRole)) {
+        return Promise.reject('ID de rol inválido para verificar usuarios.');
     }
-    return Promise.resolve();
+
+    try {
+        if (!User) { // Verifica que User no sea undefined
+            console.error(`${LOG_VALIDATION_PREFIX_MW} validateRoleHasNoUsers - Modelo User es UNDEFINED.`);
+            return Promise.reject('Error interno: Modelo User no disponible para validación.');
+        }
+        const count = await User.count({ where: { idRole: idRole } });
+        if (count > 0) {
+            console.warn(`${LOG_VALIDATION_PREFIX_MW} validateRoleHasNoUsers - Rol ID ${idRole} tiene ${count} usuarios asociados.`);
+            // Mensaje que verá el frontend
+            return Promise.reject(`No se puede eliminar el rol porque tiene ${count} usuario(s) asociado(s). Primero debe eliminar o cambiarles el rol a los usuarios.`);
+        }
+    } catch (dbError) {
+        console.error(`${LOG_VALIDATION_PREFIX_MW} validateRoleHasNoUsers - Error de BD al contar usuarios para rol ID ${idRole}:`, dbError);
+        return Promise.reject('Error interno al verificar usuarios asociados al rol.');
+    }
 };
+
 
 const validateRoleNotAssignedToLoggedUser = async (idRole, { req }) => {
     if (req.user && req.user.idRole && Number(req.user.idRole) === Number(idRole)) {
@@ -78,34 +110,29 @@ const validateRoleNotAssignedToLoggedUser = async (idRole, { req }) => {
     return Promise.resolve();
 };
 
-// Valida la existencia de Permisos y Privilegios, y su correcta asociación
 const validatePermissionsAndPrivilegesExistAndMatch = async (assignmentsArray, { req }) => {
     console.log(`${LOG_VALIDATION_PREFIX_MW} validatePermissionsAndPrivilegesExistAndMatch - Validando asignaciones:`, JSON.stringify(assignmentsArray, null, 2));
     if (!assignmentsArray || assignmentsArray.length === 0) {
-        return true; // Array vacío es válido
+        return true;
     }
-
-    // Para almacenar los idPrivilege que se validaron y serán usados por el servicio
-    const validatedPrivilegeIds = [];
-
     for (let i = 0; i < assignmentsArray.length; i++) {
         const assignment = assignmentsArray[i];
-        const { idPrivilege, idPermission } = assignment; // idPermission puede ser opcional en el input
+        const { idPrivilege, idPermission } = assignment;
 
         if (idPrivilege === undefined || !Number.isInteger(idPrivilege) || idPrivilege <= 0) {
             return Promise.reject(`Cada asignación (índice ${i}) debe tener un 'idPrivilege' numérico positivo.`);
         }
-
+        if (!Privilege) return Promise.reject('Error interno: Modelo Privilege no disponible.');
         const privilege = await Privilege.findByPk(idPrivilege);
         if (!privilege) {
             return Promise.reject(`El privilegio con ID ${idPrivilege} (índice ${i}) no existe.`);
         }
 
-        // Si se proporciona idPermission, verificar que el privilegio le pertenece
         if (idPermission !== undefined) {
             if (!Number.isInteger(idPermission) || idPermission <= 0) {
                 return Promise.reject(`El 'idPermission' (índice ${i}) debe ser numérico positivo si se proporciona.`);
             }
+            if (!Permission) return Promise.reject('Error interno: Modelo Permission no disponible.');
             const permission = await Permission.findByPk(idPermission);
             if (!permission) {
                 return Promise.reject(`El permiso con ID ${idPermission} (índice ${i}) no existe.`);
@@ -114,21 +141,10 @@ const validatePermissionsAndPrivilegesExistAndMatch = async (assignmentsArray, {
                 return Promise.reject(`El privilegio con ID ${idPrivilege} no pertenece al permiso con ID ${idPermission} (índice ${i}).`);
             }
         }
-        validatedPrivilegeIds.push({ idPrivilege: privilege.idPrivilege }); // Guardamos solo el idPrivilege para la tabla de unión
     }
-
-    // Opcional: Modificar el req.body para que el servicio solo reciba los { idPrivilege }
-    // Esto depende de cómo tu servicio esté estructurado.
-    // Si 'assignmentsArray' es directamente req.body (como en assignPrivilegesValidation):
-    // req.body = validatedPrivilegeIds;
-    // Si 'assignmentsArray' es una propiedad de req.body (como en createRoleValidation para 'privilegeAssignments'):
-    // req.body.privilegeAssignments = validatedPrivilegeIds; // O el nombre correcto de la propiedad
-
     return true;
 };
 
-
-// --- Middleware para manejar errores de validación ---
 const handleValidationErrors = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -136,7 +152,7 @@ const handleValidationErrors = (req, res, next) => {
         return res.status(400).json({
             message: "Error de validación. Por favor, revise los datos enviados.",
             errors: errors.array().map(err => ({
-                field: err.param || err.path || (err.nestedErrors ? err.nestedErrors[0].param : 'general'), // Para errores en arrays
+                field: err.param || err.path || (err.nestedErrors ? err.nestedErrors[0].param : 'general'),
                 message: err.msg,
                 value: err.value !== undefined ? err.value : null
             }))
@@ -144,9 +160,6 @@ const handleValidationErrors = (req, res, next) => {
     }
     next();
 };
-
-
-// --- Conjuntos de Reglas de Validación por Ruta ---
 
 const getRoleByIdValidation = [
     param('idRole').custom(validateRoleExistence),
@@ -163,22 +176,22 @@ const createRoleValidation = [
         .optional()
         .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).')
         .toBoolean(),
-    body('privilegeAssignments') // El servicio esperará este campo para la creación anidada
+    body('privilegeAssignments')
         .optional()
         .isArray({ min: 0 }).withMessage('privilegeAssignments debe ser un array si se proporciona.')
-        .custom((assignmentsArray) => { // Valida estructura básica
+        .custom((assignmentsArray) => {
             if (!assignmentsArray || assignmentsArray.length === 0) return true;
             const isValid = assignmentsArray.every(p =>
                 typeof p === 'object' && p !== null &&
                 p.hasOwnProperty('idPrivilege') && Number.isInteger(p.idPrivilege) && p.idPrivilege > 0 &&
-                (!p.hasOwnProperty('idPermission') || (p.idPermission === undefined || (Number.isInteger(p.idPermission) && p.idPermission > 0))) // idPermission es opcional o entero positivo
+                (!p.hasOwnProperty('idPermission') || (p.idPermission === undefined || (Number.isInteger(p.idPermission) && p.idPermission > 0)))
             );
             if (!isValid) {
                 throw new Error('Cada elemento en privilegeAssignments debe ser un objeto con idPrivilege (entero positivo) y opcionalmente idPermission (entero positivo o undefined).');
             }
             return true;
         })
-        .custom(validatePermissionsAndPrivilegesExistAndMatch), // Valida existencia y match
+        .custom(validatePermissionsAndPrivilegesExistAndMatch),
     handleValidationErrors
 ];
 
@@ -194,7 +207,7 @@ const updateRoleValidation = [
         .optional()
         .isBoolean().withMessage('El estado debe ser un valor booleano (true/false).')
         .toBoolean(),
-    body('privilegeAssignments') // No permitir actualizar privilegios por esta ruta
+    body('privilegeAssignments')
         .not().exists().withMessage('La actualización de privilegios se realiza a través de la ruta PUT /api/roles/:idRole/privileges.'),
     body().custom((value, { req }) => {
         if (req.body.roleName === undefined && req.body.status === undefined) {
@@ -207,10 +220,10 @@ const updateRoleValidation = [
 
 const deleteRoleValidation = [
     param('idRole').custom(validateRoleExistence)
-        .bail() // Detener si no existe
-        .custom(validateRoleHasNoUsers)
-        .bail() // Detener si tiene usuarios
-        .custom(validateRoleNotAssignedToLoggedUser), // req.user debe estar disponible
+        .bail()
+        .custom(validateRoleHasNoUsers) // ESTA ES LA VALIDACIÓN CLAVE
+        .bail()
+        .custom(validateRoleNotAssignedToLoggedUser),
     handleValidationErrors
 ];
 
@@ -223,13 +236,11 @@ const changeRoleStateValidation = [
     handleValidationErrors
 ];
 
-// Para PUT /api/roles/:idRole/privileges
-// El cuerpo de la solicitud DEBE SER un array de objetos: [{ idPrivilege: number, idPermission?: number }, ...]
 const assignPrivilegesValidation = [
     param('idRole').custom(validateRoleExistence),
-    body() // Validar el cuerpo entero de la solicitud como un array
+    body()
         .isArray({ min: 0 }).withMessage('El cuerpo de la solicitud debe ser un array de asignaciones (puede ser vacío para quitar todos los privilegios).')
-        .custom((assignmentsArrayInBody) => { // Valida estructura básica
+        .custom((assignmentsArrayInBody) => {
             if (assignmentsArrayInBody.length === 0) return true;
             const isValid = assignmentsArrayInBody.every(p =>
                 typeof p === 'object' && p !== null &&
@@ -241,17 +252,14 @@ const assignPrivilegesValidation = [
             }
             return true;
         })
-        .custom(validatePermissionsAndPrivilegesExistAndMatch), // Valida existencia y match
+        .custom(validatePermissionsAndPrivilegesExistAndMatch),
     handleValidationErrors
 ];
 
-// Para GET /api/roles/:idRole/privileges y GET /api/roles/:idRole/effective-permissions
-// Solo se necesita validar que el rol exista.
 const getRoleSubresourcesValidation = [
     param('idRole').custom(validateRoleExistence),
     handleValidationErrors
 ];
-
 
 module.exports = {
     getRoleByIdValidation,
@@ -260,5 +268,5 @@ module.exports = {
     deleteRoleValidation,
     changeRoleStateValidation,
     assignPrivilegesValidation,
-    getRoleSubresourcesValidation, // Usar para getRolePrivileges y getEffectivePermissionsForRole
+    getRoleSubresourcesValidation,
 };

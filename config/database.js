@@ -10,6 +10,7 @@ const sequelize = new Sequelize('food_node', 'root', '', {
     // ***** CAMBIO PRINCIPAL PARA LA PRUEBA *****
     // Asegúrate de que el logging esté habilitado y use console.log,
     // o simplemente no incluyas la opción 'logging' para que use el default de Sequelize.
+    logging: false,
     logging: console.log,
     // Alternativamente, puedes borrar la línea de 'logging' completamente para usar el default.
     // *******************************************

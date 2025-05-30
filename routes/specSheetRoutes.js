@@ -5,7 +5,7 @@ const specSheetValidations = require("../middlewares/specSheetsValidations");
 
 // Colocar esta ruta antes de otras rutas que usen parámetros
 router.get(
-  "/product/:idProduct",
+  "/by-product/:idProduct", // <--- CAMBIO AQUÍ
   specSheetValidations.getSpecSheetsByProductValidation,
   specSheetController.getSpecSheetsByProduct
 );
@@ -29,6 +29,6 @@ router.put(
 );
 router.delete("/:id",specSheetValidations.deleteSpecSheetValidation,specSheetController.deleteSpecSheet
 );
-router.patch("/:id/status", specSheetController.changeStateSpecSheet);
+router.patch("/:id/status", specSheetController.changeSpecSheetStatus);
 
 module.exports = router;

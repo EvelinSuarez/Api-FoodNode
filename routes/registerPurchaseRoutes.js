@@ -1,35 +1,35 @@
-// routes/registerPurchaseRoutes.js (ejemplo)
 const express = require('express');
 const router = express.Router();
-
 const registerPurchaseController = require('../controllers/registerPurchaseController');
-// Importar el objeto de validaciones
-const { 
-    validateIdParam, 
-    validateCreateOrUpdatePurchase, 
-    validateUpdatePurchase, 
-    changeStateValidation 
+const {
+    validateIdParam,
+    createPurchaseWithDetailsValidationRules,
+    updatePurchaseHeaderValidationRules,
+    changeStateValidationRules 
 } = require('../middlewares/registerPurchaseValidations');
 
-// GET /api/registerpurchases/
-router.get('/', registerPurchaseController.getAllRegisterPurchases);
+// GET /api/registerpurchases/ - Obtener todas las compras
+router.get('/', registerPurchaseController.getAllPurchases);
 
-// GET /api/registerpurchases/providers/meat
-router.get('/providers/meat', registerPurchaseController.getProvidersFromMeatCategory);
+// POST /api/registerpurchases/ - Crear una nueva compra con sus detalles
+router.post('/', createPurchaseWithDetailsValidationRules, registerPurchaseController.createPurchaseWithDetails);
 
-// GET /api/registerpurchases/:idPurchase
-router.get('/:idPurchase', validateIdParam, registerPurchaseController.getRegisterPurchaseById);
+// GET /api/registerpurchases/providers/meat - Obtener proveedores para categoría "CARNE"
+// La lógica de "CARNE" está en el controlador/servicio para esta ruta específica.
+router.get('/providers/meat', registerPurchaseController.getProvidersByCategoryController);
+// Si quisieras una ruta más genérica:
+// router.get('/providers/by-category/:categoryName', [param('categoryName').isIn(ALLOWED_PURCHASE_CATEGORIES)], registerPurchaseController.getProvidersByCategoryControllerDinamic);
 
-// POST /api/registerpurchases/
-router.post('/', validateCreateOrUpdatePurchase, registerPurchaseController.createRegisterPurchase);
 
-// PUT /api/registerpurchases/:idPurchase
-router.put('/:idPurchase', validateUpdatePurchase, registerPurchaseController.updateRegisterPurchase);
+// GET /api/registerpurchases/:idPurchase - Obtener una compra por ID
+router.get('/:idPurchase', validateIdParam, registerPurchaseController.getPurchaseById);
 
-// DELETE /api/registerpurchases/:idPurchase
-router.delete('/:idPurchase', validateIdParam, registerPurchaseController.deleteRegisterPurchase);
+// PUT /api/registerpurchases/:idPurchase - Actualizar la cabecera de una compra
+router.put('/:idPurchase', validateIdParam, updatePurchaseHeaderValidationRules, registerPurchaseController.updatePurchaseHeader);
 
-// PATCH /api/registerpurchases/:idPurchase/state
-router.patch('/:idPurchase/state', changeStateValidation, registerPurchaseController.changeStateRegisterPurchase);
+// DELETE /api/registerpurchases/:idPurchase - Eliminar una compra
+router.delete('/:idPurchase', validateIdParam, registerPurchaseController.deletePurchaseById);
 
+// PATCH /api/registerpurchases/:idPurchase/status - Actualizar el estado y/o estado de pago de una compra
+router.patch('/:idPurchase/status', validateIdParam, changeStateValidationRules, registerPurchaseController.updatePurchaseStatusController);
 module.exports = router;

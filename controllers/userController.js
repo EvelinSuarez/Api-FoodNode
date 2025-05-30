@@ -1,5 +1,6 @@
+// controllers/userController.js
 const { validationResult } = require('express-validator');
-const userService = require('../services/userService');
+const userService = require('../services/userService'); // Tu capa de servicio backend
 
 const createUser = async (req, res) => {
     const errors = validationResult(req);
@@ -8,61 +9,42 @@ const createUser = async (req, res) => {
     }
     try {
         const user = await userService.createUser(req.body);
-        res.status(201).json(user);
+        const { password, ...userWithoutPassword } = user.toJSON();
+        res.status(201).json(userWithoutPassword);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error("Error en createUser:", error);
+        res.status(400).json({ message: error.message || "Error al crear el usuario." });
     }
 };
 
 const getUserProfile = async (req, res) => {
     try {
-        // Asume que VerifyToken añade el ID del usuario a req.userId
-        // *** ¡¡VERIFICA CÓMO TU VerifyToken GUARDA EL ID!! ***
-        // Puede ser req.userId, req.user.id, req.user.idUsers, etc. AJUSTA SEGÚN SEA NECESARIO.
-        const userId = req.userId; // O el campo correcto que VerifyToken establezca
-
-        if (!userId) {
-            // Si por alguna razón VerifyToken no añadió el ID (aunque debería si el token es válido)
-            return res.status(401).json({ message: "Token inválido o usuario no identificado." });
+        const userIdFromToken = req.user?.idUsers || req.user?.id || req.userId; // Ajusta según tu middleware verifyToken
+        if (!userIdFromToken) {
+            return res.status(401).json({ message: "Token inválido o usuario no identificado para obtener perfil." });
         }
-
-        // Reutiliza tu servicio existente para buscar por ID
-        const user = await userService.getUserById(userId);
-
+        const user = await userService.getUserById(userIdFromToken);
         if (!user) {
-            // Esto sería raro si el token es válido, pero es una buena verificación
             return res.status(404).json({ message: "Usuario asociado al token no encontrado." });
         }
-
-        // *** IMPORTANTE: Prepara la respuesta SIN la contraseña ***
-        // Asegúrate de que los nombres de campo coincidan con tu Modelo Sequelize
-        const userProfile = {
-            id: user.idUsers,       // O como se llame tu PK (parece ser idUsers)
-            document_type: user.document_type,
-            document: user.document,
-            cellphone: user.cellphone,
-            full_name: user.full_name,
-            email: user.email,
-            role: user.idRole,      // ¡Asegúrate de que este es el campo del rol!
-            status: user.status,
-            // Añade cualquier otro campo que necesites en el frontend, EXCEPTO la contraseña
-        };
-
-        res.status(200).json(userProfile);
-
+        res.status(200).json(user); // Asumiendo que getUserById ya excluye la contraseña
     } catch (error) {
         console.error("Error fetching user profile:", error);
         res.status(500).json({ message: "Error interno al obtener el perfil del usuario." });
     }
 };
 
-
 const getAllUsers = async (req, res) => {
     try {
         const users = await userService.getAllUsers();
-        res.status(200).json(users);
+        const usersWithoutPasswords = users.map(user => {
+            const { password, ...userWithoutPassword } = user.toJSON();
+            return userWithoutPassword;
+        });
+        res.status(200).json(usersWithoutPasswords);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error("Error en getAllUsers:", error);
+        res.status(500).json({ message: error.message || "Error al obtener los usuarios." });
     }
 };
 
@@ -72,10 +54,14 @@ const getUserById = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const user = await userService.getUserById(req.params.id);
-        res.status(200).json(user);
+        const user = await userService.getUserById(req.params.idUser); // Usar idUser
+        if (!user) {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+        res.status(200).json(user); // Asumiendo que getUserById ya excluye la contraseña
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error("Error en getUserById:", error);
+        res.status(500).json({ message: error.message || "Error al obtener el usuario." });
     }
 };
 
@@ -85,10 +71,14 @@ const updateUser = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        await userService.updateUser(req.params.id, req.body);
-        res.status(204).end();
+        const updatedUser = await userService.updateUser(req.params.idUser, req.body); // Usar idUser
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'Usuario no encontrado o no se pudo actualizar.' });
+        }
+        res.status(200).json(updatedUser); // Devuelve el usuario actualizado
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error("Error en updateUser:", error);
+        res.status(400).json({ message: error.message || "Error al actualizar el usuario." });
     }
 };
 
@@ -98,10 +88,18 @@ const deleteUser = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        await userService.deleteUser(req.params.id);
+        const result = await userService.deleteUser(req.params.idUser); // Usar idUser
+        if (result === 0 || !result) {
+            return res.status(404).json({ message: 'Usuario no encontrado para eliminar.' });
+        }
         res.status(204).end();
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error("Error en deleteUser:", error);
+        // Si es un error de restricción de FK, podría ser un 409 (Conflict)
+        if (error.name === 'SequelizeForeignKeyConstraintError') {
+            return res.status(409).json({ message: "No se puede eliminar el usuario, tiene datos relacionados." });
+        }
+        res.status(500).json({ message: error.message || "Error al eliminar el usuario." });
     }
 };
 
@@ -111,10 +109,21 @@ const changeStateUser = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        await userService.changeStateUser(req.params.id, req.body.status);
-        res.status(204).end();
+        const { idUser } = req.params; // Usar idUser
+        const { status } = req.body;
+
+        if (typeof status !== 'boolean') {
+            return res.status(400).json({ message: 'El campo status debe ser un valor booleano.' });
+        }
+
+        const updatedUser = await userService.changeStateUser(idUser, status);
+        if (!updatedUser) {
+             return res.status(404).json({ message: 'Usuario no encontrado o no se pudo cambiar el estado.' });
+        }
+        res.status(200).json(updatedUser); // Devuelve el usuario actualizado
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error("Error en changeStateUser:", error);
+        res.status(500).json({ message: error.message || "Error al cambiar el estado del usuario." });
     }
 };
 
