@@ -1,64 +1,79 @@
 // models/productionOrder.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database'); // Tu instancia de sequelize
+const sequelize = require('../config/database');
 
 const ProductionOrder = sequelize.define('ProductionOrder', {
-    idOrder: {
+    idProductionOrder: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
         allowNull: false
     },
-    idProduct: {
-        type: DataTypes.INTEGER, // FK a Product
-        allowNull: false // O true, dependiendo de tu lógica
-        // SIN 'references' aquí
-    },
-    idSpecSheet: {
-        type: DataTypes.INTEGER, // FK a SpecSheet
-        allowNull: false // O true
-        // SIN 'references' aquí
+    // FKs: idProduct, idSpecSheet, idEmployeeRegistered, idProvider (opcional)
+    // Se añaden por asociaciones en models/index.js
+    orderNumber: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        unique: true // Considerar si realmente debe ser único o si puede autogenerarse de forma no estricta
     },
     dateTimeCreation: {
         type: DataTypes.DATE,
-        allowNull: true, // O defaultValue: DataTypes.NOW
+        allowNull: false,
+        defaultValue: DataTypes.NOW
     },
-    initialAmount: {
+    productNameSnapshot: { // Nombre del producto en el momento de la creación/última actualización
+        type: DataTypes.STRING(255),
+        allowNull: true // Permitir null si el producto se deselecciona temporalmente en UI antes de guardar
+    },
+    initialAmount: { // Cantidad de producto que se planea producir (unidades/porciones del producto final)
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false // Debe tener un valor, incluso si es un default como 1
     },
-    finalQuantityProduct: {
+    // Peso inicial del material principal, registrado por el empleado
+    inputInitialWeight: {
+        type: DataTypes.DECIMAL(10, 3),
+        allowNull: true
+    },
+    inputInitialWeightUnit: {
+        type: DataTypes.STRING(50),
+        allowNull: true // Ej: "kg", "lb", "g"
+    },
+    // --- Datos de finalización ---
+    finalQuantityProduct: { // Cantidad de producto final REALMENTE obtenida (unidades/porciones)
         type: DataTypes.INTEGER,
         allowNull: true
     },
-    finishedWeight: {
-        type: DataTypes.DOUBLE,
+    finishedProductWeight: { // Peso total final de TODAS las unidades/porciones de producto OBTENIDAS
+        type: DataTypes.DECIMAL(10, 3),
         allowNull: true
     },
-    initialWeight: { // Si necesitas este campo
-        type: DataTypes.DOUBLE,
+    finishedProductWeightUnit: { // Unidad para finishedProductWeight
+        type: DataTypes.STRING(50),
         allowNull: true
     },
+    // Peso final del insumo principal que NO se convirtió en producto (merma directa)
+    inputFinalWeightUnused: {
+        type: DataTypes.DECIMAL(10, 3),
+        allowNull: true
+    },
+    inputFinalWeightUnusedUnit: { // Unidad para inputFinalWeightUnused
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    // --- Fin Datos de finalización ---
     observations: {
         type: DataTypes.TEXT,
         allowNull: true
     },
-    status: {
-        type: DataTypes.BOOLEAN, // O STRING para más estados
+    status: { // PENDING, SETUP, SETUP_COMPLETED, IN_PROGRESS, PAUSED, ALL_STEPS_COMPLETED, COMPLETED, CANCELLED
+        type: DataTypes.STRING(50),
         allowNull: false,
-        defaultValue: true // O un estado inicial como 'PENDING' si es STRING
-    }
-    // NO idProcessDetail aquí, esa relación la maneja ProcessDetail
+        defaultValue: 'PENDING' // Estado inicial por defecto al crear la orden "borrador"
+    },
+    // idEmployeeRegistered es una FK que se define en la asociación
 }, {
-    tableName: 'ProductionOrders', // Opcional
-    timestamps: true
+    tableName: 'ProductionOrders',
+    timestamps: true // createdAt, updatedAt
 });
-
-// ----- ELIMINAR ASOCIACIONES DE AQUÍ -----
-// ProductionOrder.belongsTo(models.Product, ...); // QUITAR
-// ProductionOrder.belongsTo(models.SpecSheet, ...); // QUITAR
-// ProductionOrder.hasMany(models.ProcessDetail, ...); // QUITAR
-
-// YA NO necesitas importar Product, SpecSheet, ProcessDetail aquí si solo eran para asociaciones
 
 module.exports = ProductionOrder;

@@ -1,171 +1,161 @@
 // repositories/registerPurchaseRepository.js
-const { RegisterPurchase, PurchaseDetail, Provider, Supplier, sequelize } = require('../models');
+const { RegisterPurchase, PurchaseDetail, Provider, Supply, sequelize } = require('../models');
 
-const createRegisterPurchase = async (registerPurchaseData) => {
-    const t = await sequelize.transaction();
-    try {
-        const { idProvider, purchaseDate, category, totalAmount, details } = registerPurchaseData;
+const createRegisterPurchaseWithDetails = async (purchaseHeaderData, detailsData, transaction) => {
+    // ----- DEBUGGING INICIO DE REPOSITORIO -----
+    // console.log("REPOSITORY createRegisterPurchaseWithDetails - purchaseHeaderData RECIBIDO:", JSON.stringify(purchaseHeaderData, null, 2));
+    // console.log(`REPOSITORY createRegisterPurchaseWithDetails - idProvider: ${purchaseHeaderData.idProvider}, type: ${typeof purchaseHeaderData.idProvider}`);
+    // console.log(`REPOSITORY createRegisterPurchaseWithDetails - category: ${purchaseHeaderData.category}, type: ${typeof purchaseHeaderData.category}`);
+    // ----- FIN DEBUGGING -----
 
-        const providerExists = await Provider.findByPk(idProvider, { transaction: t });
-        if (!providerExists) {
-            throw new Error(`Proveedor con ID ${idProvider} no encontrado.`);
-        }
+    // Desestructurar directamente de purchaseHeaderData
+    const { 
+        idProvider, 
+        purchaseDate, 
+        category, 
+        invoiceNumber, 
+        receptionDate, 
+        observations, 
+        status, 
+        paymentStatus 
+    } = purchaseHeaderData;
 
-        if (!details || !Array.isArray(details) || details.length === 0) {
-             throw new Error('No se proporcionaron detalles válidos para la compra.');
-        }
-
-        const insumoIds = details.map(d => d.idInsumo);
-        const existingInsumos = await Supplier.findAll({
-            where: { idSupplier: insumoIds },
-            attributes: ['idSupplier'],
-            transaction: t
-        });
-        if (existingInsumos.length !== insumoIds.length) {
-            const existingIdsSet = new Set(existingInsumos.map(i => i.idSupplier));
-            const missingId = insumoIds.find(id => !existingIdsSet.has(parseInt(id, 10)));
-            throw new Error(`Insumo con ID ${missingId || 'desconocido'} no encontrado.`);
-        }
-
-        const newPurchase = await RegisterPurchase.create({
-            idProvider,
-            purchaseDate,
-            category, // <--- CATEGORY AÑADIDA
-            totalAmount: Number(totalAmount) || 0,
-            status: 'PENDIENTE',
-            details: details.map(detail => ({
-                idSupplier: detail.idInsumo,
-                quantity: Number(detail.quantity),
-                unitPrice: Number(detail.unitPrice),
-                subtotal: (Number(detail.quantity || 0) * Number(detail.unitPrice || 0)).toFixed(2)
-            }))
-        }, {
-            include: [{
-                model: PurchaseDetail,
-                as: 'details'
-            }],
-            transaction: t
-        });
-
-        await t.commit();
-        return newPurchase;
-
-    } catch (error) {
-        if (t && !t.finished) { // Asegurar rollback si la transacción está activa y no finalizada
-             try { await t.rollback(); } catch (rbError) { console.error("Error en rollback:", rbError); }
-        }
-        console.error("Error detallado en repositorio createRegisterPurchase:", error);
-        throw new Error(`Error en base de datos al crear la compra: ${error.message}`);
+    // Verificación crucial antes del .create()
+    if (idProvider === undefined || idProvider === null || category === undefined || category === null) {
+        console.error("ERROR CRÍTICO EN REPOSITORIO: idProvider o category son nulos/undefined ANTES de RegisterPurchase.create!");
+        // Esto no debería suceder si el servicio los está enviando correctamente.
+        // Si sucede, indica un problema en el objeto purchaseHeaderInput del servicio.
+        throw new Error("Error interno del sistema: Datos de cabecera de compra incompletos en el repositorio.");
     }
+
+    const newPurchase = await RegisterPurchase.create({
+        idProvider,     // Usar la variable idProvider desestructurada
+        purchaseDate,
+        category,       // Usar la variable category desestructurada
+        invoiceNumber,
+        receptionDate,
+        observations,
+        // El modelo RegisterPurchase debe tener defaults para status y paymentStatus
+        // si no se proporcionan aquí y allowNull es false.
+        // Si status/paymentStatus son undefined aquí, Sequelize los omitirá del INSERT,
+        // permitiendo que los defaults de la DB/modelo actúen.
+        // Si allowNull es false y NO hay default, entonces SÍ deben tener valor aquí.
+        // Asumimos que el modelo tiene defaults:
+        status: status, // (Opcional: status || 'PENDIENTE' si quieres forzarlo aquí y el modelo no tuviera default)
+        paymentStatus: paymentStatus, // (Opcional: paymentStatus || 'NO_PAGADA')
+    }, { transaction });
+
+    const purchaseDetailsToCreate = detailsData.map(detail => ({
+        idRegisterPurchase: newPurchase.idRegisterPurchase,
+        idSupply: detail.idSupply, // 'detail.idSupply' ya fue mapeado en el servicio
+        quantity: Number(detail.quantity),
+        unitPrice: Number(detail.unitPrice),
+    }));
+    console.log("DEBUG REPO - purchaseDetailsToCreate (ANTES de bulkCreate):", JSON.stringify(purchaseDetailsToCreate, null, 2)); 
+
+    await PurchaseDetail.bulkCreate(purchaseDetailsToCreate, {
+        transaction,
+        individualHooks: true 
+    });
+
+    return newPurchase;
 };
 
+// ... (getAllRegisterPurchases y el resto de funciones del repositorio como las tenías, no necesitan cambios para este error específico)
 const getAllRegisterPurchases = async () => {
+    // console.log("DEBUG REPO: Ejecutando getAllRegisterPurchases (sin 'attributes' explícitos para depurar)");
     return RegisterPurchase.findAll({
         include: [
-            { model: Provider, as: 'provider', attributes: ['idProvider', 'company'] },
+            {
+                model: Provider,
+                as: 'provider',
+                attributes: ['idProvider', 'company'] 
+            },
             {
                 model: PurchaseDetail,
                 as: 'details',
-                attributes: ['idPurchaseDetail', 'quantity', 'unitPrice', 'subtotal'],
                 include: [{
-                    model: Supplier, as: 'insumo',
-                    attributes: ['idSupplier', 'supplierName', 'measurementUnit']
+                    model: Supply,
+                    as: 'supply',
+                    attributes: ['idSupply', 'supplyName', 'unitOfMeasure'] 
                 }]
             }
         ],
-        order: [['purchaseDate', 'DESC'], ['idRegisterPurchase', 'DESC']]
+        order: [['idRegisterPurchase', 'DESC']] 
     });
 };
 
 const getRegisterPurchaseById = async (idPurchase) => {
     return RegisterPurchase.findByPk(idPurchase, {
         include: [
-            { model: Provider, as: 'provider', attributes: ['idProvider', 'company'] },
+            {
+                model: Provider,
+                as: 'provider',
+                attributes: ['idProvider', 'company', 'document', 'email', 'cellPhone', 'status']
+            },
             {
                 model: PurchaseDetail,
                 as: 'details',
-                attributes: ['idPurchaseDetail', 'quantity', 'unitPrice', 'subtotal'],
+                // attributes: ['idPurchaseDetail', 'quantity', 'unitPrice', 'subtotal', 'taxAmount', 'discountAmount', 'itemTotal', 'idSupply'], // Descomentar si necesitas ser específico
                 include: [{
-                    model: Supplier, as: 'insumo',
-                    attributes: ['idSupplier', 'supplierName', 'measurementUnit']
+                    model: Supply,
+                    as: 'supply',
+                    attributes: ['idSupply', 'supplyName', 'unitOfMeasure', 'status']
                 }]
             }
         ]
     });
 };
 
-async function getUniqueProvidersFromCategory(categoryName) {
-    try {
-        const allPurchasesInCategory = await RegisterPurchase.findAll({
+const getProvidersByCategory = async (categoryName) => {
+    return Provider.findAll({
+        attributes: ['idProvider', 'company', 'status'],
+        include: [{
+            model: RegisterPurchase,
+            as: 'purchases', 
             where: { category: categoryName },
-            include: [{
-                model: Provider,
-                as: 'provider',
-                attributes: ['idProvider', 'company'], // 'company' o el campo de nombre de proveedor
-                required: true
-            }]
-        });
+            attributes: [], 
+            required: true 
+        }],
+        where: { status: true },
+    });
+};
 
-        const uniqueProviders = [];
-        const providerMap = new Map();
-        allPurchasesInCategory.forEach(purchase => {
-            if (purchase.provider && !providerMap.has(purchase.provider.idProvider)) {
-                providerMap.set(purchase.provider.idProvider, true);
-                uniqueProviders.push(purchase.provider);
-            }
-        });
-        return uniqueProviders;
-    } catch (error) {
-        console.error(`Error fetching unique providers for category ${categoryName}:`, error);
-        throw error;
-    }
-}
 
-const updateRegisterPurchase = async (idPurchase, registerPurchaseData) => {
-    // Excluir detalles y campos que no se deben actualizar directamente aquí (como idProvider)
-    const { details, idProvider, ...fieldsToUpdate } = registerPurchaseData;
-
-    const allowedUpdates = {};
-    const modelAttributes = Object.keys(RegisterPurchase.getAttributes());
-    for (const key in fieldsToUpdate) {
-        // Permitir actualizar 'category', 'purchaseDate', 'totalAmount', 'status'
-        if (modelAttributes.includes(key) && key !== 'idRegisterPurchase' && key !== 'idProvider') {
-            allowedUpdates[key] = fieldsToUpdate[key];
-        }
-    }
-    // 'category' se incluirá en allowedUpdates si viene en registerPurchaseData
-
-    if (Object.keys(allowedUpdates).length === 0) {
-        console.warn(`No se proporcionaron campos válidos para actualizar en la cabecera de la compra ID ${idPurchase}.`);
-        return false;
-    }
-
-    const [numberOfAffectedRows] = await RegisterPurchase.update(allowedUpdates, {
-        where: { idRegisterPurchase: idPurchase }
+const updateRegisterPurchaseHeader = async (idPurchase, headerData, transaction) => {
+    const [numberOfAffectedRows] = await RegisterPurchase.update(headerData, {
+        where: { idRegisterPurchase: idPurchase },
+        transaction
     });
     return numberOfAffectedRows > 0;
 };
 
-const deleteRegisterPurchase = async (idPurchase) => {
-    const numberOfDeletedRows = await RegisterPurchase.destroy({
-        where: { idRegisterPurchase: idPurchase }
-    });
-    return numberOfDeletedRows > 0;
-};
-
-const changeStateRegisterPurchase = async (idPurchase, newStatus) => {
-    const [numberOfAffectedRows] = await RegisterPurchase.update({ status: newStatus }, {
-        where: { idRegisterPurchase: idPurchase }
+const deleteRegisterPurchaseAndDetails = async (idPurchase, transaction) => {
+    const purchase = await RegisterPurchase.findByPk(idPurchase, { transaction });
+    if (!purchase) {
+        return false; 
+    }
+    const numberOfAffectedRows = await RegisterPurchase.destroy({
+        where: { idRegisterPurchase: idPurchase },
+        transaction
     });
     return numberOfAffectedRows > 0;
-}
+};
+
+const updateStatus = async (idPurchase, statusFields, transaction) => {
+    const [affectedRows] = await RegisterPurchase.update(statusFields, {
+      where: { idRegisterPurchase: idPurchase },
+      transaction,
+    });
+    return affectedRows > 0;
+  };
 
 module.exports = {
-    createRegisterPurchase,
+    createRegisterPurchaseWithDetails,
     getAllRegisterPurchases,
     getRegisterPurchaseById,
-    getUniqueProvidersFromCategory,
-    updateRegisterPurchase,
-    deleteRegisterPurchase,
-    changeStateRegisterPurchase,
+    getProvidersByCategory,
+    updateRegisterPurchaseHeader,
+    deleteRegisterPurchaseAndDetails,
+    updateStatus,
 };
