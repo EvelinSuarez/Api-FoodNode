@@ -181,64 +181,6 @@ if (modelosExisten(MonthlyExpenseItem, SpecificConceptSpent)) {
     MonthlyExpenseItem.belongsTo(SpecificConceptSpent, { foreignKey: 'idSpecificConcept', as: 'specificConceptSpent' });
 }
 
-<<<<<<< HEAD
-// --- 3. Hooks ---
-if (db.RegisterPurchase && db.PurchaseDetail && db.sequelize) { // Usar db.sequelize
-    const updatePurchaseTotals = async (instanceOrPk, options) => {
-        let idRegisterPurchase;
-        if (typeof instanceOrPk === 'number' || typeof instanceOrPk === 'string') {
-            const detail = await db.PurchaseDetail.findByPk(instanceOrPk, { attributes: ['idRegisterPurchase'], transaction: options.transaction });
-            if (detail) idRegisterPurchase = detail.idRegisterPurchase;
-        } else if (instanceOrPk && instanceOrPk.idRegisterPurchase) {
-            idRegisterPurchase = instanceOrPk.idRegisterPurchase;
-        } else if (options && options.where && options.where.idRegisterPurchase) {
-            idRegisterPurchase = options.where.idRegisterPurchase;
-        } else if (options && options.instance && options.instance.idRegisterPurchase) {
-             idRegisterPurchase = options.instance.idRegisterPurchase;
-        }
-
-        if (!idRegisterPurchase) {
-            console.warn("HOOK updatePurchaseTotals: No se pudo determinar idRegisterPurchase.");
-            return;
-        }
-        const transaction = options && options.transaction;
-        try {
-            const purchaseHeader = await db.RegisterPurchase.findByPk(idRegisterPurchase, { transaction });
-            if (!purchaseHeader) {
-                console.warn(`HOOK updatePurchaseTotals: RegisterPurchase con ID ${idRegisterPurchase} no encontrado.`);
-                return;
-            }
-            // Asegurarse que el alias 'details' en RegisterPurchase es el correcto si el hook lo usa implícitamente
-            // o si se usa para obtener los detalles para el cálculo.
-            // El hook afterCreate/Update/Destroy en PurchaseDetail es el que lo llama,
-            // así que el contexto es el detalle. El cálculo aquí es independiente del alias del include.
-            const result = await db.PurchaseDetail.findOne({
-                where: { idRegisterPurchase },
-                attributes: [ [db.sequelize.fn('SUM', db.sequelize.col('subtotal')), 'calculatedSubtotal'] ], // Usar db.sequelize
-                transaction,
-                raw: true
-            });
-            const calculatedSubtotal = parseFloat(result.calculatedSubtotal || 0);
-            const calculatedTotalAmount = calculatedSubtotal;
-            await purchaseHeader.update({
-                subtotalAmount: calculatedSubtotal.toFixed(2),
-                totalAmount: calculatedTotalAmount.toFixed(2)
-            }, { transaction });
-             // console.log(`HOOK updatePurchaseTotals: Totales actualizados para RegisterPurchase ID ${idRegisterPurchase}.`);
-        } catch (error) {
-            console.error(`HOOK updatePurchaseTotals: Error actualizando totales para RegisterPurchase ID ${idRegisterPurchase}:`, error);
-        }
-    };
-    db.PurchaseDetail.afterCreate('updateTotalsOnDetailCreate', updatePurchaseTotals);
-    db.PurchaseDetail.afterUpdate('updateTotalsOnDetailUpdate', (instance, options) => {
-        if (options.fields && (options.fields.includes('subtotal') || options.fields.includes('quantity') || options.fields.includes('unitPrice'))) {
-            return updatePurchaseTotals(instance, options);
-        }
-        return Promise.resolve();
-    });
-    db.PurchaseDetail.afterDestroy('updateTotalsOnDetailDestroy', updatePurchaseTotals);
-}
-=======
 // --- 3. Bucle 'associate' (Si algún modelo individual define asociaciones) ---
 Object.keys(db).forEach(modelName => {
   if (db[modelName] && typeof db[modelName].associate === 'function') {
@@ -246,7 +188,6 @@ Object.keys(db).forEach(modelName => {
     db[modelName].associate(db);
   }
 });
->>>>>>> 8cfe364e62bc9e6ce1cf30e0f74f75e137550bc8
 
 // --- 4. Exportar ---
 db.sequelize = sequelize; // Usar la instancia importada
