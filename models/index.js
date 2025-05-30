@@ -181,6 +181,7 @@ if (modelosExisten(MonthlyExpenseItem, SpecificConceptSpent)) {
     MonthlyExpenseItem.belongsTo(SpecificConceptSpent, { foreignKey: 'idSpecificConcept', as: 'specificConceptSpent' });
 }
 
+<<<<<<< HEAD
 // --- 3. Hooks ---
 if (db.RegisterPurchase && db.PurchaseDetail && db.sequelize) { // Usar db.sequelize
     const updatePurchaseTotals = async (instanceOrPk, options) => {
@@ -237,6 +238,15 @@ if (db.RegisterPurchase && db.PurchaseDetail && db.sequelize) { // Usar db.seque
     });
     db.PurchaseDetail.afterDestroy('updateTotalsOnDetailDestroy', updatePurchaseTotals);
 }
+=======
+// --- 3. Bucle 'associate' (Si algún modelo individual define asociaciones) ---
+Object.keys(db).forEach(modelName => {
+  if (db[modelName] && typeof db[modelName].associate === 'function') {
+    // console.log(`MODELOS/INDEX.JS: Aplicando 'associate' para el modelo ${modelName}`);
+    db[modelName].associate(db);
+  }
+});
+>>>>>>> 8cfe364e62bc9e6ce1cf30e0f74f75e137550bc8
 
 // --- 4. Exportar ---
 db.sequelize = sequelize; // Usar la instancia importada
