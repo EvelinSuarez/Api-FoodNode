@@ -104,7 +104,6 @@ body('timeDurationR').isString().notEmpty().withMessage('La duración del evento
     .isArray().withMessage('idAditionalServices debe ser un array')
     .custom((value) => value.every(Number.isInteger)).withMessage('Todos los elementos de idAditionalServices deben ser números enteros'),
 ];
-
 // Validaciones para crear una reserva 
 const createReservationsValidation = [
     ...reservationsBaseValidation,
