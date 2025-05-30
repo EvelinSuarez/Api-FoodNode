@@ -199,7 +199,7 @@ Object.keys(db).forEach(modelName => {
   if (db[modelName] && typeof db[modelName].associate === 'function') {
     // console.log(`MODELOS/INDEX.JS: Aplicando 'associate' para el modelo ${modelName}`);
     db[modelName].associate(db);
-  }m 
+  }
 });
 
 // --- 4. Exportar ---

@@ -31,7 +31,11 @@ const employeeBaseValidation = [
         .isInt({ min: 10000, max: 99999999999 }).withMessage('El documento debe ser un número entre 5 y 11 dígitos'),
 
     body('email')
-        .isEmail().withMessage('Debe proporcionar un correo electrónico válido'),
+    .notEmpty().withMessage('El correo electrónico es obligatorio')
+    .isEmail().withMessage('Formato de correo inválido')
+    .normalizeEmail() // Buena práctica: normaliza el email
+    .isLength({ max: 255 }).withMessage('Correo demasiado largo (máx 255)'),
+
 
     body('cellPhone')
         .matches(/^(\+?\d{1,4}[-.\s]?)?(\(?\d{2,3}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{4}$/)
