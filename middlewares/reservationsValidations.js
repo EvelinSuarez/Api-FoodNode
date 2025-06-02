@@ -69,7 +69,7 @@ const checkRealTimeAvailability = async (dateTime, { req }) => {
 const reservationsBaseValidation = [
     body('dateTime').isISO8601().withMessage('La fecha y hora deben tener un formato válido').custom(checkRealTimeAvailability),
     body('numberPeople').isInt({ min: 1 }).withMessage('El número de personas debe ser válido y mayor a cero'),
-    body('matter').isLength({ min: 3, max: 100 }).withMessage('El asunto debe tener entre 3 y 100 caracteres'),
+    body('matter').isLength({ min: 0, max: 100 }).withMessage('El asunto debe tener entre 3 y 100 caracteres'),
 body('timeDurationR').isString().notEmpty().withMessage('La duración del evento es requerida').custom((value) => {
     const numValue = parseInt(value, 10);
     return !isNaN(numValue) && numValue > 0;
