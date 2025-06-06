@@ -24,7 +24,7 @@ const validateUniqueCustomersCellphone = async (cellphone, { req }) => {
     const whereClause = { cellphone };
     // Si estamos actualizando (existe req.params.id), excluimos ese cliente de la búsqueda
     if (req.params.id) {
-        whereClause.idCustomers = { [require('sequelize').Op.ne]: parseInt(req.params.id) }; // Excluir el ID actual
+        whereClause.idCustomers = { [require('sequelize').Op.ne]: parseInt(req.params.id) }; 
     }
     const customers = await Customers.findOne({ where: whereClause });
     if (customers) {
@@ -37,7 +37,7 @@ const validateUniqueCustomersCellphone = async (cellphone, { req }) => {
 // Usadas para crear y actualizar clientes
 const customersBaseValidation = [
     body('fullName')
-        .trim() // Limpiar espacios
+        .trim() 
         .isLength({ min: 5 }).withMessage('El nombre debe tener al menos 5 caracteres')
         .notEmpty().withMessage('El nombre completo es obligatorio'),
     body('distintive')
@@ -47,24 +47,22 @@ const customersBaseValidation = [
     body('customerCategory')
         .isString().withMessage('La categoría del cliente debe ser texto')
         .notEmpty().withMessage('La categoría del cliente es obligatoria'),
-        // Considera usar .isIn(['Familiar', 'Empresarial', ...]) si tienes categorías fijas
+        
     body('cellphone')
         .trim()
         .isString().withMessage('El número de teléfono debe ser texto')
-        // La validación de longitud y unicidad se aplica
-        .isLength({ min: 7, max: 15 }).withMessage('El número de teléfono debe tener entre 7 y 15 caracteres') // Ajustado a 7-15
-        .custom(validateUniqueCustomersCellphone), // La validación personalizada maneja el caso de actualización
-        // Hacer opcional si no es requerido en BD: .optional({ checkFalsy: true }) permite '', null, undefined
+        .isLength({ min: 7, max: 15 }).withMessage('El número de teléfono debe tener entre 7 y 15 caracteres') 
+        .custom(validateUniqueCustomersCellphone)
+        .notEmpty().withMessage('El numero del cliente es obligatorio'),
+        
     body('email')
         .trim()
         .isEmail().withMessage('El correo electrónico no es válido')
-        .optional({ nullable: true, checkFalsy: true }), // Permite '', null, undefined
+        .optional({ nullable: true, checkFalsy: true }), 
     body('address')
         .trim()
         .isString().withMessage('La dirección debe ser texto')
         .optional({ nullable: true, checkFalsy: true }),
-    // 'status' normalmente no se envía en create/update, se maneja con changeState
-    // body('status').isBoolean().withMessage('El estado debe ser booleano').optional({ nullable: true }),
 ];
 
 // --- VALIDACIONES ESPECÍFICAS POR RUTA ---
@@ -72,7 +70,6 @@ const customersBaseValidation = [
 // Crear un cliente (Usa validaciones base)
 const createCustomersValidation = [
     ...customersBaseValidation
-    // Aquí podrías añadir validaciones específicas solo para la creación si las hubiera
 ];
 
 // Actualizar un cliente (Usa base + validación de ID y existencia)
@@ -80,7 +77,7 @@ const updateCustomersValidation = [
     param('id') // Validar el ID que viene en la URL
         .isInt({ gt: 0 }).withMessage('El ID debe ser un número entero positivo')
         .custom(validateCustomersExistence),
-    ...customersBaseValidation // Aplicar las validaciones base a los datos del body
+    ...customersBaseValidation
 ];
 
 // Eliminar un cliente (Solo valida ID y existencia)
@@ -102,19 +99,18 @@ const changeStateValidation = [
     param('id')
         .isInt({ gt: 0 }).withMessage('El ID debe ser un número entero positivo')
         .custom(validateCustomersExistence),
-    body('status') // Valida el campo 'status' que viene en el body
-        .exists({ checkFalsy: false }).withMessage('El campo estado es requerido') // Asegura que exista (incluso si es false)
-        .isBoolean({ strict: true }).withMessage('El estado debe ser un valor booleano (true o false)') // Estricto para solo booleanos
+    body('status') 
+        .exists({ checkFalsy: false }).withMessage('El campo estado es requerido') 
+        .isBoolean({ strict: true }).withMessage('El estado debe ser un valor booleano (true o false)') 
 ];
 
 // --- VALIDACIÓN PARA BUSCAR CLIENTES 
 const searchCustomersValidation = [
     // Cambiamos de body('searchTerm') a query('term')
-    query('term', 'El término de búsqueda es requerido (mínimo 2 caracteres)') // Mensaje de error unificado
-      .trim()                                 // Quitar espacios al inicio/final
-      .notEmpty()                             // Asegurar que no esté vacío después de trim
-      .isLength({ min: 2, max: 90 })          // Establecer longitud mínima y máxima
-      // .escape()                             // Opcional: Escapar caracteres HTML si se mostrarán directamente
+    query('term', 'El término de búsqueda es requerido (mínimo 2 caracteres)') 
+      .trim()                                 
+      .notEmpty()                             
+      .isLength({ min: 2, max: 90 })          
 ];
 
 
