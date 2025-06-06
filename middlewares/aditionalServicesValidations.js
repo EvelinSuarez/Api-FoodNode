@@ -18,8 +18,10 @@ const validateUniqueAditionalServicesName = async (name) => {
 // Validaciones base para crear y actualizar servicios
 const aditionalServicesBaseValidation = [
     body('name')
-        .isLength({ min: 3 }).withMessage('El nombre debe tener al menos 3 caracteres')
+        .isLength({ min: 3}).withMessage('El nombre debe tener al menos 3 caracteres')
+        .isLength({ max: 30}).withMessage('El limite máximo de caracteres es 30')
         .custom(validateUniqueAditionalServicesName).withMessage('El nombre del servicio adicional ya está registrado'),
+        
     body('status')
         .isBoolean().withMessage('El estado debe ser un valor booleano')
         .optional({ nullable: true })
