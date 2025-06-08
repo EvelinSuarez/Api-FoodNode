@@ -18,7 +18,10 @@ const Process = sequelize.define('Process', {
         type: DataTypes.TEXT,
         allowNull: true
     },
-    // Otros campos como: defaultDuration, category, etc.
+    estimatedTimeMinutes: { // <--- CAMPO AÑADIDO
+        type: DataTypes.INTEGER,
+        allowNull: true // Puede ser null si un proceso no tiene una estimación estándar
+    },
     status: {
         type: DataTypes.BOOLEAN,
         defaultValue: true

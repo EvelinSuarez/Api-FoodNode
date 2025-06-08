@@ -4,7 +4,7 @@ const { SpecSheet, Supply } = require('../models'); // Para verificaciones adici
 const { NotFoundError, BadRequestError, ApplicationError } = require('../utils/customErrors');
 
 const addSupplyToSpecSheet = async (data) => {
-  // data: { idSpecSheet, idSupply, quantity, measurementUnit, notes }
+  // data: { idSpecSheet, idSupply, quantity, unitOfMeasure, notes }
   // Validaciones de existencia de SpecSheet y Supply ya hechas por middleware.
   // Validación de unicidad (mismo supply en misma spec sheet) ya hecha por middleware.
 
@@ -37,7 +37,7 @@ const getSpecSheetSupplyById = async (idSpecSheetSupply) => {
 };
 
 const updateSupplyInSpecSheet = async (idSpecSheetSupply, updateData) => {
-  // updateData: { quantity, measurementUnit, notes }
+  // updateData: { quantity, unitOfMeasure, notes }
   const existingItem = await specSheetSupplyRepo.findById(idSpecSheetSupply);
   if (!existingItem) {
     throw new NotFoundError(`Registro de insumo de ficha técnica ID ${idSpecSheetSupply} no encontrado para actualizar.`);

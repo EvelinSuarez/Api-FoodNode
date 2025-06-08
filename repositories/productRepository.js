@@ -7,7 +7,26 @@ const createProduct = async (productData) => {
 };
 
 const getAllProducts = async () => {
-    return Product.findAll({ order: [['productName', 'ASC']] });
+    // ESTA ES LA FUNCIÓN CORREGIDA
+    return Product.findAll({
+        attributes: {
+            // Incluimos todos los atributos existentes del producto y añadimos uno nuevo
+            include: [
+                [
+                    // Usamos una subconsulta SQL literal para contar las fichas técnicas
+                    sequelize.literal(`(
+                        SELECT COUNT(*)
+                        FROM SpecSheets AS ss
+                        WHERE
+                            ss.idProduct = Product.idProduct
+                    )`),
+                    // Nombramos a este nuevo campo 'specSheetCount'
+                    'specSheetCount'
+                ]
+            ]
+        },
+        order: [['productName', 'ASC']]
+    });
 };
 
 const getProductById = async (id) => {

@@ -1,5 +1,5 @@
 const { body, param, validationResult } = require("express-validator")
-const Product = require("../models/product")
+const Product = require("../models/Product")
 const Supplier = require("../models/supply")
 
 // Validaciones auxiliares
@@ -28,21 +28,43 @@ const validateSupplierExists = async (idSupplier) => {
 // Validaciones base para productos
 const productBaseValidation = [
   body("productName")
-    .isLength({ min: 3 })
-    .withMessage("El nombre del producto debe tener al menos 3 caracteres"),
+    .trim()
+    .isLength({ min: 3, max: 100 })
+    .withMessage("El nombre del producto debe tener entre 3 y 100 caracteres"),
+  
+  // NUEVO: Validaciones para minStock y maxStock
+  body("minStock")
+    .optional({ checkFalsy: true }) // Es opcional, checkFalsy permite que "" o 0 pasen como opcionales
+    .isInt({ min: 0 })
+    .withMessage("El stock mínimo debe ser un número entero no negativo."),
+
+  body("maxStock")
+    .optional({ checkFalsy: true })
+    .isInt({ min: 0 })
+    .withMessage("El stock máximo debe ser un número entero no negativo.")
+    // Validación personalizada para asegurar que maxStock >= minStock
+    .custom((maxStock, { req }) => {
+        const minStock = parseInt(req.body.minStock, 10);
+        const maxStockParsed = parseInt(maxStock, 10);
+        // Solo validamos si ambos valores son números válidos
+        if (!isNaN(minStock) && !isNaN(maxStockParsed)) {
+            if (maxStockParsed < minStock) {
+                throw new Error("El stock máximo no puede ser menor que el stock mínimo.");
+            }
+        }
+        return true;
+    }),
+
   body("status")
     .default(true)
     .isBoolean()
     .withMessage("El estado debe ser un booleano"),
-  
 ]
 
 // Validación para crear producto
 const createProductValidation = [
   ...productBaseValidation,
   body("productName").custom(validateUniqueProductName)
-    .isLength({ min: 3, max: 30})
-    .withMessage("El nombre del producto debe tener al menos 3 caracteres")
 ]
 
 // Validación para actualizar producto

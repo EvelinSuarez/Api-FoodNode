@@ -9,7 +9,7 @@ const addSupplyToSpecSheet = async (req, res, next) => {
     return res.status(400).json({ errors: errors.array() });
   }
   try {
-    // req.body debe contener: idSpecSheet, idSupply, quantity, measurementUnit, notes (opc)
+    // req.body debe contener: idSpecSheet, idSupply, quantity, unitOfMeasure, notes (opc)
     const newSpecSheetSupply = await specSheetSupplyService.addSupplyToSpecSheet(req.body);
     res.status(201).json(newSpecSheetSupply);
   } catch (error) {
@@ -53,7 +53,7 @@ const updateSupplyInSpecSheet = async (req, res, next) => {
   }
   try {
     const { idSpecSheetSupply } = req.params;
-    // req.body debe contener: quantity, measurementUnit, notes (opcionales para actualizar)
+    // req.body debe contener: quantity, unitOfMeasure, notes (opcionales para actualizar)
     const updatedItem = await specSheetSupplyService.updateSupplyInSpecSheet(idSpecSheetSupply, req.body);
     res.status(200).json(updatedItem);
   } catch (error) {

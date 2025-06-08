@@ -5,7 +5,7 @@ const { Op } = require('sequelize');
 
 const create = async (data, transaction = null) => {
   try {
-    // data: { idSpecSheet, idSupply, quantity, measurementUnit, notes }
+    // data: { idSpecSheet, idSupply, quantity, unitOfMeasure, notes }
     return await SpecSheetSupply.create(data, { transaction });
   } catch (error) {
     if (error.name === 'SequelizeUniqueConstraintError') {
@@ -23,7 +23,7 @@ const create = async (data, transaction = null) => {
 //   return SpecSheetSupply.findAll({
 //     include: [
 //       { model: SpecSheet, as: "specSheetDetails", attributes: ['idSpecSheet', 'specSheetCode'] }, // Ajusta alias
-//       { model: Supply, as: "supplyDetails", attributes: ['idSupply', 'supplyName', 'measurementUnit'] }, // Ajusta alias
+//       { model: Supply, as: "supplyDetails", attributes: ['idSupply', 'supplyName', 'unitOfMeasure'] }, // Ajusta alias
 //     ],
 //     order: [['updatedAt', 'DESC']]
 //   });
@@ -33,13 +33,13 @@ const findById = async (idSpecSheetSupply) => {
   return SpecSheetSupply.findByPk(parseInt(idSpecSheetSupply), {
     include: [
       { model: SpecSheet, as: "specSheet", attributes: ['idSpecSheet', 'specSheetCode', 'status'] }, // Asegúrate que 'specSheet' sea el alias correcto
-      { model: Supply, as: "supply", attributes: ['idSupply', 'supplyName', 'measurementUnit'] }, // Asegúrate que 'supply' sea el alias correcto
+      { model: Supply, as: "supply", attributes: ['idSupply', 'supplyName', 'unitOfMeasure'] }, // Asegúrate que 'supply' sea el alias correcto
     ],
   });
 };
 
 const update = async (idSpecSheetSupply, dataToUpdate, transaction = null) => {
-  // dataToUpdate: { quantity, measurementUnit, notes }
+  // dataToUpdate: { quantity, unitOfMeasure, notes }
   // idSpecSheet e idSupply no se actualizan aquí.
   try {
     const [affectedRows] = await SpecSheetSupply.update(dataToUpdate, {
@@ -69,7 +69,7 @@ const findAllBySpecSheetId = async (idSpecSheet) => {
   return SpecSheetSupply.findAll({
     where: { idSpecSheet: parseInt(idSpecSheet) },
     include: [
-      { model: Supply, as: "supply", attributes: ['idSupply', 'supplyName', 'measurementUnit'/*, 'currentStock' (opcional)*/] },
+      { model: Supply, as: "supply", attributes: ['idSupply', 'supplyName', 'unitOfMeasure'/*, 'currentStock' (opcional)*/] },
     ],
     order: [['createdAt', 'ASC']] // O por algún otro criterio relevante
   });

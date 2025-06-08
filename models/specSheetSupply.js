@@ -9,13 +9,22 @@ const SpecSheetSupply = sequelize.define('SpecSheetSupply', {
         autoIncrement: true,
         allowNull: false
     },
+     idPurchaseDetail: {
+        type: DataTypes.INTEGER,
+        allowNull: true, // Puede ser nulo si es una ficha "teórica" o aún no se ha asignado un lote.
+        references: {
+            model: 'PurchaseDetails', // Nombre de la tabla de detalles de compra
+            key: 'idPurchaseDetail'
+        },
+        comment: 'FK al lote de compra específico que se usará para este insumo.'
+    },
     // idSpecSheet (FK) se añade por asociación
     // idSupply (FK) se añade por asociación
     quantity: { // Cantidad del insumo requerida por la ficha (para quantityBase del producto)
         type: DataTypes.DECIMAL(10, 3), // Ej: 0.500 kg de harina
         allowNull: false
     },
-    measurementUnit: { // Unidad del insumo en esta receta (puede ser diferente a la unidad base del insumo)
+    unitOfMeasure: { // Unidad del insumo en esta receta (puede ser diferente a la unidad base del insumo)
         type: DataTypes.STRING(50), // Ej: "gramos", "ml", "cucharadas"
         allowNull: false
     },

@@ -28,7 +28,7 @@ const commonSupplyItemValidation = (prefix = '') => [ // prefix para cuando es u
         .isDecimal().withMessage('La cantidad consumida debe ser un número decimal.')
         .toFloat()
         .custom(val => val > 0).withMessage('La cantidad consumida debe ser mayor a cero.'),
-    body(`${prefix}measurementUnitConsumedSnapshot`)
+    body(`${prefix}unitOfMeasureConsumedSnapshot`)
         .optional({ nullable: true })
         .isString().withMessage('La unidad de medida consumida debe ser texto.')
         .isLength({ max: 50 }).withMessage('La unidad de medida no puede exceder los 50 caracteres.'),
@@ -101,7 +101,7 @@ const updateConsumedSupplyRecordValidation = [
         .isDecimal().withMessage('La cantidad consumida debe ser un número decimal.')
         .toFloat()
         .custom(val => val > 0).withMessage('La cantidad consumida debe ser mayor a cero.'),
-    body('measurementUnitConsumedSnapshot').optional({nullable: true}).isString().isLength({max:50}),
+    body('unitOfMeasureConsumedSnapshot').optional({nullable: true}).isString().isLength({max:50}),
     body('consumptionDate').optional({nullable: true}).isISO8601().toDate(),
     body('notes').optional({nullable: true}).isString().isLength({max:500}),
     // No permitir cambiar idSupply o idProductionOrder aquí

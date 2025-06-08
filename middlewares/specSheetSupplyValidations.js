@@ -62,7 +62,7 @@ const commonFieldsValidation = [
         .isDecimal().withMessage("La cantidad debe ser un número decimal.")
         .toFloat()
         .custom(val => val > 0).withMessage("La cantidad del insumo debe ser mayor que cero."),
-    body("measurementUnit")
+    body("unitOfMeasure")
         .notEmpty().withMessage("La unidad de medida del insumo es requerida.")
         .isString().withMessage("La unidad de medida debe ser texto.")
         .trim()
@@ -94,7 +94,7 @@ const updateSpecSheetSupplyValidation = [
         .isDecimal().withMessage("La cantidad debe ser un número decimal.")
         .toFloat()
         .custom(val => val > 0).withMessage("La cantidad del insumo debe ser mayor que cero."),
-    body("measurementUnit")
+    body("unitOfMeasure")
         .optional()
         .isString().withMessage("La unidad de medida debe ser texto.")
         .trim()

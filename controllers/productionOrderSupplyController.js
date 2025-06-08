@@ -12,7 +12,7 @@ const addConsumedSuppliesToOrder = async (req, res, next) => {
     try {
         const { idProductionOrder } = req.params;
         // req.body podría ser un solo objeto o un array de objetos
-        // [{ idSupply, quantityConsumed, measurementUnitConsumedSnapshot (opc), consumptionDate (opc), notes (opc) }, ...]
+        // [{ idSupply, quantityConsumed, unitOfMeasureConsumedSnapshot (opc), consumptionDate (opc), notes (opc) }, ...]
         const consumedSuppliesData = Array.isArray(req.body) ? req.body : [req.body];
 
         const addedSupplies = await productionOrderSupplyService.addOrUpdateConsumedSupplies(idProductionOrder, consumedSuppliesData);

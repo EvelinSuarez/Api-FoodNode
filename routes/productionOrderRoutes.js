@@ -28,6 +28,8 @@ router.post('/',
     productionOrderController.createProductionOrder
 );
 
+router.get('/check-active/:idProduct', productionOrderController.checkActiveOrderForProduct);
+
 router.get('/',
     getAllProductionOrdersQueryValidation, // Validar query params para el listado
     productionOrderController.getAllProductionOrders

@@ -122,33 +122,24 @@ const updateProductionOrderValidation = [
     body('inputInitialWeightUnit')
         .optional({ nullable: true })
         .isString().trim().isLength({ min: 1, max: 50 }).withMessage('Unidad de peso inicial inválida (1-50 caracteres).'),
+
+    // <<<--- MODIFICACIÓN AQUÍ: Se simplifica la validación de 'idSpecSheet' para evitar el conflicto --- >>>
     body('idSpecSheet')
-        .optional({ nullable: true }) // Permite enviar null para desasignar
-        .custom(async (value, { req }) => {
-            if (value === null || value === '') return true; // Permitir desasignar explícitamente
-            const pk = parseInt(value);
-            if (isNaN(pk) || pk <= 0) throw new Error('ID de ficha técnica debe ser un entero positivo.');
-
-            const specSheet = await SpecSheet.findByPk(pk);
-            if (!specSheet) throw new Error('La ficha técnica especificada no existe.');
-
-            // Validar que la ficha pertenezca al producto y esté activa
-            const productIdFromPayload = req.body.idProduct; // Producto que se está intentando asignar
-            const orderInstance = req.productionOrderInstance; // Orden actual cargada por loadProductionOrder
+        .optional({ nullable: true }) // Permite enviar null o '' para desasignar
+        .custom(async (value) => {
+            if (value === null || value === '') return true; // Si es nulo o vacío, es válido (para desasignar)
             
-            let targetProductId = productIdFromPayload !== undefined ? productIdFromPayload : (orderInstance ? orderInstance.idProduct : null);
-
-            if (!targetProductId) { // Si no hay producto en payload ni en la orden existente (ej. creando y seleccionando ficha sin producto)
-                throw new Error('Se debe especificar un producto para validar la ficha técnica.');
+            const pk = parseInt(value);
+            if (isNaN(pk) || pk <= 0) {
+                throw new Error('ID de ficha técnica debe ser un entero positivo.');
             }
-            if (specSheet.idProduct !== parseInt(targetProductId)) {
-                throw new Error('La ficha técnica no pertenece al producto seleccionado/actual.');
-            }
-            if (!specSheet.status) { // Asumiendo que 'status: true' es activa
-                throw new Error('La ficha técnica seleccionada no está activa.');
-            }
+            // La validación de negocio (si la ficha pertenece al producto, si está activa, etc.)
+            // se delega completamente al archivo de servicio (productionOrderService.js),
+            // que es el lugar correcto para esa lógica.
             return true;
         }),
+    // <<<--- FIN DE LA MODIFICACIÓN --- >>>
+    
     body('idEmployeeRegistered')
         .optional({ nullable: true })
         .isInt({ min: 1 }).withMessage('ID de empleado registrador inválido.')
