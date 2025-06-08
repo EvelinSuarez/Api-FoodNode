@@ -42,7 +42,7 @@ const createProductValidation = [
   ...productBaseValidation,
   body("productName").custom(validateUniqueProductName)
     .isLength({ min: 3, max: 30})
-    .withMessage("El nombre del producto debe tener al menos 3 caracteres")
+    .withMessage("El nombre del producto debe tener al menos 3 caracteres y maximo 30 caracteres "),
 ]
 
 // Validación para actualizar producto
