@@ -51,7 +51,7 @@ const customersBaseValidation = [
     body('cellphone')
         .trim()
         .isString().withMessage('El número de teléfono debe ser texto')
-        .isLength({ min: 7, max: 15 }).withMessage('El número de teléfono debe tener entre 7 y 15 caracteres') 
+        .isLength({ min: 10, max: 12 }).withMessage('El número de teléfono debe tener entre 10 y 12 caracteres') 
         .custom(validateUniqueCustomersCellphone)
         .notEmpty().withMessage('El numero del cliente es obligatorio'),
         
