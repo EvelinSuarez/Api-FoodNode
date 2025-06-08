@@ -1,4 +1,3 @@
-// models/supply.js (ANTES supplier.js)
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -22,15 +21,19 @@ const Supply = sequelize.define('Supply', { // Nombre del modelo en singular: Su
         type: DataTypes.STRING(50),
         allowNull: false
     },
-    // Aquí podrías tener idProvider si un insumo SIEMPRE viene de un solo proveedor,
-    // pero es más flexible manejarlo en la tabla PurchaseDetail o tener una tabla intermedia SupplyProvider.
-    // Por ahora, lo mantengo simple.
+    // <<<--- NUEVO CAMPO AÑADIDO AQUÍ --- >>>
+    // Este campo almacenará el precio de la última compra para este insumo.
+    lastPrice: {
+        type: DataTypes.DECIMAL(10, 2), // Usamos DECIMAL para precisión monetaria
+        allowNull: true, // Puede ser nulo si nunca se ha comprado
+        defaultValue: 0.00 // Un valor por defecto seguro
+    },
     status: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     },
 }, {
-    tableName: 'Supplies', // Nombre de la tabla en plural
+    tableName: 'supplies', // Nombre de la tabla en plural
     timestamps: true
 });
 

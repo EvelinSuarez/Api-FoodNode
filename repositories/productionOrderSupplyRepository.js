@@ -11,7 +11,7 @@ const bulkCreateConsumedSupplies = async (idProductionOrder, suppliesData, trans
         idProductionOrder,
         idSupply: data.idSupply,
         quantityConsumed: data.quantityConsumed,
-        measurementUnitConsumedSnapshot: data.measurementUnitConsumedSnapshot, // O tomar del Supply.supplyName
+        unitOfMeasureConsumedSnapshot: data.unitOfMeasureConsumedSnapshot, // O tomar del Supply.supplyName
         consumptionDate: data.consumptionDate || new Date(),
         notes: data.notes,
     }));
@@ -25,7 +25,7 @@ const findConsumedSuppliesByOrderId = async (idProductionOrder) => {
             {
                 model: Supply,
                 as: 'supplyData', // Alias definido en models/index.js
-                attributes: ['idSupply', 'supplyName', 'measurementUnit']
+                attributes: ['idSupply', 'supplyName', 'unitOfMeasure']
             }
         ],
         order: [['createdAt', 'ASC']] // O por consumptionDate

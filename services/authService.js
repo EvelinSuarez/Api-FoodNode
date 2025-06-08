@@ -144,9 +144,11 @@ const login = async (email, password) => {
             id: user.idUsers,
             email: user.email,
             full_name: user.full_name,
-            idRole: user.idRole,
-            role: userRoleData ? { idRole: userRoleData.idRole, roleName: userRoleData.roleName } : null,
+            idRole: user.idRole, // <--- ESTA ES LA LÍNEA CRÍTICA QUE DEBES AÑADIR/ASEGURARTE DE QUE EXISTA
             status: user.status
+            // Si la app web necesita el objeto 'role' completo, también puedes dejarlo,
+            // pero lo importante para tu app móvil es 'idRole'.
+            // role: userRoleData ? { idRole: userRoleData.idRole, roleName: userRoleData.roleName } : null,
           },
           effectivePermissions: effectivePermissionsForFrontend,
         };

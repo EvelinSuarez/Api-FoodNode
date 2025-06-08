@@ -1,57 +1,17 @@
-// repositories/registerPurchaseRepository.js
+// Archivo: repositories/registerPurchaseRepository.js
+
 const { RegisterPurchase, PurchaseDetail, Provider, Supply, sequelize } = require('../models');
 
 const createRegisterPurchaseWithDetails = async (purchaseHeaderData, detailsData, transaction) => {
-    // ----- DEBUGGING INICIO DE REPOSITORIO -----
-    // console.log("REPOSITORY createRegisterPurchaseWithDetails - purchaseHeaderData RECIBIDO:", JSON.stringify(purchaseHeaderData, null, 2));
-    // console.log(`REPOSITORY createRegisterPurchaseWithDetails - idProvider: ${purchaseHeaderData.idProvider}, type: ${typeof purchaseHeaderData.idProvider}`);
-    // console.log(`REPOSITORY createRegisterPurchaseWithDetails - category: ${purchaseHeaderData.category}, type: ${typeof purchaseHeaderData.category}`);
-    // ----- FIN DEBUGGING -----
-
-    // Desestructurar directamente de purchaseHeaderData
-    const { 
-        idProvider, 
-        purchaseDate, 
-        category, 
-        invoiceNumber, 
-        receptionDate, 
-        observations, 
-        status, 
-        paymentStatus 
-    } = purchaseHeaderData;
-
-    // Verificación crucial antes del .create()
-    if (idProvider === undefined || idProvider === null || category === undefined || category === null) {
-        console.error("ERROR CRÍTICO EN REPOSITORIO: idProvider o category son nulos/undefined ANTES de RegisterPurchase.create!");
-        // Esto no debería suceder si el servicio los está enviando correctamente.
-        // Si sucede, indica un problema en el objeto purchaseHeaderInput del servicio.
-        throw new Error("Error interno del sistema: Datos de cabecera de compra incompletos en el repositorio.");
-    }
-
-    const newPurchase = await RegisterPurchase.create({
-        idProvider,     // Usar la variable idProvider desestructurada
-        purchaseDate,
-        category,       // Usar la variable category desestructurada
-        invoiceNumber,
-        receptionDate,
-        observations,
-        // El modelo RegisterPurchase debe tener defaults para status y paymentStatus
-        // si no se proporcionan aquí y allowNull es false.
-        // Si status/paymentStatus son undefined aquí, Sequelize los omitirá del INSERT,
-        // permitiendo que los defaults de la DB/modelo actúen.
-        // Si allowNull es false y NO hay default, entonces SÍ deben tener valor aquí.
-        // Asumimos que el modelo tiene defaults:
-        status: status, // (Opcional: status || 'PENDIENTE' si quieres forzarlo aquí y el modelo no tuviera default)
-        paymentStatus: paymentStatus, // (Opcional: paymentStatus || 'NO_PAGADA')
-    }, { transaction });
+    const newPurchase = await RegisterPurchase.create(purchaseHeaderData, { transaction });
 
     const purchaseDetailsToCreate = detailsData.map(detail => ({
         idRegisterPurchase: newPurchase.idRegisterPurchase,
-        idSupply: detail.idSupply, // 'detail.idSupply' ya fue mapeado en el servicio
-        quantity: Number(detail.quantity),
-        unitPrice: Number(detail.unitPrice),
+        idSupply: detail.idSupply,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        subtotal: detail.subtotal
     }));
-    console.log("DEBUG REPO - purchaseDetailsToCreate (ANTES de bulkCreate):", JSON.stringify(purchaseDetailsToCreate, null, 2)); 
 
     await PurchaseDetail.bulkCreate(purchaseDetailsToCreate, {
         transaction,
@@ -61,22 +21,23 @@ const createRegisterPurchaseWithDetails = async (purchaseHeaderData, detailsData
     return newPurchase;
 };
 
-// ... (getAllRegisterPurchases y el resto de funciones del repositorio como las tenías, no necesitan cambios para este error específico)
 const getAllRegisterPurchases = async () => {
-    // console.log("DEBUG REPO: Ejecutando getAllRegisterPurchases (sin 'attributes' explícitos para depurar)");
+    // <<< --- ESTA ES LA FUNCIÓN MÁS IMPORTANTE PARA TU PROBLEMA --- >>>
+    // Devuelve TODAS las compras, incluyendo sus detalles, y dentro de cada detalle, el insumo asociado.
+    // Esto es exactamente lo que el frontend necesita para poblar el selector de la Ficha Técnica.
     return RegisterPurchase.findAll({
         include: [
-            {
-                model: Provider,
-                as: 'provider',
+            { 
+                model: Provider, 
+                as: 'provider', 
                 attributes: ['idProvider', 'company'] 
             },
             {
                 model: PurchaseDetail,
                 as: 'details',
-                include: [{
-                    model: Supply,
-                    as: 'supply',
+                include: [{ 
+                    model: Supply, 
+                    as: 'supply', 
                     attributes: ['idSupply', 'supplyName', 'unitOfMeasure'] 
                 }]
             }
@@ -88,20 +49,11 @@ const getAllRegisterPurchases = async () => {
 const getRegisterPurchaseById = async (idPurchase) => {
     return RegisterPurchase.findByPk(idPurchase, {
         include: [
-            {
-                model: Provider,
-                as: 'provider',
-                attributes: ['idProvider', 'company', 'document', 'email', 'cellPhone', 'status']
-            },
+            { model: Provider, as: 'provider' },
             {
                 model: PurchaseDetail,
                 as: 'details',
-                // attributes: ['idPurchaseDetail', 'quantity', 'unitPrice', 'subtotal', 'taxAmount', 'discountAmount', 'itemTotal', 'idSupply'], // Descomentar si necesitas ser específico
-                include: [{
-                    model: Supply,
-                    as: 'supply',
-                    attributes: ['idSupply', 'supplyName', 'unitOfMeasure', 'status']
-                }]
+                include: [{ model: Supply, as: 'supply' }]
             }
         ]
     });
@@ -121,7 +73,6 @@ const getProvidersByCategory = async (categoryName) => {
     });
 };
 
-
 const updateRegisterPurchaseHeader = async (idPurchase, headerData, transaction) => {
     const [numberOfAffectedRows] = await RegisterPurchase.update(headerData, {
         where: { idRegisterPurchase: idPurchase },
@@ -131,10 +82,6 @@ const updateRegisterPurchaseHeader = async (idPurchase, headerData, transaction)
 };
 
 const deleteRegisterPurchaseAndDetails = async (idPurchase, transaction) => {
-    const purchase = await RegisterPurchase.findByPk(idPurchase, { transaction });
-    if (!purchase) {
-        return false; 
-    }
     const numberOfAffectedRows = await RegisterPurchase.destroy({
         where: { idRegisterPurchase: idPurchase },
         transaction
@@ -148,7 +95,7 @@ const updateStatus = async (idPurchase, statusFields, transaction) => {
       transaction,
     });
     return affectedRows > 0;
-  };
+};
 
 module.exports = {
     createRegisterPurchaseWithDetails,

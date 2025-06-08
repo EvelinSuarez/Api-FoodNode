@@ -9,10 +9,31 @@ const handleControllerError = (res, error) => {
         return res.status(404).json({ message: error.message });
     }
     if (error instanceof BadRequestError) {
-        return res.status(400).json({ message: error.message });
+        return res.status(400).json({ message: error.message, errors: error.errors }); // Incluir errores de validación si existen
     }
-    console.error("Controller Error:", error); // Loguear el error completo para depuración
+    console.error("Controller Error:", error.name, error.message, error.stack); // Loguear más detalle
     return res.status(500).json({ message: error.message || "Error interno del servidor." });
+};
+
+const checkActiveOrderForProduct = async (req, res) => {
+    try {
+        const { idProduct } = req.params;
+        // Reutilizamos la función de servicio que ya existe
+        const activeOrders = await productionOrderService.getActiveOrdersByProductId(idProduct);
+        
+        if (activeOrders && activeOrders.length > 0) {
+            // Si se encuentran órdenes activas, devuelve la primera como evidencia
+            return res.status(200).json({
+                hasActiveOrder: true,
+                activeOrder: activeOrders[0] 
+            });
+        }
+        
+        // Si no se encuentran, responde que no hay
+        return res.status(200).json({ hasActiveOrder: false });
+    } catch (error) {
+        handleControllerError(res, error);
+    }
 };
 
 const createProductionOrder = async (req, res) => {
@@ -21,19 +42,22 @@ const createProductionOrder = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        // idEmployeeRegistered debería venir del usuario autenticado (req.user.idEmployee)
-        // o pasarse explícitamente si un admin crea por otro.
-        // Por ahora, asumimos que se pasa en el body o lo maneja el servicio.
+        // Construir orderData con todos los campos que el frontend podría enviar para la creación
         const orderData = {
-            idProduct: req.body.idProduct, // Puede ser null/undefined inicialmente para un 'DRAFT'
-            initialAmount: req.body.initialAmount, // Puede ser 0 o 1 para un 'DRAFT'
-            idEmployeeRegistered: req.body.idEmployeeRegistered || req.user?.idEmployee, // Tomar de req.user si está disponible
-            idSpecSheet: req.body.idSpecSheet,       // Opcional al inicio
-            idProvider: req.body.idProvider,         // Opcional
-            observations: req.body.observations,     // Opcional
-            status: req.body.status || 'PENDING',    // Frontend puede sugerir 'PENDING' o 'SETUP'
-            // Los campos de peso inicial/final se llenarán después
+            idProduct: req.body.idProduct,
+            initialAmount: req.body.initialAmount,
+            idEmployeeRegistered: req.body.idEmployeeRegistered || req.user?.idEmployee, // Asumir req.user si no se envía
+            idSpecSheet: req.body.idSpecSheet,
+            idProvider: req.body.idProvider,
+            observations: req.body.observations,
+            status: req.body.status || 'PENDING',
+            productNameSnapshot: req.body.productNameSnapshot, // El frontend lo envía
+            inputInitialWeight: req.body.inputInitialWeight,   // Campo del frontend
+            inputInitialWeightUnit: req.body.inputInitialWeightUnit, // Campo del frontend
         };
+        
+        console.log('[CONTROLLER] createProductionOrder - orderData recibida del body y enviada al servicio:', orderData);
+
         const productionOrder = await productionOrderService.createProductionOrder(orderData);
         res.status(201).json(productionOrder);
     } catch (error) {
@@ -43,42 +67,39 @@ const createProductionOrder = async (req, res) => {
 
 const getAllProductionOrders = async (req, res) => {
     try {
-        const { status, idProduct, idEmployeeRegistered, page, limit, sortBy, sortOrder } = req.query;
-        const filters = { status, idProduct, idEmployeeRegistered };
-        const pagination = { page, limit };
-        const sort = { sortBy, sortOrder };
-        
-        const productionOrders = await productionOrderService.getAllProductionOrders(filters, pagination, sort);
-        res.status(200).json(productionOrders); // El servicio debería devolver { data, totalPages, currentPage }
+        // Los filtros y paginación se procesan en el servicio
+        const productionOrders = await productionOrderService.getAllProductionOrders(req.query);
+        res.status(200).json(productionOrders);
     } catch (error) {
         handleControllerError(res, error);
     }
 };
 
 const getProductionOrderById = async (req, res) => {
-    const errors = validationResult(req);
+    const errors = validationResult(req); // Para validar params si es necesario
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
         const { idProductionOrder } = req.params;
         const productionOrder = await productionOrderService.getProductionOrderById(idProductionOrder);
-        // NotFoundError es manejado por el servicio
         res.status(200).json(productionOrder);
     } catch (error) {
         handleControllerError(res, error);
     }
 };
 
-// Actualiza campos de la orden, incluyendo los de configuración inicial y pesos.
-const updateProductionOrder = async (req, res) => { // Renombrado para ser más genérico
+const updateProductionOrder = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
         const { idProductionOrder } = req.params;
-        const dataToUpdate = req.body; // Puede incluir idProduct, initialAmount, productNameSnapshot, inputInitialWeight, etc.
+        const dataToUpdate = req.body;
+        
+        console.log(`[CONTROLLER] updateProductionOrder - ID: ${idProductionOrder}, dataToUpdate:`, dataToUpdate);
+
         const updatedOrder = await productionOrderService.updateProductionOrder(idProductionOrder, dataToUpdate);
         res.status(200).json(updatedOrder);
     } catch (error) {
@@ -94,8 +115,9 @@ const updateProductionOrderStep = async (req, res) => {
     try {
         const { idProductionOrder, idProductionOrderDetail } = req.params;
         const stepData = req.body;
-        const updatedStep = await productionOrderService.updateProductionOrderStep(idProductionOrder, idProductionOrderDetail, stepData);
-        res.status(200).json(updatedStep);
+        console.log(`[CONTROLLER] updateProductionOrderStep - OrderID: ${idProductionOrder}, DetailID: ${idProductionOrderDetail}, stepData:`, stepData);
+        const result = await productionOrderService.updateProductionOrderStep(idProductionOrder, idProductionOrderDetail, stepData);
+        res.status(200).json(result); // El servicio ahora devuelve la orden completa
     } catch (error) {
         handleControllerError(res, error);
     }
@@ -108,23 +130,9 @@ const finalizeProductionOrder = async (req, res) => {
     }
     try {
         const { idProductionOrder } = req.params;
-        const {
-            finalQuantityProduct,
-            finishedProductWeight,
-            finishedProductWeightUnit,
-            inputFinalWeightUnused,
-            inputFinalWeightUnusedUnit,
-            consumedSupplies // Array de { idSupply, quantityConsumed, notes }
-        } = req.body;
-
-        const finalizedOrder = await productionOrderService.finalizeProductionOrder(idProductionOrder, {
-            finalQuantityProduct,
-            finishedProductWeight,
-            finishedProductWeightUnit,
-            inputFinalWeightUnused,
-            inputFinalWeightUnusedUnit,
-            consumedSupplies
-        });
+        // No es necesario destructurar aquí, el servicio lo hará.
+        console.log(`[CONTROLLER] finalizeProductionOrder - ID: ${idProductionOrder}, body:`, req.body);
+        const finalizedOrder = await productionOrderService.finalizeProductionOrder(idProductionOrder, req.body);
         res.status(200).json(finalizedOrder);
     } catch (error) {
         handleControllerError(res, error);
@@ -138,7 +146,8 @@ const changeProductionOrderStatus = async (req, res) => {
     }
     try {
         const { idProductionOrder } = req.params;
-        const { status, observations } = req.body; // Puede incluir observaciones para el cambio de estado
+        const { status, observations } = req.body;
+        console.log(`[CONTROLLER] changeProductionOrderStatus - ID: ${idProductionOrder}, newStatus: ${status}, obs: ${observations}`);
         const updatedOrder = await productionOrderService.changeProductionOrderStatus(idProductionOrder, status, observations);
         res.status(200).json(updatedOrder);
     } catch (error) {
@@ -153,8 +162,9 @@ const deleteProductionOrder = async (req, res) => {
     }
     try {
         const { idProductionOrder } = req.params;
-        await productionOrderService.deleteProductionOrder(idProductionOrder);
-        res.status(204).end();
+        console.log(`[CONTROLLER] deleteProductionOrder - ID: ${idProductionOrder}`);
+        const result = await productionOrderService.deleteProductionOrder(idProductionOrder);
+        res.status(200).json(result); // Devolver el mensaje de éxito del servicio
     } catch (error) {
         handleControllerError(res, error);
     }
@@ -164,9 +174,10 @@ module.exports = {
     createProductionOrder,
     getAllProductionOrders,
     getProductionOrderById,
-    updateProductionOrder, // Renombrado
+    updateProductionOrder,
     updateProductionOrderStep,
     finalizeProductionOrder,
     changeProductionOrderStatus,
     deleteProductionOrder,
+    checkActiveOrderForProduct,
 };

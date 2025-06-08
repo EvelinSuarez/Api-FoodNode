@@ -1,4 +1,4 @@
-// models/productionOrderDetail.js (ANTES processDetail.js)
+// models/productionOrderDetail.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -9,20 +9,20 @@ const ProductionOrderDetail = sequelize.define('ProductionOrderDetail', {
         autoIncrement: true,
         allowNull: false
     },
-    // FKs: idProductionOrder, idProcess, idEmployeeAssigned (opcional al inicio)
-    // Estas se añaden por las asociaciones.
-    processOrder: { // El número de orden del paso DENTRO de esta orden de producción
+    processOrder: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    // Tomar el nombre y descripción del SpecSheetProcess al momento de crear los detalles de la orden
-    // o, si no se usa SpecSheetProcess, del Process maestro.
     processNameSnapshot: {
-        type: DataTypes.STRING(150), // Nombre del proceso tal como se definió para esta orden
+        type: DataTypes.STRING(150),
         allowNull: false
     },
     processDescriptionSnapshot: {
-        type: DataTypes.TEXT, // Descripción del proceso tal como se definió para esta orden
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    estimatedTimeMinutes: { // <--- CAMPO AÑADIDO/RECOMENDADO (Snapshot del tiempo para esta orden/paso)
+        type: DataTypes.INTEGER,
         allowNull: true
     },
     startDate: {
@@ -33,12 +33,12 @@ const ProductionOrderDetail = sequelize.define('ProductionOrderDetail', {
         type: DataTypes.DATE,
         allowNull: true
     },
-    status: { // PENDING, IN_PROGRESS, COMPLETED, SKIPPED
+    status: {
         type: DataTypes.STRING(50),
         allowNull: false,
         defaultValue: 'PENDING'
     },
-    observations: { // Observaciones específicas de este paso en esta orden
+    observations: {
         type: DataTypes.TEXT,
         allowNull: true
     }

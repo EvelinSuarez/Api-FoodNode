@@ -50,7 +50,7 @@ const specSheetCoreFieldsValidation = [
   body("status")
     .optional()
     .isBoolean().withMessage("El estado debe ser un valor booleano (true o false)."),
-  body("measurementUnit")
+  body("unitOfMeasure")
     .notEmpty().withMessage("La unidad de medida para la cantidad base es requerida.")
     .isString().withMessage("La unidad de medida debe ser un texto.")
     .isIn(['kg', 'g', 'mg', 'lb', 'oz', 'L', 'mL', 'gal', 'm', 'cm', 'mm', 'unidad', 'docena']) // El frontend envía estos valores
@@ -67,15 +67,15 @@ const nestedArraysValidation = [
             const allowedUnits = ['kg', 'g', 'mg', 'lb', 'oz', 'l', 'ml', 'gal', 'm', 'cm', 'mm', 'unidad', 'docena'];
             for (let i = 0; i < suppliesArray.length; i++) {
                 const supply = suppliesArray[i]; // Cambiar 'ing' a 'supply'
-                // El frontend envía idSupply, quantity, measurementUnit
+                // El frontend envía idSupply, quantity, unitOfMeasure
                 if (supply.idSupply == null || isNaN(parseInt(supply.idSupply)) || parseInt(supply.idSupply) <= 0) {
                     throw new Error(`Suministro #${i+1}: idSupply es requerido y debe ser un entero positivo.`);
                 }
                 if (supply.quantity == null || isNaN(parseFloat(supply.quantity)) || parseFloat(supply.quantity) <= 0) {
                     throw new Error(`Suministro #${i+1}: La cantidad es requerida y debe ser un número positivo.`);
                 }
-                if (!supply.measurementUnit || typeof supply.measurementUnit !== 'string' || !allowedUnits.includes(supply.measurementUnit.toLowerCase())) {
-                    throw new Error(`Suministro #${i+1}: Unidad de medida '${supply.measurementUnit}' no válida. Valores permitidos: ${allowedUnits.join(', ')}.`);
+                if (!supply.unitOfMeasure || typeof supply.unitOfMeasure !== 'string' || !allowedUnits.includes(supply.unitOfMeasure.toLowerCase())) {
+                    throw new Error(`Suministro #${i+1}: Unidad de medida '${supply.unitOfMeasure}' no válida. Valores permitidos: ${allowedUnits.join(', ')}.`);
                 }
             }
         }

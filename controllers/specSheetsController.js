@@ -1,6 +1,11 @@
-// controllers/specSheetsController.js
+// Archivo: controllers/specSheetsController.js
+// VERSIÓN COMPLETA Y CORREGIDA: La lógica de 'include' se mueve directamente aquí.
+
 const { validationResult } = require("express-validator");
 const specSheetService = require("../services/specSheetsService");
+// <<<--- ¡IMPORTANTE! Importamos los modelos necesarios para el 'include' --- >>>
+const { SpecSheet, Product, SpecSheetSupply, Supply, SpecSheetProcess, Process } = require('../models');
+
 
 const createSpecSheet = async (req, res) => {
   const errors = validationResult(req);
@@ -9,13 +14,10 @@ const createSpecSheet = async (req, res) => {
   }
 
   try {
-    // El servicio ahora maneja la validación de existencia del producto y unicidad de la ficha.
-    // El payload completo se pasa al servicio.
     const newSpecSheet = await specSheetService.createSpecSheet(req.body);
     res.status(201).json({ message: "Ficha técnica creada exitosamente.", specSheet: newSpecSheet });
   } catch (error) {
     console.error("Controlador[SpecSheet]: Error al crear Ficha Técnica:", error.message);
-    // Errores específicos del servicio
     if (error.message.includes("no existe") || error.message.includes("Ya existe una ficha") || error.message.includes("requerido") || error.message.includes("Validación fallida") || error.name.startsWith("Sequelize")) {
         return res.status(400).json({ message: error.message });
     }
@@ -40,7 +42,6 @@ const getSpecSheetById = async (req, res) => {
   }
   try {
     const specSheet = await specSheetService.getSpecSheetById(req.params.id);
-    // El servicio ahora lanza error si no se encuentra, así que no necesitamos la validación aquí.
     res.status(200).json(specSheet);
   } catch (error) {
     console.error("Controlador[SpecSheet]: Error en getSpecSheetById:", error.message);
@@ -82,8 +83,6 @@ const deleteSpecSheet = async (req, res) => {
   }
   try {
     const affectedRows = await specSheetService.deleteSpecSheet(req.params.id);
-    // El servicio lanza error si no se encuentra.
-    // `deleteSpecSheet` del repo devuelve el número de filas borradas.
     res.status(200).json({ message: `Ficha técnica eliminada exitosamente. Filas afectadas: ${affectedRows}` });
   } catch (error) {
     console.error("Controlador[SpecSheet]: Error en deleteSpecSheet:", error.message);
@@ -115,25 +114,61 @@ const changeSpecSheetStatus = async (req, res) => {
   }
 };
 
-const getSpecSheetsByProduct = async (req, res) => {
+// --- FUNCIÓN CLAVE CORREGIDA Y COMPLETADA ---
+const getSpecSheetsByProductId = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
+  
   try {
     const { idProduct } = req.params;
-    const specSheets = await specSheetService.getSpecSheetsByProductId(idProduct);
-    // El servicio ahora devuelve [] si no hay, no lanza error por "no encontrado".
-    res.status(200).json(specSheets);
-  } catch (error) {
-    console.error("Controlador[SpecSheet]: Error en getSpecSheetsByProduct:", error.message);
-    // El servicio podría lanzar error si idProduct no existe, por ejemplo.
-    if (error.message.includes("no existe")) {
-        return res.status(404).json({ message: error.message });
+
+    console.log(`[SpecSheetController] Buscando fichas para Producto ID: ${idProduct}`);
+
+    if (!idProduct || isNaN(parseInt(idProduct))) {
+        return res.status(400).json({ message: "Se requiere un ID de producto válido." });
     }
+
+    const specSheets = await SpecSheet.findAll({
+        where: { idProduct: parseInt(idProduct) },
+        include: [
+            {
+                model: Product,
+                as: 'product',
+                attributes: ['productName']
+            },
+            {
+                model: SpecSheetSupply,
+                as: 'specSheetSupplies',
+                include: [{
+                    model: Supply,
+                    as: 'supply',
+                    attributes: ['supplyName', 'unitOfMeasure']
+                }]
+            },
+            {
+                model: SpecSheetProcess,
+                as: 'specSheetProcesses',
+                include: [{
+                    model: Process,
+                    as: 'masterProcessData',
+                    attributes: ['processName', 'description', 'estimatedTimeMinutes']
+                }]
+            }
+        ],
+        order: [['dateEffective', 'DESC']]
+    });
+
+    console.log(`[SpecSheetController] Fichas encontradas: ${specSheets.length}`);
+    res.status(200).json(specSheets);
+
+  } catch (error) {
+    console.error("Controlador[SpecSheet]: Error en getSpecSheetsByProductId:", error.message, error.stack);
     res.status(500).json({ message: "Error al obtener fichas técnicas por producto.", details: error.message });
   }
 };
+
 
 module.exports = {
   createSpecSheet,
@@ -142,5 +177,6 @@ module.exports = {
   updateSpecSheet,
   deleteSpecSheet,
   changeSpecSheetStatus,
-  getSpecSheetsByProduct,
+  getSpecSheetsByProductId, // Nombre preferido para claridad con la ruta
+  getSpecSheetsByProduct: getSpecSheetsByProductId, // Alias para compatibilidad con tu código actual
 };

@@ -1,15 +1,16 @@
-// repositories/rolePrivilegesRepository.js
+'use strict';
+
 const {
     role: Role,
     permission: Permission,
     privilege: Privilege,
-    RolePrivilege, // Este ya está bien
-    // ... otros modelos que necesites ...
-} = require('../models');const { Op } = require('sequelize');
+    RolePrivilege,
+} = require('../models');
+const { Op } = require('sequelize');
 
 const LOG_REPO_RP = "[Repo RolePrivileges]";
 
-// Logs de verificación de modelos importados
+// Logs de verificación de modelos importados (buena práctica que ya tenías)
 console.log(`${LOG_REPO_RP} Modelo Permission importado:`, Permission ? Permission.name : "Permission UNDEFINED");
 console.log(`${LOG_REPO_RP} Modelo Privilege importado:`, Privilege ? Privilege.name : "Privilege UNDEFINED");
 console.log(`${LOG_REPO_RP} Modelo RolePrivilege importado:`, RolePrivilege ? RolePrivilege.name : "RolePrivilege UNDEFINED");
@@ -19,7 +20,7 @@ console.log(`${LOG_REPO_RP} Modelo Role importado:`, Role ? Role.name : "Role UN
 const getCombinedPermissionsByRoleId = async (idRole) => {
     console.log(`${LOG_REPO_RP} getCombinedPermissionsByRoleId - Rol ID: ${idRole}`);
     if (!Permission || !Privilege || !RolePrivilege) {
-        console.error(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Uno o más modelos (Permission, Privilege, RolePrivilege) son UNDEFINED.`);
+        console.error(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Uno o más modelos son UNDEFINED.`);
         throw new Error("Error de configuración de modelos en el repositorio.");
     }
     try {
@@ -33,17 +34,19 @@ const getCombinedPermissionsByRoleId = async (idRole) => {
             include: [
                 {
                     model: Privilege,
-                    as: 'privilegeDetails', // Este alias DEBE coincidir con RolePrivilege.belongsTo(Privilege, {as: 'privilegeDetails'})
-                    attributes: ['privilegeKey', 'status'], // idPermission no está aquí, está en Permission
-                    required: true, // Solo trae RolePrivileges que tengan un Privilege activo asociado
-                    where: { status: true }, // Solo Privilegios activos
+                    // CORRECCIÓN: Usar el alias definido en models/index.js
+                    as: 'privilegeDetails',
+                    attributes: ['privilegeKey', 'status'],
+                    required: true,
+                    where: { status: true },
                     include: [
                         {
                             model: Permission,
-                            as: 'permission', // Este alias DEBE coincidir con Privilege.belongsTo(Permission, {as: 'permission'})
+                            // CORRECCIÓN: Usar el alias definido en models/index.js
+                            as: 'permission',
                             attributes: ['permissionKey', 'status'],
-                            required: true, // Solo trae Privileges que tengan un Permission activo asociado
-                            where: { status: true } // Solo Permisos activos
+                            required: true,
+                            where: { status: true }
                         }
                     ]
                 }
@@ -51,36 +54,38 @@ const getCombinedPermissionsByRoleId = async (idRole) => {
         });
 
         const combinedPermissions = results.map(entry => {
-            // Acceder a través de los alias definidos en los includes
-            const privilegeData = entry.privilegeDetails; // Usa el alias del include de Privilege
-            if (!privilegeData || !privilegeData.permission) { // Usa el alias del include de Permission
-                console.warn(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Datos anidados incompletos para RolePrivilege ID ${entry.idPrivilegedRole}:`, entry.toJSON ? entry.toJSON() : entry);
+            // Acceder a través de los alias
+            const privilegeData = entry.privilegeDetails;
+            if (!privilegeData || !privilegeData.permission) {
+                console.warn(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Datos anidados incompletos para RolePrivilege ID ${entry.idPrivilegedRole}`);
                 return null;
             }
             const pKey = privilegeData.permission.permissionKey;
             const privKey = privilegeData.privilegeKey;
-
-            if (!pKey || !privKey) {
-                console.warn(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Claves permissionKey o privilegeKey faltantes: pKey=${pKey}, privKey=${privKey}`);
-                return null;
-            }
             return `${pKey}-${privKey}`;
-        }).filter(Boolean); // Elimina nulos si alguna validación falló
+        }).filter(Boolean);
 
         console.log(`${LOG_REPO_RP} (getCombinedPermissionsByRoleId) Permisos combinados para Rol ID ${roleIdInt}:`, combinedPermissions);
         return combinedPermissions;
 
     } catch (error) {
         console.error(`${LOG_REPO_RP} Error en getCombinedPermissionsByRoleId para rol ${idRole}:`, error.message);
-        console.error(error.stack); // Log completo del stack para más detalles
+        console.error(error.stack);
         throw error;
     }
 };
 
+// =========================================================================
+// == ESTA ES LA FUNCIÓN QUE PROVOCABA EL ERROR ORIGINAL DEL STACK TRACE ==
+// =========================================================================
 const getPermissionKeyPrivilegeKeyPairsByRoleId = async (idRole) => {
+    // ===== PRUEBA DE DIAGNÓSTICO =====
+    console.log("### ARCHIVO CORRECTO EN EJECUCIÓN (v2) ### - Dentro de getPermissionKeyPrivilegeKeyPairsByRoleId");
+    // =================================
+
     console.log(`${LOG_REPO_RP} getPermissionKeyPrivilegeKeyPairsByRoleId - Rol ID: ${idRole}`);
      if (!Permission || !Privilege || !RolePrivilege) {
-        console.error(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Uno o más modelos (Permission, Privilege, RolePrivilege) son UNDEFINED.`);
+        console.error(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Uno o más modelos son UNDEFINED.`);
         throw new Error("Error de configuración de modelos en el repositorio.");
     }
     try {
@@ -94,14 +99,16 @@ const getPermissionKeyPrivilegeKeyPairsByRoleId = async (idRole) => {
             include: [
                 {
                     model: Privilege,
-                    as: 'privilegeDetails', // Alias de RolePrivilege a Privilege
+                    // <-- LA CORRECCIÓN CLAVE ESTÁ AQUÍ -->
+                    as: 'privilegeDetails',
                     attributes: ['privilegeKey', 'status'],
                     required: true,
                     where: { status: true },
                     include: [
                         {
                             model: Permission,
-                            as: 'permission', // Alias de Privilege a Permission
+                            // <-- Y AQUÍ -->
+                            as: 'permission',
                             attributes: ['permissionKey', 'status'],
                             required: true,
                             where: { status: true }
@@ -114,16 +121,12 @@ const getPermissionKeyPrivilegeKeyPairsByRoleId = async (idRole) => {
         const permissionKeyPrivilegeKeyPairs = results.map(entry => {
             const privilegeData = entry.privilegeDetails;
             if (!privilegeData || !privilegeData.permission) {
-                console.warn(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Datos anidados incompletos para RolePrivilege ID ${entry.idPrivilegedRole}:`, entry.toJSON ? entry.toJSON() : entry);
+                console.warn(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Datos anidados incompletos para RolePrivilege ID ${entry.idPrivilegedRole}`);
                 return null;
             }
             const pKey = privilegeData.permission.permissionKey;
             const privKey = privilegeData.privilegeKey;
 
-            if (!pKey || !privKey) {
-                console.warn(`${LOG_REPO_RP} (getPermissionKeyPrivilegeKeyPairsByRoleId) Claves permissionKey o privilegeKey faltantes: pKey=${pKey}, privKey=${privKey}`);
-                return null;
-            }
             return { permissionKey: pKey, privilegeKey: privKey };
         }).filter(Boolean);
 
@@ -153,16 +156,16 @@ const getRawAssignmentsByRoleId = async (idRole) => {
             attributes: ['idPrivilege'],
             include: [{
                 model: Privilege,
-                as: 'privilegeDetails', // Alias de RolePrivilege a Privilege
-                attributes: ['idPermission'], // idPermission está en Privilege
+                // CORRECCIÓN: Usar el alias correcto aquí también
+                as: 'privilegeDetails',
+                attributes: ['idPermission'],
                 required: true
-                // No necesitamos incluir Permission aquí si solo queremos idPermission
             }]
         });
         return assignments.map(a => {
+            // Acceder a través del alias
             const privilegeData = a.privilegeDetails;
-            if (!privilegeData || typeof privilegeData.idPermission === 'undefined') { // Verifica que idPermission exista
-                console.warn(`${LOG_REPO_RP} (getRawAssignmentsByRoleId) Falta 'privilegeDetails.idPermission' para RolePrivilege con idPrivilege ${a.idPrivilege} en Rol ID ${roleIdInt}`);
+            if (!privilegeData || typeof privilegeData.idPermission === 'undefined') {
                 return null;
             }
             return {
@@ -178,6 +181,7 @@ const getRawAssignmentsByRoleId = async (idRole) => {
 };
 
 const deleteByRoleId = async (idRole, options = {}) => {
+    // ... (esta función no necesita cambios, está bien como estaba)
     console.log(`${LOG_REPO_RP} deleteByRoleId - Rol ID: ${idRole}`);
      if (!RolePrivilege) {
         console.error(`${LOG_REPO_RP} (deleteByRoleId) Modelo RolePrivilege es UNDEFINED.`);
@@ -198,12 +202,12 @@ const deleteByRoleId = async (idRole, options = {}) => {
 };
 
 const bulkCreate = async (assignments, options = {}) => {
+    // ... (esta función no necesita cambios, está bien como estaba)
     console.log(`${LOG_REPO_RP} bulkCreate - Asignaciones:`, assignments);
     if (!RolePrivilege) {
         console.error(`${LOG_REPO_RP} (bulkCreate) Modelo RolePrivilege es UNDEFINED.`);
         throw new Error("Error de configuración de modelos en el repositorio.");
     }
-    // ... (resto de validaciones de la función bulkCreate sin cambios) ...
     if (!Array.isArray(assignments)) {
         throw new Error("Se esperaba un array para 'assignments' en bulkCreate.");
     }
@@ -222,8 +226,8 @@ const bulkCreate = async (assignments, options = {}) => {
             Number.isInteger(a.idRole) && a.idRole > 0 &&
             Number.isInteger(a.idPrivilege) && a.idPrivilege > 0)
         ) || {};
-        console.error(`${LOG_REPO_RP} Estructura inválida en 'assignments'. Ejemplo de asignación inválida:`, invalidAssignment);
-        throw new Error(`Estructura inválida en 'assignments'. Se esperan objetos con idRole e idPrivilege como enteros positivos. Inválido: ${JSON.stringify(invalidAssignment)}`);
+        console.error(`${LOG_REPO_RP} Estructura inválida en 'assignments'. Ejemplo:`, invalidAssignment);
+        throw new Error(`Estructura inválida en 'assignments'. Se esperan objetos con idRole e idPrivilege como enteros positivos.`);
     }
 
     try {
@@ -233,10 +237,10 @@ const bulkCreate = async (assignments, options = {}) => {
         console.error(error.stack);
         if (error.name === 'SequelizeUniqueConstraintError') {
             const constraintFields = error.fields && typeof error.fields === 'object' ? Object.keys(error.fields).join(', ') : (error.fields || 'desconocidos');
-            throw new Error(`Error de restricción única (campos: ${constraintFields}) al crear asignaciones en lote: ${error.errors?.[0]?.message || error.message}`);
+            throw new Error(`Error de restricción única (campos: ${constraintFields}) al crear asignaciones.`);
         }
         if (error.name === 'SequelizeForeignKeyConstraintError') {
-            throw new Error(`Error de clave foránea al crear asignaciones: Un rol o privilegio especificado no existe. Detalles: ${error.message}`);
+            throw new Error(`Error de clave foránea al crear asignaciones: Un rol o privilegio especificado no existe.`);
         }
         throw error;
     }

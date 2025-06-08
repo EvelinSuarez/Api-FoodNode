@@ -41,8 +41,15 @@ const getAllSpecSheets = async (filters = {}) => {
       {
         model: Product,
         as: "product",
-        attributes: ["idProduct", "productName", "status" /*, "unitOfMeasure" // Descomentar si Product tiene unitOfMeasure y lo quieres aquí */]
+        attributes: ["idProduct", "productName", "status"]
       },
+      // <-- BLOQUE AÑADIDO: Incluir los insumos necesarios para el cálculo de costos en el dashboard.
+      {
+        model: SpecSheetSupply,
+        as: "specSheetSupplies",
+        // Solo traemos los campos mínimos necesarios para el rendimiento para no sobrecargar la respuesta.
+        attributes: ['idPurchaseDetail', 'quantity'], 
+      }
     ],
     order: [['updatedAt', 'DESC'], ['idSpecSheet', 'DESC']]
   });
@@ -57,14 +64,13 @@ const getSpecSheetById = async (idSpecSheet) => {
         {
           model: Product,
           as: "product",
-          // Si Product no tiene unitOfMeasure, no lo pidas aquí.
-          // Si SpecSheet tiene unitOfMeasure, ya vendrá con los campos de SpecSheet.
           attributes: ["idProduct", "productName", "status"],
         },
         {
           model: SpecSheetSupply,
           as: "specSheetSupplies",
-          attributes: ['idSpecSheetSupply', 'quantity', 'unitOfMeasure', 'notes'],
+          // <-- CAMBIO: Se añade 'idPurchaseDetail' a la lista de atributos.
+          attributes: ['idSpecSheetSupply', 'quantity', 'unitOfMeasure', 'notes', 'idPurchaseDetail'],
           include: [
             {
               model: Supply,
@@ -120,21 +126,6 @@ const deleteSpecSheet = async (idSpecSheet, options = {}) => {
   return SpecSheet.destroy(deleteOptions);
 };
 
-// Esta función ya no es necesaria si el servicio usa updateSpecSheet para todo.
-// Se puede eliminar o mantener si se prevé un uso muy específico.
-/*
-const changeStatusInRepo = async (idSpecSheet, status, endDate, options = {}) => {
-    const id = parseInt(idSpecSheet);
-    if (isNaN(id) || id <= 0) throw new Error("ID de Ficha inválida para cambiar estado.");
-    if (typeof status !== 'boolean') throw new Error("El estado debe ser booleano.");
-    const dataToUpdate = { status };
-    if (endDate !== undefined) dataToUpdate.endDate = endDate;
-    const updateOptions = { where: { idSpecSheet: id }, ...options };
-    const [affectedRows] = await SpecSheet.update(dataToUpdate, updateOptions);
-    return affectedRows;
-};
-*/
-
 const getSpecSheetsByProduct = async (idProductParam) => {
   const idProduct = parseInt(idProductParam);
   if (isNaN(idProduct) || idProduct <= 0) throw new Error("ID de Producto inválido.");
@@ -145,14 +136,13 @@ const getSpecSheetsByProduct = async (idProductParam) => {
         {
           model: Product,
           as: "product",
-          // Si Product no tiene unitOfMeasure, no lo pidas.
-          // Si SpecSheet tiene su propio unitOfMeasure, ya vendrá con los campos de SpecSheet.
           attributes: ["idProduct", "productName", "status"],
         },
         {
           model: SpecSheetSupply,
           as: "specSheetSupplies",
-          attributes: ['idSpecSheetSupply', 'quantity', 'unitOfMeasure', 'notes'],
+          // <-- CAMBIO: Asegurarse de que aquí también se devuelva 'idPurchaseDetail'.
+          attributes: ['idSpecSheetSupply', 'quantity', 'unitOfMeasure', 'notes', 'idPurchaseDetail'],
           include: [
             {
               model: Supply,
@@ -189,6 +179,5 @@ module.exports = {
   getSpecSheetById,
   updateSpecSheet,
   deleteSpecSheet,
-  // changeStatusInRepo, // Comentado/eliminado si el servicio no la usa
   getSpecSheetsByProduct,
 };

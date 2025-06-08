@@ -9,7 +9,7 @@ const createSupply = async (req, res, next) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        // req.body: supplyName, description, measurementUnit, status (opcional)
+        // req.body: supplyName, description, unitOfMeasure, status (opcional)
         const newSupply = await supplyService.createSupply(req.body);
         res.status(201).json(newSupply);
     } catch (error) {
@@ -53,7 +53,7 @@ const updateSupply = async (req, res, next) => {
     }
     try {
         const { idSupply } = req.params;
-        // req.body: campos a actualizar (supplyName, description, measurementUnit, status, etc.)
+        // req.body: campos a actualizar (supplyName, description, unitOfMeasure, status, etc.)
         const updatedSupply = await supplyService.updateSupply(idSupply, req.body);
         res.status(200).json(updatedSupply); // Devolver el objeto actualizado
     } catch (error) {

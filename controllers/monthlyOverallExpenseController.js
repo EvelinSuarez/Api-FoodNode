@@ -37,19 +37,23 @@ const createMonthlyOverallExpense = async (req, res) => {
 };
 
 const getAllMonthlyOverallExpenses = async (req, res) => {
-    const errors = validationResult(req); // Para los query params
+    const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
         const filters = {};
-        const { status, year, month } = req.query; // idExpenseCategory eliminado de aquí
+        const { status, year, month } = req.query;
 
         if (status !== undefined) filters.status = (status === 'true' || status === '1' || status === true);
         if (year) filters.year = parseInt(year, 10);
         if (month) filters.month = parseInt(month, 10);
 
         const monthlyOverallExpenses = await monthlyOverallExpenseService.getAllMonthlyOverallExpenses(filters);
+
+        // --- AÑADE ESTA LÍNEA PARA DEPURAR ---
+        console.log("Datos a enviar al frontend:", JSON.stringify(monthlyOverallExpenses, null, 2));
+
         res.status(200).json(monthlyOverallExpenses);
     } catch (error) {
         console.error("Error al obtener gastos mensuales:", error);

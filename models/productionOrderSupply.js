@@ -15,7 +15,7 @@ const ProductionOrderSupply = sequelize.define('ProductionOrderSupply', {
         type: DataTypes.DECIMAL(10, 3),
         allowNull: false
     },
-    // measurementUnitConsumed: Puedes registrar la unidad si puede variar o tomarla del Supply.
+    // unitOfMeasureConsumed: Puedes registrar la unidad si puede variar o tomarla del Supply.
     // Por simplicidad, se asume que es la misma unidad base del Supply.
     notes: { // Notas sobre este consumo específico
         type: DataTypes.TEXT,

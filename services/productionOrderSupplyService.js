@@ -34,8 +34,8 @@ const addOrUpdateConsumedSupplies = async (idProductionOrder, consumedSuppliesDa
             suppliesToProcess.push({
                 idSupply: supply.idSupply,
                 quantityConsumed: supplyData.quantityConsumed,
-                // Si measurementUnitConsumedSnapshot no se envía, se podría tomar de supply.measurementUnit
-                measurementUnitConsumedSnapshot: supplyData.measurementUnitConsumedSnapshot || supply.measurementUnit,
+                // Si unitOfMeasureConsumedSnapshot no se envía, se podría tomar de supply.unitOfMeasure
+                unitOfMeasureConsumedSnapshot: supplyData.unitOfMeasureConsumedSnapshot || supply.unitOfMeasure,
                 consumptionDate: supplyData.consumptionDate || new Date(),
                 notes: supplyData.notes,
             });
@@ -122,7 +122,7 @@ const updateConsumedSupplyRecord = async (idProductionOrder, idProductionOrderSu
         // }
 
         // 3. Filtrar campos actualizables (ya hecho parcialmente por validaciones, pero es buena práctica)
-        const allowedUpdates = ['quantityConsumed', 'measurementUnitConsumedSnapshot', 'consumptionDate', 'notes'];
+        const allowedUpdates = ['quantityConsumed', 'unitOfMeasureConsumedSnapshot', 'consumptionDate', 'notes'];
         const finalDataToUpdate = {};
         for (const key of allowedUpdates) {
             if (dataToUpdate.hasOwnProperty(key)) {

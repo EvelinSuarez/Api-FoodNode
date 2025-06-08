@@ -1,9 +1,13 @@
+// Archivo: services/specSheetsService.js
+// VERSIÓN COMPLETA: Este archivo ya está estructurado correctamente para llamar al repositorio.
+// La corrección principal se hizo en el repositorio que esta función utiliza.
+
 const specSheetRepository = require("../repositories/specSheetsRepository");
 const specSheetSupplyRepository = require("../repositories/specSheetSupplyRepository");
 const specSheetProcessRepository = require("../repositories/specSheetProcessRepository");
 const db = require('../models');
-const { Product, Supply, SpecSheet, Process } = db; // sequelize (instancia) ya está en db.sequelize
-const { Op } = require('sequelize'); // Importar Op directamente
+const { Product, Supply, SpecSheet, Process } = db;
+const { Op } = require('sequelize');
 const { NotFoundError, BadRequestError, ConflictError, ApplicationError } = require('../utils/customErrors');
 
 // --- HELPER FUNCTION ---
@@ -16,11 +20,11 @@ const mapFrontendToBackendSpecSheet = (frontendData) => {
         versionName: frontendData.versionName || null,
         description: frontendData.description || null,
         endDate: frontendData.endDate || null,
-        measurementUnit: frontendData.measurementUnit || null // Asume que SpecSheet tiene este campo
+        unitOfMeasure: frontendData.unitOfMeasure || null
     };
     Object.keys(backendData).forEach(key => {
         if (backendData[key] === undefined) delete backendData[key];
-        if (key === 'quantityBase' && isNaN(backendData[key])) delete backendData[key]; // Evitar NaN
+        if (key === 'quantityBase' && isNaN(backendData[key])) delete backendData[key];
         if (key === 'idProduct' && isNaN(backendData[key])) delete backendData[key];
     });
     return backendData;
@@ -55,8 +59,7 @@ const createSpecSheet = async (specSheetCompleteDataFromFrontend) => {
         await t.rollback();
         throw new BadRequestError("La fecha efectiva es requerida.");
     }
-    // Si measurementUnit es OBLIGATORIO en el modelo SpecSheet:
-    if (!specSheetCoreBackendData.measurementUnit) { // ASUME QUE ES REQUERIDO Y SpecSheet tiene el campo
+    if (!specSheetCoreBackendData.unitOfMeasure) {
         await t.rollback();
         throw new BadRequestError("La unidad de medida para la cantidad base de la ficha es requerida.");
     }
@@ -79,19 +82,24 @@ const createSpecSheet = async (specSheetCompleteDataFromFrontend) => {
         const supplyExists = await Supply.findByPk(parseInt(item.idSupply), { attributes: ['idSupply', 'supplyName', 'status'], transaction: t });
         if (!supplyExists) { await t.rollback(); throw new NotFoundError(`Insumo ID ${item.idSupply} no existe.`); }
         if (!supplyExists.status) { await t.rollback(); throw new BadRequestError(`Insumo "${supplyExists.supplyName}" (ID: ${item.idSupply}) no está activo.`);}
+        
+        if (!item.idPurchaseDetail) {
+            await t.rollback();
+            throw new BadRequestError(`El insumo "${supplyExists.supplyName}" debe tener un lote de compra (idPurchaseDetail) asociado.`);
+        }
+        
         specSheetSupplyItems.push({
-          idSpecSheet: newSpecSheet.idSpecSheet, idSupply: parseInt(item.idSupply),
-          quantity: parseFloat(item.quantity), measurementUnit: item.measurementUnit,
+          idSpecSheet: newSpecSheet.idSpecSheet,
+          idSupply: parseInt(item.idSupply),
+          idPurchaseDetail: parseInt(item.idPurchaseDetail),
+          quantity: parseFloat(item.quantity),
+          unitOfMeasure: item.unitOfMeasure,
           notes: item.notes || null,
         });
       }
       if (specSheetSupplyItems.length > 0) {
         await specSheetSupplyRepository.bulkCreate(specSheetSupplyItems, { transaction: t });
       }
-    } else if (specSheetCoreBackendData.status === true) {
-        // Validar si fichas activas requieren ingredientes (depende de reglas de negocio)
-        // await t.rollback();
-        // throw new BadRequestError("Fichas activas requieren al menos un ingrediente.");
     }
 
     if (processes && processes.length > 0) {
@@ -200,17 +208,24 @@ const updateSpecSheet = async (idSpecSheet, specSheetCompleteDataFromFrontend) =
         const supplyExists = await Supply.findByPk(parseInt(item.idSupply), { attributes: ['idSupply', 'supplyName', 'status'], transaction: t });
         if (!supplyExists) { await t.rollback(); throw new NotFoundError(`Insumo ID ${item.idSupply} no existe.`); }
         if (!supplyExists.status) { await t.rollback(); throw new BadRequestError(`Insumo "${supplyExists.supplyName}" no está activo.`); }
+
+        if (!item.idPurchaseDetail) {
+            await t.rollback();
+            throw new BadRequestError(`El insumo "${supplyExists.supplyName}" debe tener un lote de compra (idPurchaseDetail) asociado.`);
+        }
+        
         specSheetSupplyItems.push({
-          idSpecSheet: id, idSupply: parseInt(item.idSupply), quantity: parseFloat(item.quantity),
-          measurementUnit: item.measurementUnit, notes: item.notes || null,
+          idSpecSheet: id,
+          idSupply: parseInt(item.idSupply),
+          idPurchaseDetail: parseInt(item.idPurchaseDetail),
+          quantity: parseFloat(item.quantity),
+          unitOfMeasure: item.unitOfMeasure,
+          notes: item.notes || null,
         });
       }
       if (specSheetSupplyItems.length > 0) {
         await specSheetSupplyRepository.bulkCreate(specSheetSupplyItems, { transaction: t });
       }
-    } else if (specSheetCoreBackendData.status === true) {
-        // await t.rollback();
-        // throw new BadRequestError("Fichas activas requieren al menos un ingrediente.");
     }
 
     await specSheetProcessRepository.destroyBySpecSheetId(id, { transaction: t });
@@ -306,8 +321,8 @@ const changeSpecSheetStatus = async (idSpecSheet, newStatus) => {
 
     let dataForUpdate = { status: newStatus };
 
-    if (newStatus === true) { // Se está activando
-      await SpecSheet.update( // Directamente el modelo para actualizar MÚLTIPLES registros (otras fichas)
+    if (newStatus === true) {
+      await SpecSheet.update(
         { status: false, endDate: new Date() },
         {
           where: {
@@ -315,32 +330,24 @@ const changeSpecSheetStatus = async (idSpecSheet, newStatus) => {
             status: true,
             idSpecSheet: { [Op.ne]: id }
           },
-          transaction: t // Pasar la transacción
+          transaction: t
         }
       );
-      dataForUpdate.endDate = null; // Al activar la ficha actual, su endDate debe ser null
-    } else { // Se está desactivando
+      dataForUpdate.endDate = null;
+    } else {
       const currentEndDate = specSheetToUpdate.endDate ? new Date(specSheetToUpdate.endDate) : null;
       dataForUpdate.endDate = (currentEndDate && currentEndDate <= new Date()) ? currentEndDate : new Date();
     }
 
-    // Actualizar la ficha específica usando el repositorio (que maneja el where por ID)
     await specSheetRepository.updateSpecSheet(id, dataForUpdate, { transaction: t });
 
     await t.commit();
-    return specSheetRepository.getSpecSheetById(id); // Recargar con todas las asociaciones
+    return specSheetRepository.getSpecSheetById(id);
   } catch (error) {
     if (t && !t.finished) {
       try { await t.rollback(); } catch (rbError) { console.error("Service[SpecSheet ChangeStatus]: Error rollback:", rbError); }
     }
     console.error(`Service[SpecSheet ChangeStatus] ID ${id}:`, error.message, error.stack ? error.stack : '');
-     if (error.message && error.message.includes("(reading 'uuid')")) {
-        console.error("*****************************************************");
-        console.error("SOSPECHA DE ERROR DE UUID EN LOGGING/BENCHMARK DE SEQUELIZE AL ACTUALIZAR OTRAS FICHAS");
-        console.error("Asegúrate que la llamada a SpecSheet.update() tenga la transacción pasada correctamente.");
-        console.error("Si el error persiste, revisa la configuración global de `logging` y `benchmark` en tu instancia de Sequelize.");
-        console.error("*****************************************************");
-    }
     if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ConflictError || error instanceof ApplicationError) {
       throw error;
     }
@@ -348,6 +355,9 @@ const changeSpecSheetStatus = async (idSpecSheet, newStatus) => {
   }
 };
 
+// --- FUNCIÓN CLAVE ---
+// Esta función llama al repositorio, que es donde hemos puesto la consulta detallada.
+// No necesita cambios porque la corrección está en la capa inferior (repositorio).
 const getSpecSheetsByProductId = async (idProductParam) => {
   const idProduct = parseInt(idProductParam);
   if (isNaN(idProduct) || idProduct <= 0) {

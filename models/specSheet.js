@@ -24,7 +24,7 @@ const SpecSheet = sequelize.define('SpecSheet', {
         defaultValue: 1.00
     },
     // --- NUEVO CAMPO ---
-    measurementUnit: { // Unidad para la quantityBase. Ej: 'unidad', 'kg', 'L'
+    unitOfMeasure: { // Unidad para la quantityBase. Ej: 'unidad', 'kg', 'L'
         type: DataTypes.STRING(50),
         allowNull: false // O true si puede ser opcional, pero generalmente es requerida
     },
