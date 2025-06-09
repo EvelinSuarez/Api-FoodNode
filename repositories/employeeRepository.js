@@ -1,28 +1,33 @@
-const Employee = require('../models/employee');
+// repositories/employeeRepository.js
 
-const createEmployee = async (employee) => {
-    return Employee.create(employee);
-}
+const { Employee } = require('../models');
+
+const createEmployee = async (employeeData) => {
+    return Employee.create(employeeData);
+};
 
 const getAllEmployees = async () => {
     return Employee.findAll();
-}
+};
 
 const getEmployeeById = async (idEmployee) => {
     return Employee.findByPk(idEmployee);
-}
+};
 
-const updateEmployee = async (idEmployee, employee) => {
-    return Employee.update(employee, { where: { idEmployee } });
-}
+const updateEmployee = async (idEmployee, employeeData) => {
+    const [affectedRows] = await Employee.update(employeeData, { where: { idEmployee } });
+    return affectedRows > 0;
+};
 
 const deleteEmployee = async (idEmployee) => {
-    return Employee.destroy({ where: { idEmployee } });
-}
+    const deletedCount = await Employee.destroy({ where: { idEmployee } });
+    return deletedCount > 0;
+};
 
 const changeStateEmployee = async (idEmployee, status) => {
-    return Employee.update({ status }, { where: { idEmployee } });
-}
+    const [affectedRows] = await Employee.update({ status }, { where: { idEmployee } });
+    return affectedRows > 0;
+};
 
 module.exports = {
     createEmployee,
@@ -32,5 +37,3 @@ module.exports = {
     deleteEmployee,
     changeStateEmployee,
 };
-
-

@@ -9,5 +9,6 @@ router.post('/', employeeValidations.createEmployeeValidation, employeeControlle
 router.put('/:idEmployee', employeeValidations.updateEmployeeValidation, employeeController.updateEmployee);
 router.delete('/:idEmployee', employeeValidations.deleteEmployeeValidation, employeeController.deleteEmployee);
 router.patch('/:idEmployee', employeeValidations.changeStateValidation, employeeController.changeStateEmployee);
+router.get('/performance/overview', employeeController.getEmployeesWithOrderCounts);
 
 module.exports = router;

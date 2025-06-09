@@ -1,5 +1,6 @@
 // repositories/productRepository.js
-const { Product } = require('../models'); // Solo necesita Product para operaciones CRUD básicas
+const { Product, sequelize } = require('../models'); // <-- AÑADIMOS 'sequelize'
+
 const { Op } = require('sequelize');
 
 const createProduct = async (productData) => {
