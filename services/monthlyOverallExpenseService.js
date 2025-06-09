@@ -1,7 +1,7 @@
 // services/monthlyOverallExpenseService.js
 const sequelize = require('../config/database'); // Para transacciones
 const monthlyOverallExpenseRepository = require('../repositories/monthlyOverallExpenseRespository');
-const MonthlyExpenseItem = require('../models/monthlyExpenseItem');
+const MonthlyExpenseItem = require('../models/MonthlyExpenseItem');
 // ExpenseCategory ya no se necesita para validar la cabecera aquí
 
 const createMonthlyOverallExpense = async (data) => {
