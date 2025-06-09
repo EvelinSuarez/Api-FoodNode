@@ -2,7 +2,7 @@
 // const sequelize = require('../config/database'); // No se necesita transacción para operaciones simples de 1-M
 const specificConceptSpentRepository = require('../repositories/specificConceptSpentRepository');
 // ExpenseCategory ya no se necesita aquí para verificación si la validación lo hace
-const MonthlyExpenseItem = require('../models/monthlyExpenseItem');
+const MonthlyExpenseItem = require('../models/MonthlyExpenseItem');
 
 const createSpecificConceptSpent = async (data) => {
     // 'data' ya viene con idExpenseCategory validado por el middleware.
