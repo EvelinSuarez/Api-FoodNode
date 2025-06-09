@@ -9,7 +9,7 @@ const Supply = sequelize.define('Supply', { // Nombre del modelo en singular: Su
         allowNull: false
     },
     supplyName: { // Nombre del insumo
-        type: DataTypes.STRING(100),
+        type: DataTypes.STRING(30),
         allowNull: false,
         unique: true
     },

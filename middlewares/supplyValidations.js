@@ -33,14 +33,14 @@ const commonSupplyFieldsValidation = [
   body("supplyName")
     .notEmpty().withMessage("El nombre del insumo es requerido.")
     .trim()
-    .isLength({ min: 2, max: 100 }).withMessage("El nombre del insumo debe tener entre 2 y 100 caracteres.")
+    .isLength({ min: 2, max: 30 }).withMessage("El nombre del insumo debe tener entre 2 y 30 caracteres.")
     // .matches(/^[a-zA-Z0-9\sÀ-ÖØ-öø-ÿ_.'-]+$/).withMessage("El nombre del insumo contiene caracteres no válidos."), // Regex más permisiva
     .custom(validateUniqueSupplyName), // Validar unicidad en creación y actualización
   body("description")
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage("La descripción debe ser texto.")
     .trim()
-    .isLength({ max: 500 }).withMessage("La descripción no puede exceder los 500 caracteres."),
+    .isLength({ max: 250 }).withMessage("La descripción no puede exceder los 500 caracteres."),
   body("unitOfMeasure")
     .notEmpty().withMessage("La unidad de medida es requerida.")
     .isString().withMessage("La unidad de medida debe ser texto.")
