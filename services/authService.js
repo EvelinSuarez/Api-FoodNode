@@ -1,3 +1,4 @@
+// === VERSIÓN CORREGIDA - 2024-06-10 11:00 AM ===
 const bcrypt = require("bcryptjs");
 const jwt =require("jsonwebtoken");
 const nodemailer = require('nodemailer');
@@ -27,6 +28,7 @@ if (!User) {
 
 
 const login = async (email, password) => {
+    console.log(">>>>>>>> EJECUTANDO LA VERSIÓN MÁS RECIENTE DEL CÓDIGO DE LOGIN <<<<<<<<");
     console.log(`[AuthService BE] 1. Intento de login para: ${email}`);
 
     try {
