@@ -4,7 +4,7 @@ const sequelize = require('../config/database');
 const Role = require('./role'); // Asegúrate que la ruta sea correcta si 'role.js' está en el mismo directorio
 
 const User = sequelize.define('user', { // El nombre del modelo es 'user' (minúscula), la tabla será 'users' por defecto
-    idUsers: { // Nota: Sequelize suele preferir camelCase para las claves primarias, como 'idUser' o simplemente 'id'
+    idUser: { // Nota: Sequelize suele preferir camelCase para las claves primarias, como 'idUser' o simplemente 'id'
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
