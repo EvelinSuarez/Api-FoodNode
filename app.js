@@ -3,24 +3,27 @@ const cors = require("cors");
 const app = express();
 require("dotenv").config();
 
-// CÓDIGO MEJORADO (MANTIENE LA LISTA Y AÑADE LOCALHOST)
 const whitelist = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:5173",
+  'https://foodin-ed299.web.app',  // <-- AÑADIR ESTA LÍNEA
+  'http://localhost:5173',        // Tu frontend en desarrollo (Vite)
+  'http://localhost:3000',        // Si tienes otro servicio local que necesita acceder
+  'http://localhost:3001'         // etc.
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Permite orígenes en la whitelist O cualquier origen de localhost para desarrollo
-    if (!origin || whitelist.indexOf(origin) !== -1 || origin.startsWith('http://localhost:')) {
+    // La lógica ahora comprueba si el origen de la petición está en la lista blanca
+    // O si no hay origen (ej. Postman)
+    if (!origin || whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.warn(`CORS: Petición bloqueada desde el origen: ${origin}`); // Útil para depurar
       callback(new Error("Not allowed by CORS"));
     }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true // A menudo necesario para que funcionen cookies o headers de autorización
 };
 
 app.use(cors(corsOptions));
