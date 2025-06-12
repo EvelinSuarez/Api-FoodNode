@@ -362,26 +362,75 @@ const updateProductionOrderStep = async (idProductionOrder, idProductionOrderDet
 const finalizeProductionOrder = async (idProductionOrder, finalizeData) => {
     const t = await sequelize.transaction();
     try {
-        const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
-        if (!order) { await t.rollback(); throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`); }
+        const order = await productionOrderRepo.findOrderById(idProductionOrder, t);
+        if (!order) {
+            await t.rollback();
+            throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`);
+        }
         
-        const { finalQuantityProduct, finishedProductWeight, observations } = finalizeData;
+        // 1. Desestructurar TODOS los campos esperados del frontend
+        const {
+            finalQuantityProduct,
+            finishedProductWeight,
+            finishedProductWeightUnit,
+            inputFinalWeightUnused,
+            inputFinalWeightUnusedUnit,
+            observations
+        } = finalizeData;
 
+        // 2. Construir el payload de actualización de forma segura
         const updateData = {
-            finalQuantityProduct: parseFloat(finalQuantityProduct) || 0,
-            finishedProductWeight: (finishedProductWeight !== null) ? parseFloat(finishedProductWeight) : null,
-            observations: observations || order.observations,
-            status: 'COMPLETED'
+            status: 'COMPLETED',
+            // Usa las observaciones de finalización; si no hay, mantiene las existentes.
+            observations: observations || order.observations 
         };
 
+        // 3. Procesar y añadir cada campo numérico y su unidad condicionalmente
+        if (finalQuantityProduct !== null && finalQuantityProduct !== undefined) {
+            updateData.finalQuantityProduct = parseFloat(finalQuantityProduct);
+        }
+
+        if (finishedProductWeight !== null && finishedProductWeight !== undefined && String(finishedProductWeight).trim() !== '') {
+            const weight = parseFloat(finishedProductWeight);
+            if (!isNaN(weight) && weight >= 0) {
+                updateData.finishedProductWeight = weight;
+                // La unidad solo se guarda si el peso es mayor que 0
+                updateData.finishedProductWeightUnit = weight > 0 ? (finishedProductWeightUnit || 'kg') : null;
+            }
+        } else {
+             updateData.finishedProductWeight = null;
+             updateData.finishedProductWeightUnit = null;
+        }
+
+        if (inputFinalWeightUnused !== null && inputFinalWeightUnused !== undefined && String(inputFinalWeightUnused).trim() !== '') {
+            const unusedWeight = parseFloat(inputFinalWeightUnused);
+            if (!isNaN(unusedWeight) && unusedWeight >= 0) {
+                updateData.inputFinalWeightUnused = unusedWeight;
+                // La unidad solo se guarda si el peso es mayor que 0
+                updateData.inputFinalWeightUnusedUnit = unusedWeight > 0 ? (inputFinalWeightUnusedUnit || 'kg') : null;
+            }
+        } else {
+            updateData.inputFinalWeightUnused = null;
+            updateData.inputFinalWeightUnusedUnit = null;
+        }
+
+        console.log(`[SERVICE - finalizeProductionOrder] Payload final para actualizar:`, updateData);
+        
+        // 4. Llamar al repositorio con el objeto de actualización completo
         await productionOrderRepo.updateOrder(idProductionOrder, updateData, t);
         
         await t.commit();
+        
+        // 5. Devolver la orden completa y actualizada
         return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
+
     } catch (error) {
-        if (t && !t.finished) { try { await t.rollback(); } catch (rbError) {} }
+        if (t && !t.finished) {
+            try { await t.rollback(); } catch (rbError) { console.error("Error en rollback de finalización:", rbError); }
+        }
+        // Propagar el error para que el controlador lo maneje
         if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
-        throw new ApplicationError(`Error al finalizar la orden: ${error.message}`);
+        throw new ApplicationError(`Error al finalizar la orden de producción: ${error.message}`);
     }
 };
 
