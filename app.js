@@ -4,26 +4,25 @@ const app = express();
 require("dotenv").config();
 
 const whitelist = [
-  'https://foodin-ed299.web.app',  // <-- AÑADIR ESTA LÍNEA
-  'http://localhost:5173',        // Tu frontend en desarrollo (Vite)
-  'http://localhost:3000',        // Si tienes otro servicio local que necesita acceder
-  'http://localhost:3001'         // etc.
+  'https://foodin-ed299.web.app',  // Tu URL de producción en Firebase
+  'http://localhost:5173',        // Si usas Vite/React/etc para un admin web
+  // Añadimos una expresión regular para el desarrollo de Flutter en web
+  /^http:\/\/localhost:\d+$/ 
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // La lógica ahora comprueba si el origen de la petición está en la lista blanca
-    // O si no hay origen (ej. Postman)
-    if (!origin || whitelist.indexOf(origin) !== -1) {
+    // Si el origen no existe (ej. Postman) o está en la whitelist (o cumple la regex), permitirlo.
+    if (!origin || whitelist.some(w => typeof w === 'string' ? w === origin : w.test(origin))) {
       callback(null, true);
     } else {
-      console.warn(`CORS: Petición bloqueada desde el origen: ${origin}`); // Útil para depurar
+      console.warn(`CORS: Petición bloqueada desde el origen: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true // A menudo necesario para que funcionen cookies o headers de autorización
+  credentials: true
 };
 
 app.use(cors(corsOptions));
