@@ -33,7 +33,7 @@ const verifyToken = (req, res, next) => {
     // Este payload debe contener la información necesaria para el middleware de autorización (authPermissions.js)
     // Es decir, al menos 'id' (PK del usuario) y 'idRole' (ID numérico del rol).
     // Ejemplo de cómo se crea el payload en authService.login:
-    // const payload = { id: user.idUsers, email: user.email, idRole: user.idRole };
+    // const payload = { id: user.idUser, email: user.email, idRole: user.idRole };
     req.user = decodedPayload;
 
     // console.log("[VerifyToken] Token verificado. req.user establecido:", req.user);

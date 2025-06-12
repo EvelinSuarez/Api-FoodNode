@@ -1,45 +1,57 @@
 // middlewares/userValidation.js
 const { body, param, validationResult: expressValidationResult } = require('express-validator');
 const { Op } = require('sequelize');
-const { user: User, role: Role } = require('../models'); // Ajusta la ruta
+const { user: User, role: Role } = require('../models'); // Asegúrate que la ruta a tus modelos es correcta
 
-const validateUserExistence = async (idUserValue, { req }) => {
-    if (!idUserValue || isNaN(parseInt(idUserValue, 10)) || parseInt(idUserValue, 10) <= 0) {
-      // Esto no debería ocurrir si la validación .isInt({gt:0}) ya se aplicó al param.
-      // Pero es una salvaguarda.
-      return Promise.reject('ID de usuario inválido en la URL.');
-    }
+/**
+ * Middleware para validar que un usuario existe.
+ * Usado en rutas que operan sobre un usuario específico.
+ */
+const validateUserExistence = async (idUserValue) => {
     const user = await User.findByPk(idUserValue);
     if (!user) {
         return Promise.reject('El usuario especificado no existe.');
     }
-    // req.foundUser = user; // Opcional
 };
 
+/**
+ * Middleware personalizado para validar que un campo (email o documento) es único.
+ * Para actualizaciones (update), ignora el propio registro que se está editando.
+ */
 const validateUniqueField = async (value, { req, path }) => {
-    if (!value) return;
-    const userIdFromParams = req.params.idUser; // Correcto: usa idUser
+    if (!value) return; // No validar si el campo es opcional y no se proporciona
+
+    const userIdFromParams = req.params.idUser ? parseInt(req.params.idUser, 10) : null;
     const field = path;
     const whereClause = { [field]: value };
-    if (userIdFromParams) { // Solo para actualizaciones
-        whereClause.idUsers = { [Op.ne]: userIdFromParams }; // Asume que PK es idUsers
+
+    // Si estamos en una ruta de actualización, añadimos la condición para excluir al propio usuario.
+    if (userIdFromParams) {
+        whereClause.idUser = { [Op.ne]: userIdFromParams }; // Op.ne significa "not equal"
     }
+    
     const existingUser = await User.findOne({ where: whereClause });
+
     if (existingUser) {
         const fieldName = field === 'email' ? 'correo electrónico' : 'documento';
-        return Promise.reject(`El ${fieldName} '${value}' ya está registrado por otro usuario.`);
+        return Promise.reject(`El ${fieldName} '${value}' ya está en uso por otro usuario.`);
     }
 };
 
+/**
+ * Middleware para validar que un rol existe y está activo.
+ */
 const validateRoleExists = async (idRole) => {
     if (idRole === null || idRole === undefined || idRole === '') return;
     const roleId = parseInt(idRole, 10);
     if (isNaN(roleId) || roleId <= 0) return Promise.reject('ID de rol inválido.');
+    
     const role = await Role.findByPk(roleId);
     if (!role) return Promise.reject('El rol seleccionado no existe o es inválido.');
     if (!role.status) return Promise.reject('El rol seleccionado no está activo.');
 };
 
+// Reglas de validación para la creación de un usuario
 const createUserValidation = [
     body('full_name').notEmpty().withMessage('El nombre completo es obligatorio.').isString().trim().isLength({ min: 3, max: 60 }),
     body('document_type').notEmpty().withMessage('El tipo de documento es obligatorio.').isString().trim().isIn(['CC', 'CE', 'PA', 'PEP']).withMessage('Tipo de documento inválido.').isLength({ max: 30 }),
@@ -51,8 +63,9 @@ const createUserValidation = [
     body('status').optional({ checkFalsy: true }).isBoolean().withMessage('Estado debe ser booleano.').toBoolean(),
 ];
 
+// Reglas de validación para la actualización de un usuario
 const updateUserValidation = [
-    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence), // Usa idUser
+    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence),
     body('full_name').optional().isString().trim().isLength({ min: 3, max: 60 }),
     body('document_type').optional().isString().trim().isIn(['CC', 'CE', 'PA', 'PEP']).withMessage('Tipo de documento inválido.').isLength({ max: 30 }),
     body('document').optional().isString().trim().isLength({ min: 3, max: 30 }).matches(/^[a-zA-Z0-9-]+$/).withMessage('Documento solo letras, números, guiones.').custom(validateUniqueField),
@@ -63,16 +76,17 @@ const updateUserValidation = [
     body('status').optional().isBoolean().withMessage('Estado debe ser booleano.').toBoolean(),
 ];
 
+// Reglas para otras rutas
 const deleteUserValidation = [
-    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence), // Usa idUser
+    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence),
 ];
 
 const getUserByIdValidation = [
-    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence), // Usa idUser
+    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence),
 ];
 
 const changeStateValidation = [
-    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence), // Usa idUser
+    param('idUser').isInt({ gt: 0 }).withMessage('ID de usuario en URL inválido.').custom(validateUserExistence),
     body('status').exists({ checkFalsy: false }).withMessage('El estado es requerido (true o false).').isBoolean().withMessage('El estado debe ser un valor booleano (true o false).').toBoolean(),
 ];
 
