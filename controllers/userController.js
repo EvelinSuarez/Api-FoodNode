@@ -1,6 +1,6 @@
 // controllers/userController.js
 const { validationResult } = require('express-validator');
-const userService = require('../services/userService'); // Tu capa de servicio backend
+const userService = require('../services/userService');
 
 const createUser = async (req, res) => {
     const errors = validationResult(req);
@@ -9,39 +9,17 @@ const createUser = async (req, res) => {
     }
     try {
         const user = await userService.createUser(req.body);
-        const { password, ...userWithoutPassword } = user.toJSON();
-        res.status(201).json(userWithoutPassword);
+        res.status(201).json(user); // user ya no tiene la contraseña
     } catch (error) {
         console.error("Error en createUser:", error);
         res.status(400).json({ message: error.message || "Error al crear el usuario." });
     }
 };
 
-const getUserProfile = async (req, res) => {
-    try {
-        const userIdFromToken = req.user?.idUsers || req.user?.id || req.userId; // Ajusta según tu middleware verifyToken
-        if (!userIdFromToken) {
-            return res.status(401).json({ message: "Token inválido o usuario no identificado para obtener perfil." });
-        }
-        const user = await userService.getUserById(userIdFromToken);
-        if (!user) {
-            return res.status(404).json({ message: "Usuario asociado al token no encontrado." });
-        }
-        res.status(200).json(user); // Asumiendo que getUserById ya excluye la contraseña
-    } catch (error) {
-        console.error("Error fetching user profile:", error);
-        res.status(500).json({ message: "Error interno al obtener el perfil del usuario." });
-    }
-};
-
 const getAllUsers = async (req, res) => {
     try {
         const users = await userService.getAllUsers();
-        const usersWithoutPasswords = users.map(user => {
-            const { password, ...userWithoutPassword } = user.toJSON();
-            return userWithoutPassword;
-        });
-        res.status(200).json(usersWithoutPasswords);
+        res.status(200).json(users); // users ya no tienen la contraseña
     } catch (error) {
         console.error("Error en getAllUsers:", error);
         res.status(500).json({ message: error.message || "Error al obtener los usuarios." });
@@ -54,11 +32,9 @@ const getUserById = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const user = await userService.getUserById(req.params.idUser); // Usar idUser
-        if (!user) {
-            return res.status(404).json({ message: 'Usuario no encontrado.' });
-        }
-        res.status(200).json(user); // Asumiendo que getUserById ya excluye la contraseña
+        // La validación de existencia ya se hizo en el middleware
+        const user = await userService.getUserById(req.params.idUser);
+        res.status(200).json(user); // user ya no tiene la contraseña
     } catch (error) {
         console.error("Error en getUserById:", error);
         res.status(500).json({ message: error.message || "Error al obtener el usuario." });
@@ -71,11 +47,16 @@ const updateUser = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const updatedUser = await userService.updateUser(req.params.idUser, req.body); // Usar idUser
+        // El servicio se encarga de todo. Retorna el usuario actualizado o null.
+        const updatedUser = await userService.updateUser(req.params.idUser, req.body);
+        
         if (!updatedUser) {
-            return res.status(404).json({ message: 'Usuario no encontrado o no se pudo actualizar.' });
+            // Este caso se dará si el ID es válido pero no se encuentra el usuario (ya validado en middleware).
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
         }
-        res.status(200).json(updatedUser); // Devuelve el usuario actualizado
+        
+        // Se envía el objeto del usuario actualizado y sin contraseña al frontend.
+        res.status(200).json(updatedUser);
     } catch (error) {
         console.error("Error en updateUser:", error);
         res.status(400).json({ message: error.message || "Error al actualizar el usuario." });
@@ -88,14 +69,14 @@ const deleteUser = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const result = await userService.deleteUser(req.params.idUser); // Usar idUser
-        if (result === 0 || !result) {
+        const result = await userService.deleteUser(req.params.idUser);
+        if (result === 0) {
+            // Esto no debería pasar gracias a validateUserExistence, pero es una buena práctica.
             return res.status(404).json({ message: 'Usuario no encontrado para eliminar.' });
         }
-        res.status(204).end();
+        res.status(204).end(); // 204 No Content es la respuesta estándar para un delete exitoso.
     } catch (error) {
         console.error("Error en deleteUser:", error);
-        // Si es un error de restricción de FK, podría ser un 409 (Conflict)
         if (error.name === 'SequelizeForeignKeyConstraintError') {
             return res.status(409).json({ message: "No se puede eliminar el usuario, tiene datos relacionados." });
         }
@@ -109,21 +90,36 @@ const changeStateUser = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const { idUser } = req.params; // Usar idUser
+        const { idUser } = req.params;
         const { status } = req.body;
 
-        if (typeof status !== 'boolean') {
-            return res.status(400).json({ message: 'El campo status debe ser un valor booleano.' });
-        }
-
         const updatedUser = await userService.changeStateUser(idUser, status);
+
         if (!updatedUser) {
              return res.status(404).json({ message: 'Usuario no encontrado o no se pudo cambiar el estado.' });
         }
-        res.status(200).json(updatedUser); // Devuelve el usuario actualizado
+        res.status(200).json(updatedUser);
     } catch (error) {
         console.error("Error en changeStateUser:", error);
         res.status(500).json({ message: error.message || "Error al cambiar el estado del usuario." });
+    }
+};
+
+// Dejamos tu función de perfil de usuario intacta
+const getUserProfile = async (req, res) => {
+    try {
+        const userIdFromToken = req.user?.idUser || req.user?.id || req.userId;
+        if (!userIdFromToken) {
+            return res.status(401).json({ message: "Token inválido o usuario no identificado para obtener perfil." });
+        }
+        const user = await userService.getUserById(userIdFromToken);
+        if (!user) {
+            return res.status(404).json({ message: "Usuario asociado al token no encontrado." });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        res.status(500).json({ message: "Error interno al obtener el perfil del usuario." });
     }
 };
 

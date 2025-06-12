@@ -17,7 +17,7 @@ const getUserById = async (id) => {
             exclude: ['password'] // Excluye el campo 'password'
         }
         // Opcionalmente, puedes listar explícitamente los campos que SÍ quieres:
-        // attributes: ['idUsers', 'email', 'full_name', 'idRole', ...] // Lista todos MENOS password
+        // attributes: ['idUser', 'email', 'full_name', 'idRole', ...] // Lista todos MENOS password
     });
 };
 
@@ -26,15 +26,15 @@ const updateUser = async (id, user) => {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(user.password, salt);
     }
-    return User.update(user, { where: { idUsers: id } });
+    return User.update(user, { where: { idUser: id } });
 };
 
 const deleteUser = async (id) => {
-    return User.destroy({ where: { idUsers: id } });
+    return User.destroy({ where: { idUser: id } });
 };
 
 const changeStateUser = async (id, status) => {
-    return User.update({ status }, { where: { idUsers: id } });
+    return User.update({ status }, { where: { idUser: id } });
 };
 
 module.exports = {
