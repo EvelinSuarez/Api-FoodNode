@@ -1,12 +1,16 @@
 // config/database.js
 const { Sequelize } = require('sequelize');
+require('dotenv').config(); // Asegúrate de que las variables de entorno se carguen
 
-// Define la conexión directamente aquí
-const sequelize = new Sequelize(process.env.MYSQL_URL ||"mysql://root:IyeOpCkJbPMPWTDZLjXPnROvjeIcvYRM@tramway.proxy.rlwy.net:28699/railway", {
-    host: 'localhost',
+// Verifica que la URL exista
+if (!process.env.MYSQL_URL) {
+    throw new Error("ERROR: La variable de entorno MYSQL_URL no está definida. Revisa tu archivo .env");
+}
+
+// Sequelize se inicializa solo con la URL de conexión
+const sequelize = new Sequelize(process.env.MYSQL_URL, {
     dialect: 'mysql',
-    logging: false,
-    logging: console.log,
+    logging: false, // Puedes poner console.log para ver las queries SQL
 });
 
 async function testConnection() {
@@ -17,7 +21,8 @@ async function testConnection() {
         console.error('ERROR: No se pudo conectar a la base de datos:', error);
     }
 }
-testConnection(); // Llama a la función de prueba
+
+testConnection();
 
 module.exports = sequelize;
 
