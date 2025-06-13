@@ -25,7 +25,7 @@ const Employee = sequelize.define('Employee', {
         allowNull: false 
     },
     cellPhone: { 
-        type: DataTypes.STRING(255), 
+        type: DataTypes.STRING(25), // <-- CORRECTO (ya estaba bien, pero puedes ajustar el tamaño si quieres)
         allowNull: false 
     },
     dateOfEntry: { 
@@ -33,7 +33,7 @@ const Employee = sequelize.define('Employee', {
         allowNull: false 
     },
     emergencyContact: { 
-        type: DataTypes.INTEGER, 
+        type: DataTypes.STRING(25), // <-- CAMBIO AQUÍ: de INTEGER a STRING
         allowNull: true 
     },
     Relationship: { 
