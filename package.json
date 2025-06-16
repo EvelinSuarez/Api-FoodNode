@@ -2,13 +2,13 @@
   "name": "api-foodnode",
   "version": "1.0.0",
   "main": "app.js",
-  "scripts": {
+    "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
     "dev": "nodemon app.js",
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "npx sequelize-cli db:seed:all",
-    "build": "npx sequelize-cli db:migrate"
+    "build": "npm run migrate" 
   },
   "keywords": [],
   "author": "",
