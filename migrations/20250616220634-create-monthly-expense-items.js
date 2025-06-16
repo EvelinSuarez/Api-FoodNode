@@ -64,3 +64,4 @@ module.exports = {
     await queryInterface.dropTable('monthly_expense_items');
   }
 };
+
