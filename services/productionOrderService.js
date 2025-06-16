@@ -1,12 +1,11 @@
-// Archivo: services/productionOrderService.js
-// VERSIÓN CORREGIDA FINAL
+// services/productionOrderService.js
 
 const productionOrderRepo = require('../repositories/productionOrderRepository');
 const {
     ProductionOrder,
     SpecSheet,
     SpecSheetProcess,
-    Product,
+    Product, // <-- Asegúrate de que 'Product' esté importado
     Employee,
     Provider,
     Process,
@@ -26,13 +25,43 @@ const createProductionOrder = async (orderData) => {
             status,
             idSpecSheet: providedSpecSheetId,
             idEmployeeRegistered,
-            initialAmount,
+            initialAmount, // <-- La cantidad de insumo a descontar
             inputInitialWeight,
             inputInitialWeightUnit,
             productNameSnapshot: providedProductNameSnapshot,
             observations,
             idProvider,
         } = orderData;
+        
+        // --- LÓGICA DE STOCK: INICIO ---
+        // Solo procedemos si se especifica un producto y una cantidad a utilizar.
+        if (idProduct && initialAmount > 0) {
+            // 1. Buscamos el producto CON BLOQUEO para evitar problemas de concurrencia.
+            // Esto asegura que ninguna otra transacción pueda modificar este producto hasta que esta termine.
+            const product = await Product.findByPk(idProduct, { 
+                transaction: t,
+                lock: t.LOCK.UPDATE 
+            });
+
+            if (!product) {
+                await t.rollback();
+                throw new NotFoundError(`El producto/insumo con ID ${idProduct} no fue encontrado.`);
+            }
+
+            // 2. Validamos si hay stock suficiente.
+            if (product.currentStock < initialAmount) {
+                await t.rollback();
+                throw new BadRequestError(`Stock insuficiente para '${product.productName}'. Stock actual: ${product.currentStock}, Cantidad requerida: ${initialAmount}.`);
+            }
+
+            // 3. Descontamos el stock. Sequelize maneja esto de forma atómica.
+            await product.decrement('currentStock', {
+                by: initialAmount,
+                transaction: t
+            });
+            console.log(`[SERVICE - Stock] Stock descontado para producto ID ${idProduct}. Cantidad: ${initialAmount}.`);
+        }
+        // --- LÓGICA DE STOCK: FIN ---
         
         if (idProduct && ['PENDING', 'SETUP'].includes(status)) {
              const conflictingOrder = await ProductionOrder.findOne({
@@ -44,6 +73,7 @@ const createProductionOrder = async (orderData) => {
             });
 
             if (conflictingOrder) {
+                // El rollback de la transacción se encargará de revertir el decremento de stock automáticamente.
                 await t.rollback();
                 throw new BadRequestError(`No se puede crear la orden. Ya existe una orden activa (ID: ${conflictingOrder.idProductionOrder}) para este producto.`);
             }
@@ -90,13 +120,11 @@ const createProductionOrder = async (orderData) => {
         
         console.log('[SERVICE - createProductionOrder] Payload para el repositorio (cabecera):', JSON.stringify(newOrderPayload, null, 2));
         
-        // Se usa create, no createOrderWithDetails
         const createdOrder = await ProductionOrder.create(newOrderPayload, { transaction: t });
         
         await t.commit();
         console.log('[SERVICE - createProductionOrder] Transacción committed.');
         
-        // <<<--- CORRECCIÓN 2: Se usa findOrderByIdWithDetails para devolver la orden completa --- >>>
         return productionOrderRepo.findOrderByIdWithDetails(createdOrder.idProductionOrder);
 
     } catch (error) {
@@ -110,9 +138,158 @@ const createProductionOrder = async (orderData) => {
     }
 };
 
-// ... (El resto de las funciones como updateProductionOrder, getAllProductionOrders, etc., no cambian y ya están correctas)
-// ... (Pega aquí el resto de tus funciones de servicio del backend)
+const finalizeProductionOrder = async (idProductionOrder, finalizeData) => {
+    const t = await sequelize.transaction();
+    try {
+        const order = await productionOrderRepo.findOrderById(idProductionOrder, t);
+        if (!order) {
+            await t.rollback();
+            throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`);
+        }
+        
+        const {
+            finalQuantityProduct, // <-- Cantidad de producto terminado a añadir al stock
+            finishedProductWeight,
+            finishedProductWeightUnit,
+            inputFinalWeightUnused,
+            inputFinalWeightUnusedUnit,
+            observations
+        } = finalizeData;
+        
+        // --- LÓGICA DE STOCK: INICIO ---
+        // Al finalizar, incrementamos el stock del producto que se fabricó.
+        if (order.idProduct && finalQuantityProduct > 0) {
+            await Product.increment('currentStock', {
+                by: finalQuantityProduct,
+                where: { idProduct: order.idProduct },
+                transaction: t
+            });
+            console.log(`[SERVICE - Stock] Stock incrementado para producto final ID ${order.idProduct}. Cantidad: ${finalQuantityProduct}.`);
+        }
+        // --- LÓGICA DE STOCK: FIN ---
+
+        const updateData = {
+            status: 'COMPLETED',
+            observations: observations || order.observations 
+        };
+
+        if (finalQuantityProduct !== null && finalQuantityProduct !== undefined) {
+            updateData.finalQuantityProduct = parseFloat(finalQuantityProduct);
+        }
+
+        if (finishedProductWeight !== null && finishedProductWeight !== undefined && String(finishedProductWeight).trim() !== '') {
+            const weight = parseFloat(finishedProductWeight);
+            if (!isNaN(weight) && weight >= 0) {
+                updateData.finishedProductWeight = weight;
+                updateData.finishedProductWeightUnit = weight > 0 ? (finishedProductWeightUnit || 'kg') : null;
+            }
+        } else {
+             updateData.finishedProductWeight = null;
+             updateData.finishedProductWeightUnit = null;
+        }
+
+        if (inputFinalWeightUnused !== null && inputFinalWeightUnused !== undefined && String(inputFinalWeightUnused).trim() !== '') {
+            const unusedWeight = parseFloat(inputFinalWeightUnused);
+            if (!isNaN(unusedWeight) && unusedWeight >= 0) {
+                updateData.inputFinalWeightUnused = unusedWeight;
+                updateData.inputFinalWeightUnusedUnit = unusedWeight > 0 ? (inputFinalWeightUnusedUnit || 'kg') : null;
+            }
+        } else {
+            updateData.inputFinalWeightUnused = null;
+            updateData.inputFinalWeightUnusedUnit = null;
+        }
+
+        console.log(`[SERVICE - finalizeProductionOrder] Payload final para actualizar:`, updateData);
+        
+        await productionOrderRepo.updateOrder(idProductionOrder, updateData, t);
+        
+        await t.commit();
+        
+        return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
+
+    } catch (error) {
+        if (t && !t.finished) {
+            try { await t.rollback(); } catch (rbError) { console.error("Error en rollback de finalización:", rbError); }
+        }
+        if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
+        throw new ApplicationError(`Error al finalizar la orden de producción: ${error.message}`);
+    }
+};
+
+const changeProductionOrderStatus = async (idProductionOrder, newStatus, observationsForChange) => {
+    const t = await sequelize.transaction();
+    try {
+        const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
+        if (!order) { await t.rollback(); throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`); }
+
+        // --- LÓGICA DE STOCK: INICIO ---
+        // Si la orden se CANCELA y no estaba ya completada/cancelada, devolvemos el stock inicial.
+        if (newStatus === 'CANCELLED' && !['COMPLETED', 'CANCELLED'].includes(order.status)) {
+            if (order.idProduct && order.initialAmount > 0) {
+                // Devolvemos (incrementamos) el stock del insumo que se había reservado.
+                await Product.increment('currentStock', {
+                    by: order.initialAmount,
+                    where: { idProduct: order.idProduct },
+                    transaction: t
+                });
+                console.log(`[SERVICE - Stock] Stock DEVUELTO por cancelación para producto ID ${order.idProduct}. Cantidad: ${order.initialAmount}.`);
+            }
+        }
+        // --- LÓGICA DE STOCK: FIN ---
+
+        const updatePayload = { status: newStatus };
+        if (observationsForChange) {
+            updatePayload.observations = (order.observations || '') + `\n[Cambio a ${newStatus}]: ${observationsForChange}`;
+        }
+
+        await productionOrderRepo.updateOrder(idProductionOrder, updatePayload, t);
+        await t.commit();
+        return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
+    } catch (error) {
+        if (t && !t.finished) { try { await t.rollback(); } catch (rbError) {} }
+        if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
+        throw new ApplicationError(`Error al cambiar estado: ${error.message}`);
+    }
+};
+
+const deleteProductionOrder = async (idProductionOrder) => {
+    const t = await sequelize.transaction();
+    try {
+        const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
+        if (!order) { await t.rollback(); throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`); }
+        
+        if (['IN_PROGRESS', 'COMPLETED'].includes(order.status)) {
+            await t.rollback();
+            throw new BadRequestError(`No se puede eliminar una orden en estado: ${order.status}. Considere cancelarla.`);
+        }
+
+        // --- LÓGICA DE STOCK: INICIO ---
+        // Si la orden que se elimina no estaba completada ni cancelada, devolvemos el stock.
+        if (!['COMPLETED', 'CANCELLED'].includes(order.status) && order.idProduct && order.initialAmount > 0) {
+            await Product.increment('currentStock', {
+               by: order.initialAmount,
+               where: { idProduct: order.idProduct },
+               transaction: t
+           });
+           console.log(`[SERVICE - Stock] Stock DEVUELTO por eliminación de orden para producto ID ${order.idProduct}. Cantidad: ${order.initialAmount}.`);
+        }
+       // --- LÓGICA DE STOCK: FIN ---
+
+        await productionOrderRepo.deleteOrderById(idProductionOrder, t);
+        await t.commit();
+        return { message: "Orden de producción eliminada exitosamente." };
+    } catch (error) {
+        if (t && !t.finished) { try { await t.rollback(); } catch (rbError) {} }
+        if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
+        throw new ApplicationError(`Error al eliminar: ${error.message}`);
+    }
+};
+
+
+// ----- El resto de tus funciones de servicio permanecen sin cambios -----
+
 const getAllProductionOrders = async (queryFilters = {}) => {
+    // ... (sin cambios)
     const { status, status_not_in, idProduct, idEmployeeRegistered, page, limit, sortBy, sortOrder } = queryFilters;
     let whereClause = {};
     if (status) {
@@ -138,6 +315,7 @@ const getAllProductionOrders = async (queryFilters = {}) => {
 };
 
 const getProductionOrderById = async (idProductionOrder) => {
+    // ... (sin cambios)
     const order = await productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
     if (!order) {
         throw new NotFoundError(`Orden de producción con ID ${idProductionOrder} no encontrada.`);
@@ -146,6 +324,7 @@ const getProductionOrderById = async (idProductionOrder) => {
 };
 
 const getActiveOrdersByProductId = async (productId) => {
+    // ... (sin cambios)
     if (!productId || isNaN(parseInt(productId))) {
         return [];
     }
@@ -161,6 +340,11 @@ const getActiveOrdersByProductId = async (productId) => {
 };
 
 const updateProductionOrder = async (idProductionOrder, dataToUpdate) => {
+    // Nota: Esta función no maneja el stock, ya que la creación/cancelación/finalización son los puntos clave.
+    // Si permitieras cambiar `initialAmount` en una orden activa, tendrías que añadir una lógica compleja aquí
+    // para ajustar la diferencia de stock, pero es más seguro y limpio manejarlo en los puntos de ciclo de vida.
+    
+    // ... (tu lógica de updateProductionOrder sin cambios)
     console.log(`[SERVICE - updateProductionOrder] Iniciando para Orden ID: ${idProductionOrder}. Payload:`, JSON.stringify(dataToUpdate, null, 2));
     const t = await sequelize.transaction();
     try {
@@ -298,6 +482,7 @@ const updateProductionOrder = async (idProductionOrder, dataToUpdate) => {
 };
 
 const updateProductionOrderStep = async (idProductionOrder, idProductionOrderDetail, stepData) => {
+    // ... (sin cambios)
     const t = await sequelize.transaction();
     try {
         const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
@@ -356,123 +541,6 @@ const updateProductionOrderStep = async (idProductionOrder, idProductionOrderDet
         if (t && !t.finished) { try { await t.rollback(); } catch (rbError) {} }
         if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
         throw new ApplicationError(`Error al actualizar el paso: ${error.message}`);
-    }
-};
-
-const finalizeProductionOrder = async (idProductionOrder, finalizeData) => {
-    const t = await sequelize.transaction();
-    try {
-        const order = await productionOrderRepo.findOrderById(idProductionOrder, t);
-        if (!order) {
-            await t.rollback();
-            throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`);
-        }
-        
-        // 1. Desestructurar TODOS los campos esperados del frontend
-        const {
-            finalQuantityProduct,
-            finishedProductWeight,
-            finishedProductWeightUnit,
-            inputFinalWeightUnused,
-            inputFinalWeightUnusedUnit,
-            observations
-        } = finalizeData;
-
-        // 2. Construir el payload de actualización de forma segura
-        const updateData = {
-            status: 'COMPLETED',
-            // Usa las observaciones de finalización; si no hay, mantiene las existentes.
-            observations: observations || order.observations 
-        };
-
-        // 3. Procesar y añadir cada campo numérico y su unidad condicionalmente
-        if (finalQuantityProduct !== null && finalQuantityProduct !== undefined) {
-            updateData.finalQuantityProduct = parseFloat(finalQuantityProduct);
-        }
-
-        if (finishedProductWeight !== null && finishedProductWeight !== undefined && String(finishedProductWeight).trim() !== '') {
-            const weight = parseFloat(finishedProductWeight);
-            if (!isNaN(weight) && weight >= 0) {
-                updateData.finishedProductWeight = weight;
-                // La unidad solo se guarda si el peso es mayor que 0
-                updateData.finishedProductWeightUnit = weight > 0 ? (finishedProductWeightUnit || 'kg') : null;
-            }
-        } else {
-             updateData.finishedProductWeight = null;
-             updateData.finishedProductWeightUnit = null;
-        }
-
-        if (inputFinalWeightUnused !== null && inputFinalWeightUnused !== undefined && String(inputFinalWeightUnused).trim() !== '') {
-            const unusedWeight = parseFloat(inputFinalWeightUnused);
-            if (!isNaN(unusedWeight) && unusedWeight >= 0) {
-                updateData.inputFinalWeightUnused = unusedWeight;
-                // La unidad solo se guarda si el peso es mayor que 0
-                updateData.inputFinalWeightUnusedUnit = unusedWeight > 0 ? (inputFinalWeightUnusedUnit || 'kg') : null;
-            }
-        } else {
-            updateData.inputFinalWeightUnused = null;
-            updateData.inputFinalWeightUnusedUnit = null;
-        }
-
-        console.log(`[SERVICE - finalizeProductionOrder] Payload final para actualizar:`, updateData);
-        
-        // 4. Llamar al repositorio con el objeto de actualización completo
-        await productionOrderRepo.updateOrder(idProductionOrder, updateData, t);
-        
-        await t.commit();
-        
-        // 5. Devolver la orden completa y actualizada
-        return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
-
-    } catch (error) {
-        if (t && !t.finished) {
-            try { await t.rollback(); } catch (rbError) { console.error("Error en rollback de finalización:", rbError); }
-        }
-        // Propagar el error para que el controlador lo maneje
-        if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
-        throw new ApplicationError(`Error al finalizar la orden de producción: ${error.message}`);
-    }
-};
-
-const changeProductionOrderStatus = async (idProductionOrder, newStatus, observationsForChange) => {
-    const t = await sequelize.transaction();
-    try {
-        const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
-        if (!order) { await t.rollback(); throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`); }
-
-        const updatePayload = { status: newStatus };
-        if (observationsForChange) {
-            updatePayload.observations = (order.observations || '') + `\n[Cambio a ${newStatus}]: ${observationsForChange}`;
-        }
-
-        await productionOrderRepo.updateOrder(idProductionOrder, updatePayload, t);
-        await t.commit();
-        return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
-    } catch (error) {
-        if (t && !t.finished) { try { await t.rollback(); } catch (rbError) {} }
-        if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
-        throw new ApplicationError(`Error al cambiar estado: ${error.message}`);
-    }
-};
-
-const deleteProductionOrder = async (idProductionOrder) => {
-    const t = await sequelize.transaction();
-    try {
-        const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
-        if (!order) { await t.rollback(); throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`); }
-        
-        if (['IN_PROGRESS', 'COMPLETED'].includes(order.status)) {
-            await t.rollback();
-            throw new BadRequestError(`No se puede eliminar una orden en estado: ${order.status}.`);
-        }
-
-        await productionOrderRepo.deleteOrderById(idProductionOrder, t);
-        await t.commit();
-        return { message: "Orden de producción eliminada exitosamente." };
-    } catch (error) {
-        if (t && !t.finished) { try { await t.rollback(); } catch (rbError) {} }
-        if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
-        throw new ApplicationError(`Error al eliminar: ${error.message}`);
     }
 };
 
