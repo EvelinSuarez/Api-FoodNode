@@ -8,7 +8,7 @@
     "dev": "nodemon app.js",
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "npx sequelize-cli db:seed:all",
-    "vercel-build": "npm run migrate"
+    "build": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
   },
   "keywords": [],
   "author": "",
