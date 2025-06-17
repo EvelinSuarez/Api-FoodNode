@@ -6,20 +6,27 @@ const app = express();
 require("dotenv").config();
 
 // --- CONFIGURACIÓN DE CORS PARA VERCEL ---
+const whitelist = [
+  'https://food-in-production-react.vercel.app', // Tu frontend en producción
+  'http://localhost:3000', // Tu frontend en desarrollo local (si usas puerto 3000)
+  'http://localhost:5173'  // Tu frontend en desarrollo local con Vite (puerto común)
+];
+
 const corsOptions = {
+  // La función origin comprueba si quien hace la petición está en nuestra lista blanca
   origin: function (origin, callback) {
-    // Permite peticiones que vienen de la URL del frontend definida en la variable de entorno,
-    // y también peticiones sin 'origin' (como las de Postman, Insomnia, o apps móviles).
-    if (!origin || origin === process.env.FRONTEND_URL) {
+    if (whitelist.indexOf(origin) !== -1 || !origin) {
+      // Si está en la lista (o es una petición sin origen como Postman), le damos permiso
       callback(null, true);
     } else {
-      callback(new Error('No permitido por la política de CORS'));
+      // Si no está en la lista, denegamos el acceso
+      callback(new Error('Acceso denegado por la política de CORS'));
     }
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Métodos HTTP permitidos
+  allowedHeaders: ['Content-Type', 'Authorization'] // Cabeceras que permitimos en las peticiones
 };
+
 
 app.use(cors(corsOptions));
 //----------------------------------------------
@@ -96,15 +103,19 @@ console.log("BACKEND: Todas las rutas principales montadas.");
 
 // --- RUTA RAÍZ PARA VERIFICACIÓN ---
 // Esto te permite visitar https://api-food-node.vercel.app y ver si está en línea.
+// =================================================================
+// RUTAS DE VERIFICACIÓN Y MANEJO DE ERRORES
+// =================================================================
 app.get("/", (req, res) => {
     res.status(200).json({ message: "API de FoodNode está en línea y funcionando." });
 });
 
-// --- Manejo de Errores ---
+// --- Manejador para rutas no encontradas (404) ---
 app.use((req, res, next) => {
   res.status(404).json({ message: "Recurso no encontrado. Verifica la URL y el método HTTP." });
 });
 
+// --- Manejador de errores global ---
 app.use((err, req, res, next) => {
   console.error("ERROR GLOBAL:", err.stack);
   res.status(err.status || 500).json({
@@ -112,5 +123,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// --- Exportamos la app para que Vercel la pueda usar ---
-module.exports = app;
+// =================================================================
+// ARRANQUE DEL SERVIDOR (CRÍTICO PARA VERCEL)
+// =================================================================
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+});
