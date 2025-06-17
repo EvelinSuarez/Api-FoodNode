@@ -10,6 +10,8 @@
     "seed": "npx sequelize-cli db:seed:all",
     "setup": "npm run migrate && npm run seed",
     "postinstall": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+    
+    
   },
   "keywords": [],
   "author": "",
