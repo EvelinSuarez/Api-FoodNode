@@ -1,27 +1,15 @@
-// config/config.js
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 
-// --- Ruta al certificado CA ---
-// Construye la ruta al archivo ca.pem que debe estar en esta misma carpeta (config/)
-const caPath = path.join(__dirname, 'ca.pem');
+const isVercel = process.env.VERCEL === '1'; // Vercel inyecta esta variable automáticamente
 
-// --- Verificación Crítica ---
-// Si el archivo ca.pem no existe, sequelize-cli fallará.
-// Este error es más claro que el que daría Sequelize.
-if (!fs.existsSync(caPath)) {
-    throw new Error(`ERROR CRÍTICO: El archivo del certificado 'ca.pem' no se encuentra en la carpeta 'config'. Descárgalo desde Aiven y colócalo aquí antes de ejecutar migraciones.`);
-}
-
-// Leemos el contenido del certificado una sola vez para usarlo en ambas configuraciones.
-const caCert = fs.readFileSync(caPath);
+// Si estamos en Vercel, usamos el CA desde variable de entorno
+const caCert = isVercel
+  ? Buffer.from(process.env.DB_CA, 'base64').toString('utf-8')
+  : fs.readFileSync(path.join(__dirname, 'ca.pem'));
 
 module.exports = {
-  /**
-   * Configuración para el entorno de DESARROLLO.
-   * Lee las variables de tu archivo .env para conectarse a Aiven.
-   */
   development: {
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -32,19 +20,11 @@ module.exports = {
     dialectOptions: {
       ssl: {
         require: true,
-        // Usamos 'true' porque estamos proveyendo el certificado CA correcto.
-        // Esto es más seguro que 'false'.
-        rejectUnauthorized: true, 
+        rejectUnauthorized: true,
         ca: caCert
       }
     }
   },
-
-  /**
-   * Configuración para el entorno de PRODUCCIÓN.
-   * Por ahora, la configuramos igual que la de desarrollo, apuntando a Aiven.
-   * Cuando despliegues tu app, las variables de entorno vendrán de tu proveedor de hosting.
-   */
   production: {
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
