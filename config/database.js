@@ -1,24 +1,25 @@
-// config/database.js
+// config/database.js (VERSIÓN FINAL PARA VERCEL)
+
 const { Sequelize } = require("sequelize");
-const fs = require("fs"); // Módulo para leer archivos del sistema
-const path = require("path"); // Módulo para manejar rutas de archivos
+const mysql2 = require('mysql2'); // Importamos mysql2 explícitamente
 require("dotenv").config();
 
 // --- Verificación de variables de entorno ---
-const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_DATABASE', 'DB_PORT'];
+const requiredEnvVars = [
+    'DB_HOST',
+    'DB_USER',
+    'DB_PASSWORD',
+    'DB_DATABASE',
+    'DB_PORT',
+    'AIVEN_DB_CA' // Añadimos la nueva variable del certificado
+];
+
 for (const varName of requiredEnvVars) {
     if (!process.env[varName]) {
-        throw new Error(`ERROR: La variable de entorno ${varName} no está definida. Revisa tu archivo .env`);
+        // Este error solo se mostrará en local si falta algo en .env
+        // En Vercel, si falta una variable, el build fallará, lo cual es bueno.
+        throw new Error(`ERROR: La variable de entorno ${varName} no está definida.`);
     }
-}
-
-// --- Ruta al certificado CA ---
-// Construye la ruta al archivo ca.pem que debe estar en esta misma carpeta (config/)
-const caPath = path.join(__dirname, 'ca.pem');
-
-// Verifica si el certificado existe antes de intentar conectarse
-if (!fs.existsSync(caPath)) {
-    throw new Error(`ERROR: El archivo del certificado 'ca.pem' no se encuentra en la carpeta 'config'. Descárgalo desde la consola de Aiven.`);
 }
 
 // --- Configuración de Sequelize ---
@@ -29,30 +30,41 @@ const sequelize = new Sequelize(
     {
         host: process.env.DB_HOST,
         port: process.env.DB_PORT,
-        dialect: "mysql", // Asegúrate de que tu base de datos en Aiven sea MySQL
-        logging: false, // Ponlo en 'console.log' para ver las queries en la terminal
+        dialect: "mysql",
+        // SOLUCIÓN PARA MYSQL2: Pasamos el módulo directamente
+        dialectModule: mysql2,
+        logging: false,
 
         // Opciones específicas del dialecto para la conexión SSL
         dialectOptions: {
             ssl: {
-                // Indica que SSL es requerido
-                require: true, 
-                // Evita errores de "self-signed certificate" proveyendo el CA de Aiven
-                rejectUnauthorized: true, 
-                // Lee el archivo del certificado que descargaste
-                ca: fs.readFileSync(caPath).toString(),
+                // SOLUCIÓN PARA SSL: Usamos el certificado desde la variable de entorno
+                ca: process.env.AIVEN_DB_CA,
+                rejectUnauthorized: true, // Esto es correcto, mantenlo así.
             },
         },
+        
+        // Es buena práctica añadir configuración de pool en producción
+        pool: {
+            max: 5,
+            min: 0,
+            acquire: 30000,
+            idle: 10000
+        }
     }
 );
 
-// --- Función para probar la conexión ---
+// --- Función para probar la conexión (Opcional en producción, pero útil) ---
+// La dejamos como está, si falla, se verá en los logs de Vercel.
 async function testConnection() {
     try {
         await sequelize.authenticate();
         console.log("✅ INFO: Conexión a la base de datos de Aiven establecida exitosamente.");
     } catch (error) {
-        console.error("❌ ERROR: No se pudo conectar a la base de datos. Revisa tus credenciales, la configuración de SSL y que el servicio en Aiven esté activo.", error);
+        // En Vercel, este error hará que la función serverless falle, lo cual es el comportamiento esperado.
+        console.error("❌ ERROR: No se pudo conectar a la base de datos.", error.message);
+        // Lanzamos el error para que el proceso falle y Vercel lo reporte.
+        throw new Error("Fallo en la conexión a la base de datos."); 
     }
 }
 
