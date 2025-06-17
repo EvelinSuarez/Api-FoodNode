@@ -126,7 +126,7 @@ app.use((err, req, res, next) => {
 // =================================================================
 // ARRANQUE DEL SERVIDOR (CRÍTICO PARA VERCEL)
 // =================================================================
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.DB_PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
