@@ -1,13 +1,17 @@
 {
   "name": "api-foodnode",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && node server.js",
-    "dev": "nodemon server.js",
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "migrate": "npx sequelize-cli db:migrate",
-    "seed": "npx sequelize-cli db:seed:all"
+    "seed": "npx sequelize-cli db:seed:all",
+    "setup": "npm run migrate && npm run seed",
+    "postinstall": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+    
+    
   },
   "keywords": [],
   "author": "",

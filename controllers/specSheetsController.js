@@ -6,6 +6,15 @@ const specSheetService = require("../services/specSheetsService");
 // <<<--- ¡IMPORTANTE! Importamos los modelos necesarios para el 'include' --- >>>
 const { SpecSheet, Product, SpecSheetSupply, Supply, SpecSheetProcess, Process } = require('../models');
 
+const getAllSpecSheetsWithCosts = async (req, res) => {
+  try {
+      const specSheetsWithCosts = await specSheetService.getAllSpecSheetsWithCosts();
+      res.status(200).json(specSheetsWithCosts);
+  } catch (error) {
+      console.error("Controlador[SpecSheet]: Error en getAllSpecSheetsWithCosts:", error.message);
+      res.status(500).json({ message: "Error al obtener las fichas técnicas con costos.", details: error.message });
+  }
+};
 
 const createSpecSheet = async (req, res) => {
   const errors = validationResult(req);
@@ -178,5 +187,6 @@ module.exports = {
   deleteSpecSheet,
   changeSpecSheetStatus,
   getSpecSheetsByProductId, // Nombre preferido para claridad con la ruta
-  getSpecSheetsByProduct: getSpecSheetsByProductId, // Alias para compatibilidad con tu código actual
+  getSpecSheetsByProduct: getSpecSheetsByProductId, // Alias para compatibilidad con tu código actual,
+  getAllSpecSheetsWithCosts,
 };

@@ -69,6 +69,14 @@ const createProductValidation = [
     .withMessage("El nombre del producto debe tener al menos 3 caracteres y maximo 30 caracteres "),
 ]
 
+const adjustStockValidation = [
+  param("id").isInt({ min: 1 }).withMessage("El ID del producto debe ser un número entero positivo.").custom(validateProductExistence),
+  body("quantity").isFloat({ gt: 0 }).withMessage("La cantidad debe ser un número positivo."),
+  body("type").isIn(['entrada', 'salida']).withMessage("El tipo de ajuste debe ser 'entrada' o 'salida'."),
+  body("reason").trim().notEmpty().withMessage("Se requiere un motivo para el ajuste.")
+];
+
+
 // Validación para actualizar producto
 const updateProductValidation = [
   ...productBaseValidation,
@@ -129,5 +137,6 @@ module.exports = {
   getProductByIdValidation,
   changeStateValidation,
   searchProductValidation,
-  getProductsBySupplierValidation 
+  getProductsBySupplierValidation,
+  adjustStockValidation 
 }

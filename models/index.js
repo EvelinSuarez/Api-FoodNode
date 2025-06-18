@@ -138,6 +138,19 @@ if (modelosExisten(ProductionOrder, Supply, ProductionOrderSupply)) {
 }
 
 // --- Asociaciones de Compras ---
+if (modelosExisten(Product, Supply)) {
+    // Un producto de inventario puede tener una entrada en el catálogo de insumos
+    Product.hasOne(Supply, { 
+        foreignKey: 'idProduct', // Le dice a Supply que use la columna idProduct
+        as: 'supplyCatalogInfo' 
+    });
+    
+    // Un insumo del catálogo pertenece a un producto para su gestión de stock
+    Supply.belongsTo(Product, { 
+        foreignKey: 'idProduct', // Le dice a Supply que use la columna idProduct
+        as: 'productInventory' 
+    });
+}
 if (modelosExisten(Supply, PurchaseDetail)) {
     Supply.hasMany(PurchaseDetail, { foreignKey: { name: 'idSupply', allowNull: false }, as: 'purchaseDetailsForSupply' });
     PurchaseDetail.belongsTo(Supply, { foreignKey: { name: 'idSupply', allowNull: false }, as: 'supply' }); 

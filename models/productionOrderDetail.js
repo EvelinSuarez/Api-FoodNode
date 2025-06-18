@@ -1,4 +1,6 @@
-// models/productionOrderDetail.js
+// Archivo: models/productionOrderDetail.js
+
+'use strict';
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -9,6 +11,33 @@ const ProductionOrderDetail = sequelize.define('ProductionOrderDetail', {
         autoIncrement: true,
         allowNull: false
     },
+    // --- Claves Foráneas ---
+    idProductionOrder: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'ProductionOrders',
+            key: 'idProductionOrder'
+        }
+    },
+    idProcess: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'Processes',
+            key: 'idProcess'
+        }
+    },
+    // --- ESTA ES LA COLUMNA CRUCIAL QUE AÑADIMOS ---
+    idEmployeeAssigned: {
+        type: DataTypes.INTEGER,
+        allowNull: true, // Es 'true' porque un paso puede no tener empleado asignado al inicio
+        references: {
+            model: 'Employees', // Asegúrate que tu tabla se llame 'Employees'
+            key: 'idEmployee'
+        }
+    },
+    // --- Fin de Claves Foráneas ---
     processOrder: {
         type: DataTypes.INTEGER,
         allowNull: false
@@ -21,7 +50,7 @@ const ProductionOrderDetail = sequelize.define('ProductionOrderDetail', {
         type: DataTypes.TEXT,
         allowNull: true
     },
-    estimatedTimeMinutes: { // <--- CAMPO AÑADIDO/RECOMENDADO (Snapshot del tiempo para esta orden/paso)
+    estimatedTimeMinutes: {
         type: DataTypes.INTEGER,
         allowNull: true
     },

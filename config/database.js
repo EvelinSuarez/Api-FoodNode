@@ -1,50 +1,72 @@
-// config/database.js
-const { Sequelize } = require('sequelize');
-require('dotenv').config(); // Asegúrate de que las variables de entorno se carguen
+// config/database.js (VERSIÓN FINAL PARA VERCEL)
 
-// Verifica que la URL exista
-if (!process.env.MYSQL_URL) {
-    throw new Error("ERROR: La variable de entorno MYSQL_URL no está definida. Revisa tu archivo .env");
+const { Sequelize } = require("sequelize");
+
+const path = require('path');
+
+// Cargar variables desde .env.local si estamos en desarrollo
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 }
 
-// Sequelize se inicializa solo con la URL de conexión
-const sequelize = new Sequelize(process.env.MYSQL_URL, {
-    dialect: 'mysql',
-    logging: false, // Puedes poner console.log para ver las queries SQL
-});
+// Verificación de variables (reutilizamos la lógica)
+const requiredEnvVars = [
+  'DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_DATABASE', 'DB_PORT'
+];
+// En producción, también requerimos el certificado CA.
+if (process.env.NODE_ENV === 'production') {
+  requiredEnvVars.push('AIVEN_DB_CA');
+}
 
+for (const varName of requiredEnvVars) {
+  if (process.env[varName] === undefined) {
+    throw new Error(`config/database.js: La variable de entorno requerida '${varName}' no está definida.`);
+  }
+}
+
+// Configuración de SSL solo para producción
+const dialectOptions = process.env.NODE_ENV === 'production'
+  ? {
+      ssl: {
+        ca: process.env.AIVEN_DB_CA,
+        rejectUnauthorized: true,
+      },
+    }
+  : {}; // En desarrollo, es un objeto vacío
+
+const sequelize = new Sequelize(
+  process.env.DB_DATABASE,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    dialect: "mysql",
+    dialectModule: require('mysql2'), // Lo dejamos para ambos entornos por consistencia
+    logging: false,
+    dialectOptions, // Aplicamos las opciones de SSL
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  }
+);
+// --- Función para probar la conexión (Opcional en producción, pero útil) ---
+// La dejamos como está, si falla, se verá en los logs de Vercel.
 async function testConnection() {
     try {
         await sequelize.authenticate();
-        console.log('INFO: Conexión a la base de datos establecida exitosamente.');
+        console.log("✅ INFO: Conexión a la base de datos de Aiven establecida exitosamente.");
     } catch (error) {
-        console.error('ERROR: No se pudo conectar a la base de datos:', error);
+        // En Vercel, este error hará que la función serverless falle, lo cual es el comportamiento esperado.
+        console.error("❌ ERROR: No se pudo conectar a la base de datos.", error.message);
+        // Lanzamos el error para que el proceso falle y Vercel lo reporte.
+        throw new Error("Fallo en la conexión a la base de datos."); 
     }
 }
 
 testConnection();
 
 module.exports = sequelize;
-
-// config/database.js
-// const { Sequelize } = require('sequelize');
-
-// // Define la conexión directamente aquí
-// const sequelize = new Sequelize('food_node', 'root','', {
-//     host: 'localhost',
-//     dialect: 'mysql',
-//     logging: false,
-//     logging: console.log,
-// });
-
-// async function testConnection() {
-//     try {
-//         await sequelize.authenticate();
-//         console.log('INFO: Conexión a la base de datos establecida exitosamente.');
-//     } catch (error) {
-//         console.error('ERROR: No se pudo conectar a la base de datos:', error);
-//     }
-// }
-// testConnection(); // Llama a la función de prueba
-
-// module.exports = sequelize;

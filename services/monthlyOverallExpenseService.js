@@ -96,7 +96,50 @@ const getTotalExpenseByMonth = async (year, month) => {
     return monthlyOverallExpenseRepository.getTotalExpenseByMonth(year, month);
 };
 
-// getTotalExpenseByCategoryAndMonth para la cabecera ya no aplica.
+const calculateTotalExpenseByTypeAndMonth = async (year, month, idExpenseType) => {
+    const startDate = dayjs(`${year}-${month}-01`).startOf('month').toDate();
+    const endDate = dayjs(startDate).endOf('month').toDate();
+
+    try {
+        // Usamos el método SUM de Sequelize, es el más eficiente y seguro.
+        const total = await MonthlyExpenseItem.sum(
+            'amount', // Columna que queremos sumar
+            {
+                // Unimos las tablas para poder filtrar
+                include: [
+                    {
+                        model: MonthlyOverallExpense,
+                        as: 'monthlyOverallExpense', // <--- VERIFICA ESTE ALIAS EN models/index.js
+                        required: true, // INNER JOIN
+                        attributes: [], // No necesitamos columnas de esta tabla
+                        where: {
+                            expenseMonth: {
+                                [Op.between]: [startDate, endDate],
+                            },
+                        },
+                    },
+                    {
+                        model: SpecificConceptSpent,
+                        as: 'specificConceptSpent', // <--- VERIFICA ESTE ALIAS EN models/index.js
+                        required: true, // INNER JOIN
+                        attributes: [],
+                        where: {
+                            idExpenseCategory: parseInt(idExpenseType),
+                        },
+                    },
+                ],
+            }
+        );
+
+        // El método `sum` devuelve `null` si no hay resultados, o el número total.
+        return { totalExpense: total || 0 };
+
+    } catch (error) {
+        console.error("Error en servicio al calcular gasto total por tipo:", error);
+        // Lanza un error más específico para que el controlador lo maneje
+        throw new Error("No se pudo calcular el gasto total por tipo y mes.");
+    }
+};
 
 module.exports = {
     createMonthlyOverallExpense,
@@ -106,5 +149,5 @@ module.exports = {
     deleteMonthlyOverallExpense,
     changeStateMonthlyOverallExpense,
     getTotalExpenseByMonth,
-    // getTotalExpenseByCategoryAndMonth, // Comentado/Eliminado
+    calculateTotalExpenseByTypeAndMonth, 
 };

@@ -12,22 +12,34 @@ const Product = sequelize.define('Product', {
         type: DataTypes.STRING(100), 
         allowNull: false 
     },
-    // NUEVO: Campo para el stock mínimo del producto/insumo
-    minStock: {
+    // NUEVO: Cantidad actual en inventario
+    currentStock: {
         type: DataTypes.INTEGER,
-        allowNull: true, // Permitimos que sea nulo si no se especifica
+        allowNull: false, // Es importante que siempre tenga un valor
         defaultValue: 0,
         validate: {
-            min: 0 // El valor no puede ser negativo
+            min: 0 // El stock no puede ser negativo
         }
     },
-    // NUEVO: Campo para el stock máximo del producto/insumo
-    maxStock: {
+    stockForSale: { // Este es "Stock de Producto Terminado"
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0, // Inicia en 0 como pediste
+    },  
+    minStock: {
         type: DataTypes.INTEGER,
-        allowNull: true, // Permitimos que sea nulo si no se especifica
+        allowNull: true,
         defaultValue: 0,
         validate: {
-            min: 0 // El valor no puede ser negativo
+            min: 0
+        }
+    },
+    maxStock: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0,
+        validate: {
+            min: 0
         }
     },
     status: { 

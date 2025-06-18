@@ -1,11 +1,20 @@
+// Archivo: services/registroCompraService.js
+// VERSIÓN COMPLETA Y FINAL
+
 const registerPurchaseRepository = require('../repositories/registerPurchaseRepository');
-const { RegisterPurchase, Provider, Supply, sequelize, PurchaseDetail } = require('../models');
+const { 
+    RegisterPurchase, 
+    Provider, 
+    Supply, 
+    sequelize, 
+    PurchaseDetail
+} = require('../models');
 const { Op } = require('sequelize');
 const { NotFoundError, BadRequestError } = require('../utils/customErrors');
 
 /**
  * Recalcula y guarda los montos totales para una cabecera de compra.
- * (Esta función no necesita cambios)
+ * Esta función no necesita cambios.
  */
 const recalculateAndSaveTotals = async (purchaseId, transaction) => {
     const purchaseInstance = await RegisterPurchase.findByPk(purchaseId, {
@@ -18,14 +27,11 @@ const recalculateAndSaveTotals = async (purchaseId, transaction) => {
         return; 
     }
 
-    let calculatedSubtotal = 0;
-    if (purchaseInstance.details && purchaseInstance.details.length > 0) {
-        calculatedSubtotal = purchaseInstance.details.reduce((sum, detail) => {
-            const detailSubtotal = parseFloat(detail.subtotal);
-            return sum + (isNaN(detailSubtotal) ? 0 : detailSubtotal);
-        }, 0);
-    }
+    const calculatedSubtotal = purchaseInstance.details.reduce((sum, detail) => {
+        return sum + (Number(detail.subtotal) || 0);
+    }, 0);
     
+    // Asumiendo que no hay impuestos/descuentos por ahora, el total es igual al subtotal.
     const calculatedTotal = calculatedSubtotal;
 
     await purchaseInstance.update({
@@ -34,7 +40,9 @@ const recalculateAndSaveTotals = async (purchaseId, transaction) => {
     }, { transaction });
 };
 
-// <<< --- ESTA ES LA FUNCIÓN CON LA LÓGICA CLAVE MODIFICADA --- >>>
+/**
+ * Procesa una compra completa, actualizando el stock directamente en los insumos.
+ */
 const processFullPurchase = async (purchaseDataFromFrontend) => {
     const {
         idProvider,
@@ -46,70 +54,58 @@ const processFullPurchase = async (purchaseDataFromFrontend) => {
         details
     } = purchaseDataFromFrontend;
 
-    // --- Validaciones iniciales (sin cambios) ---
     if (!idProvider) throw new BadRequestError('El proveedor es obligatorio.');
-    const providerExists = await Provider.findByPk(idProvider);
-    if (!providerExists) throw new NotFoundError(`Proveedor con ID ${idProvider} no encontrado.`);
-    if (!providerExists.status) throw new BadRequestError(`El proveedor '${providerExists.company}' no está activo.`);
-
     if (!details || !Array.isArray(details) || details.length === 0) {
         throw new BadRequestError("Se requiere al menos un detalle de compra.");
     }
     
-    const supplyIds = details.map(d => parseInt(d.idSupply, 10)).filter(id => !isNaN(id));
-    if (supplyIds.length !== details.length) {
-        throw new BadRequestError("ID de insumo inválido o faltante en uno de los detalles.");
-    }
-    
-    const existingSupplies = await Supply.findAll({ where: { idSupply: { [Op.in]: supplyIds }, status: true } });
-    if (existingSupplies.length !== supplyIds.length) {
-        const foundIds = existingSupplies.map(s => s.idSupply);
-        const missingOrInactiveIds = supplyIds.filter(id => !foundIds.includes(id));
-        throw new BadRequestError(`Insumos no encontrados o inactivos: IDs ${missingOrInactiveIds.join(', ')}.`);
-    }
-    
     const t = await sequelize.transaction();
     try {
-        // 1. Buscar una compra existente PENDIENTE para el proveedor y categoría
-        let purchaseHeader = await RegisterPurchase.findOne({
+        const providerExists = await Provider.findByPk(idProvider, { transaction: t });
+        if (!providerExists) throw new NotFoundError(`Proveedor con ID ${idProvider} no encontrado.`);
+        if (!providerExists.status) throw new BadRequestError(`El proveedor '${providerExists.company}' no está activo.`);
+
+        const PENDING_STATUS = 'PENDIENTE';
+
+        // 1. Buscar o crear la cabecera de la compra.
+        const [purchaseHeader, created] = await RegisterPurchase.findOrCreate({
             where: {
                 idProvider: Number(idProvider),
                 category: String(category).toUpperCase(),
-                status: 'PENDIENTE'
+                status: PENDING_STATUS
+            },
+            defaults: {
+                purchaseDate,
+                invoiceNumber: invoiceNumber || null,
+                receptionDate: receptionDate || null,
+                observations: observations || null,
+                status: PENDING_STATUS
             },
             transaction: t
         });
 
-        // 2. Si no existe, crear una nueva cabecera. Si existe, usarla.
-        if (!purchaseHeader) {
-            const purchaseHeaderInput = {
-                idProvider: Number(idProvider),
-                purchaseDate,
-                category: String(category).toUpperCase(),
-                invoiceNumber: invoiceNumber || null,
-                receptionDate: receptionDate || null,
-                observations: observations || null,
-                status: 'PENDIENTE'
-            };
-            purchaseHeader = await RegisterPurchase.create(purchaseHeaderInput, { transaction: t });
-        } else {
+        // Si la compra ya existía (no fue 'created'), actualizamos sus datos.
+        if (!created) {
             await purchaseHeader.update({
                 purchaseDate,
                 invoiceNumber: invoiceNumber || purchaseHeader.invoiceNumber,
+                receptionDate: receptionDate || purchaseHeader.receptionDate,
                 observations: observations || purchaseHeader.observations,
             }, { transaction: t });
         }
-
-        // --- INICIO DE LA MODIFICACIÓN CRÍTICA ---
-        // 3. Procesar y AÑADIR los detalles.
-        // Se elimina la lógica que busca un detalle existente para actualizarlo.
-        // AHORA, SIEMPRE SE CREA UN NUEVO REGISTRO de PurchaseDetail por cada ítem.
-        // Esto preserva el historial de cada "evento de compra" individual.
+        
+        // 2. Procesar detalles, crearlos y actualizar el stock y precio DEL INSUMO.
         for (const detail of details) {
             const quantity = Number(detail.quantity);
             const unitPrice = Number(detail.unitPrice);
             const supplyId = Number(detail.idSupply);
 
+            const supplyToUpdate = await Supply.findByPk(supplyId, { transaction: t });
+            if (!supplyToUpdate) {
+                throw new NotFoundError(`El insumo con ID ${supplyId} no fue encontrado en el catálogo.`);
+            }
+
+            // Crear el registro del detalle de la compra
             await PurchaseDetail.create({
                 idRegisterPurchase: purchaseHeader.idRegisterPurchase,
                 idSupply: supplyId,
@@ -118,14 +114,23 @@ const processFullPurchase = async (purchaseDataFromFrontend) => {
                 subtotal: quantity * unitPrice
             }, { transaction: t });
             
-            // Actualizar el lastPrice en el modelo Supply sigue siendo útil
+            // Incrementar el 'stock' en la tabla 'Supplies'
+            await Supply.increment('stock', {
+                by: quantity,
+                where: { idSupply: supplyId },
+                transaction: t
+            });
+            
+            console.log(`[SERVICIO-COMPRA] Stock del insumo '${supplyToUpdate.supplyName}' (ID: ${supplyId}) incrementado en ${quantity}.`);
+
+            // Actualizar el último precio en el catálogo de insumos
             await Supply.update({ lastPrice: unitPrice }, { where: { idSupply: supplyId }, transaction: t });
         }
-        // --- FIN DE LA MODIFICACIÓN CRÍTICA ---
         
-        // 4. Recalcular los totales de la cabecera de compra.
+        // 3. Recalcular y guardar los totales en la cabecera de la compra.
         await recalculateAndSaveTotals(purchaseHeader.idRegisterPurchase, t);
         
+        // 4. Confirmar todos los cambios en la base de datos.
         await t.commit();
         
         return registerPurchaseRepository.getRegisterPurchaseById(purchaseHeader.idRegisterPurchase);
@@ -133,7 +138,7 @@ const processFullPurchase = async (purchaseDataFromFrontend) => {
     } catch (error) {
         await t.rollback();
         console.error("Error en servicio processFullPurchase:", error);
-        throw error;
+        throw error; // Re-lanza el error para que el controlador lo maneje
     }
 };
 
@@ -168,13 +173,45 @@ const updateHeader = async (idPurchase, headerDataToUpdate) => {
 };
 
 const deleteById = async (id) => {
-    const purchase = await RegisterPurchase.findByPk(id);
-    if (!purchase) throw new NotFoundError(`Compra con ID ${id} no encontrada.`);
-    
-    const deleted = await registerPurchaseRepository.deleteRegisterPurchaseAndDetails(id);
-    if (!deleted) throw new Error("La compra no pudo ser eliminada.");
+    const t = await sequelize.transaction();
+    try {
+        const purchase = await RegisterPurchase.findByPk(id, {
+            include: [{ model: PurchaseDetail, as: 'details' }],
+            transaction: t
+        });
 
-    return { message: "Compra eliminada exitosamente." };
+        if (!purchase) {
+            await t.rollback();
+            throw new NotFoundError(`Compra con ID ${id} no encontrada.`);
+        }
+
+        if(purchase.status !== 'PENDIENTE') {
+            await t.rollback();
+            throw new BadRequestError("No se puede eliminar una compra que ya ha sido procesada o pagada. Considere anularla.");
+        }
+        
+        // Revertir el stock de insumos al eliminar la compra
+        for (const detail of purchase.details) {
+            await Supply.decrement('stock', {
+                by: detail.quantity,
+                where: { idSupply: detail.idSupply },
+                transaction: t
+            });
+            console.log(`[DELETE-COMPRA] Stock del insumo (ID: ${detail.idSupply}) revertido en ${detail.quantity}.`);
+        }
+        
+        // Eliminar los registros de la compra y sus detalles
+        const deleted = await registerPurchaseRepository.deleteRegisterPurchaseAndDetails(id, t);
+        if (!deleted) {
+            throw new Error("La compra no pudo ser eliminada.");
+        }
+        
+        await t.commit();
+        return { message: "Compra eliminada exitosamente." };
+    } catch (error) {
+        await t.rollback();
+        throw error;
+    }
 };
 
 const updatePurchaseStatus = async (idPurchase, { status, paymentStatus }) => {
@@ -202,11 +239,11 @@ const updatePurchaseStatus = async (idPurchase, { status, paymentStatus }) => {
 };
 
 const getProvidersByCategory = async (categoryName) => {
-    const upperCategoryName = categoryName.toUpperCase();
-    if (!RegisterPurchase.ALLOWED_CATEGORIES.includes(upperCategoryName)) {
+    // Suponiendo que el modelo tiene una lista de categorías válidas para validación
+    if (RegisterPurchase.ALLOWED_CATEGORIES && !RegisterPurchase.ALLOWED_CATEGORIES.includes(categoryName.toUpperCase())) {
         throw new BadRequestError(`Categoría '${categoryName}' no es válida.`);
     }
-    return registerPurchaseRepository.getProvidersByCategory(upperCategoryName);
+    return registerPurchaseRepository.getProvidersByCategory(categoryName.toUpperCase());
 };
 
 module.exports = {

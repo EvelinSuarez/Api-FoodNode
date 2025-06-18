@@ -1,11 +1,10 @@
 // repositories/specSheetSupplyRepository.js
 const db = require("../models");
-const { SpecSheetSupply, SpecSheet, Supply, sequelize } = db; // Usar Supply
+const { SpecSheetSupply, SpecSheet, Supply, sequelize } = db;
 const { Op } = require('sequelize');
 
 const create = async (data, transaction = null) => {
   try {
-    // data: { idSpecSheet, idSupply, quantity, unitOfMeasure, notes }
     return await SpecSheetSupply.create(data, { transaction });
   } catch (error) {
     if (error.name === 'SequelizeUniqueConstraintError') {
@@ -19,28 +18,16 @@ const create = async (data, transaction = null) => {
   }
 };
 
-// const findAll = async () => { // Opcional, para el getAllSpecSheetSupplies
-//   return SpecSheetSupply.findAll({
-//     include: [
-//       { model: SpecSheet, as: "specSheetDetails", attributes: ['idSpecSheet', 'specSheetCode'] }, // Ajusta alias
-//       { model: Supply, as: "supplyDetails", attributes: ['idSupply', 'supplyName', 'unitOfMeasure'] }, // Ajusta alias
-//     ],
-//     order: [['updatedAt', 'DESC']]
-//   });
-// };
-
 const findById = async (idSpecSheetSupply) => {
   return SpecSheetSupply.findByPk(parseInt(idSpecSheetSupply), {
     include: [
-      { model: SpecSheet, as: "specSheet", attributes: ['idSpecSheet', 'specSheetCode', 'status'] }, // Asegúrate que 'specSheet' sea el alias correcto
-      { model: Supply, as: "supply", attributes: ['idSupply', 'supplyName', 'unitOfMeasure'] }, // Asegúrate que 'supply' sea el alias correcto
+      { model: SpecSheet, as: "specSheet", attributes: ['idSpecSheet', 'specSheetCode', 'status'] },
+      { model: Supply, as: "supply", attributes: ['idSupply', 'supplyName', 'unitOfMeasure'] },
     ],
   });
 };
 
 const update = async (idSpecSheetSupply, dataToUpdate, transaction = null) => {
-  // dataToUpdate: { quantity, unitOfMeasure, notes }
-  // idSpecSheet e idSupply no se actualizan aquí.
   try {
     const [affectedRows] = await SpecSheetSupply.update(dataToUpdate, {
       where: { idSpecSheetSupply: parseInt(idSpecSheetSupply) },
@@ -69,9 +56,9 @@ const findAllBySpecSheetId = async (idSpecSheet) => {
   return SpecSheetSupply.findAll({
     where: { idSpecSheet: parseInt(idSpecSheet) },
     include: [
-      { model: Supply, as: "supply", attributes: ['idSupply', 'supplyName', 'unitOfMeasure'/*, 'currentStock' (opcional)*/] },
+      { model: Supply, as: "supply", attributes: ['idSupply', 'supplyName', 'unitOfMeasure'] },
     ],
-    order: [['createdAt', 'ASC']] // O por algún otro criterio relevante
+    order: [['createdAt', 'ASC']]
   });
 };
 
@@ -84,14 +71,12 @@ const findAllBySupplyId = async (idSupply) => {
   });
 };
 
-// Funciones para bulk operations usadas por specSheetsService
-const bulkCreate = async (items, options = {}) => { // Cambiado: transaction = null  ->  options = {}
+const bulkCreate = async (items, options = {}) => {
   try {
     if (!items || items.length === 0) return [];
-    // Asegurarse de que 'validate: true' se combine con las opciones existentes
     const bulkCreateOptions = {
       validate: true,
-      ...options // Propaga todas las opciones pasadas, incluyendo 'transaction'
+      ...options
     };
     return await SpecSheetSupply.bulkCreate(items, bulkCreateOptions);
   } catch (error) {
@@ -107,11 +92,15 @@ const bulkCreate = async (items, options = {}) => { // Cambiado: transaction = n
   }
 };
 
+// ===================================================================
+// ===                FUNCIÓN CORREGIDA AQUÍ                     ===
+// ===================================================================
 const destroyBySpecSheetId = async (idSpecSheet, transaction = null) => {
     try {
+        // La transacción debe ser una propiedad DENTRO del objeto de opciones.
         return await SpecSheetSupply.destroy({
             where: { idSpecSheet: parseInt(idSpecSheet) },
-            transaction
+            transaction: transaction // <-- LA CORRECCIÓN
         });
     } catch (error) {
         console.error(`Repo[SpecSheetSupply]: Error al eliminar por idSpecSheet ${idSpecSheet}:`, error);
@@ -121,7 +110,6 @@ const destroyBySpecSheetId = async (idSpecSheet, transaction = null) => {
 
 module.exports = {
   create,
-  // findAll, // Opcional
   findById,
   update,
   destroy,

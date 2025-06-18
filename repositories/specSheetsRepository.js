@@ -43,12 +43,21 @@ const getAllSpecSheets = async (filters = {}) => {
         as: "product",
         attributes: ["idProduct", "productName", "status"]
       },
-      // <-- BLOQUE AÑADIDO: Incluir los insumos necesarios para el cálculo de costos en el dashboard.
       {
+        // ===================================================================
+        // ===        CORRECCIÓN FINAL: Usar el alias correcto           ===
+        // ===================================================================
         model: SpecSheetSupply,
-        as: "specSheetSupplies",
-        // Solo traemos los campos mínimos necesarios para el rendimiento para no sobrecargar la respuesta.
-        attributes: ['idPurchaseDetail', 'quantity'], 
+        // <-- Usamos el alias 'specSheetSupplies' definido en models/index.js
+        as: "specSheetSupplies", 
+        attributes: ['quantity', 'unitOfMeasure'], 
+        include: [
+          {
+            model: Supply,
+            as: "supply",
+            attributes: ['idSupply', 'supplyName'] 
+          }
+        ]
       }
     ],
     order: [['updatedAt', 'DESC'], ['idSpecSheet', 'DESC']]
