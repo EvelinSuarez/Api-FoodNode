@@ -1,45 +1,57 @@
-// config/config.js (VERSIÓN FINAL PARA VERCEL)
-// Este archivo es SOLO para el `sequelize-cli`.
+// config/config.js (VERSIÓN HÍBRIDA FINAL: LOCAL + VERCEL)
 
-// NO USAR DOTENV AQUÍ. Las variables vienen del entorno de Vercel.
-// require('dotenv').config(); // <-- ELIMINA O COMENTA ESTA LÍNEA
+const path = require('path');
 
+// Cargar variables desde .env.local si estamos en desarrollo
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+}
+
+// Verificación de variables para asegurar que todo está configurado
+// Si algo falta, el proceso se detendrá con un error claro.
+const requiredEnvVars = [
+  'DB_USER', 'DB_PASSWORD', 'DB_DATABASE', 'DB_HOST', 'DB_PORT'
+];
+// En producción, también requerimos el certificado CA.
+if (process.env.NODE_ENV === 'production') {
+  requiredEnvVars.push('AIVEN_DB_CA');
+}
+
+for (const varName of requiredEnvVars) {
+  if (process.env[varName] === undefined) {
+    throw new Error(`config/config.js: La variable de entorno requerida '${varName}' no está definida.`);
+  }
+}
+
+// --- Configuración base para todos los entornos ---
+// Esto evita repetir código.
+const baseConfig = {
+  username: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  dialect: "mysql",
+};
+
+// --- Exportación final de los entornos ---
 module.exports = {
-  // El entorno de desarrollo local sigue funcionando igual.
   development: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: "mysql",
+    // En desarrollo, usamos la configuración base.
+    ...baseConfig,
   },
-  
-  // El entorno de test no lo usamos, pero lo dejamos por si acaso.
   test: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: "mysql",
+    // El entorno de test usa la misma configuración base.
+    ...baseConfig,
   },
-  
-  // ESTE ES EL ENTORNO CRÍTICO QUE USA VERCEL
   production: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: "mysql",
-    // Añadimos la configuración de SSL y dialectModule aquí también
-    dialectModule: require('mysql2'), // Le pasamos el driver manualmente
+    // En producción, tomamos la base y añadimos la configuración SSL.
+    ...baseConfig,
+    dialectModule: require('mysql2'), // Carga manual del driver
     dialectOptions: {
       ssl: {
         require: true,
         rejectUnauthorized: true,
-        // Leemos el certificado desde la variable de entorno
         ca: process.env.AIVEN_DB_CA,
       },
     },

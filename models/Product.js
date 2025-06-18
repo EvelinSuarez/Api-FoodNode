@@ -21,6 +21,11 @@ const Product = sequelize.define('Product', {
             min: 0 // El stock no puede ser negativo
         }
     },
+    stockForSale: { // Este es "Stock de Producto Terminado"
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0, // Inicia en 0 como pediste
+    },  
     minStock: {
         type: DataTypes.INTEGER,
         allowNull: true,

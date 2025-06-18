@@ -166,6 +166,16 @@ const getTotalExpenseByMonth = async (req, res) => {
     }
 };
 
+const getTotalExpenseByTypeAndMonth = async (req, res) => {
+    try {
+        const { year, month, idExpenseType } = req.params;
+        const totalData = await expenseService.calculateTotalExpenseByTypeAndMonth(year, month, idExpenseType);
+        res.status(200).json(totalData);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // getTotalExpenseByCategoryAndMonth ya no aplica directamente a la cabecera.
 // Si se requiere, se debe crear una nueva ruta/controlador/servicio que sume los items
 // agrupados por su categoría (SpecificConceptSpent -> ExpenseCategory).
@@ -178,5 +188,6 @@ module.exports = {
     deleteMonthlyOverallExpense,
     changeStateMonthlyOverallExpense,
     getTotalExpenseByMonth,
+    getTotalExpenseByTypeAndMonth
     // getTotalExpenseByCategoryAndMonth, // Comentado/Eliminado
 };

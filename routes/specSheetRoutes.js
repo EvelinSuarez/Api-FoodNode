@@ -3,6 +3,8 @@ const router = express.Router();
 const specSheetController = require("../controllers/specSheetsController");
 const specSheetValidations = require("../middlewares/specSheetsValidations");
 
+router.get("/with-costs", specSheetController.getAllSpecSheetsWithCosts);
+
 // Colocar esta ruta antes de otras rutas que usen parámetros
 router.get(
   "/by-product/:idProduct", // <--- CAMBIO AQUÍ

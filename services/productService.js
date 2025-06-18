@@ -23,6 +23,36 @@ const getProductById = async (id) => {
     return product;
 };
 
+
+const adjustStock = async (productId, quantity, type, reason) => {
+  // La validación del producto ya la hace el middleware, pero es buena práctica verificar de nuevo.
+  const product = await productRepository.getProductById(productId);
+  if (!product) {
+    throw new Error('Producto no encontrado para ajustar stock.');
+  }
+
+  const adjustmentAmount = parseFloat(quantity);
+  const currentStock = parseFloat(product.currentStock);
+  let newStock;
+
+  if (type === 'entrada') {
+    newStock = currentStock + adjustmentAmount;
+  } else { // 'salida'
+    newStock = currentStock - adjustmentAmount;
+    if (newStock < 0) {
+      throw new Error('El ajuste de salida no puede resultar en stock negativo.');
+    }
+  }
+
+  // Aquí podrías crear un log en una tabla 'StockMovements' si lo necesitaras en el futuro.
+  // await StockMovement.create({ idProduct: productId, quantity, type, reason, oldStock: currentStock, newStock });
+  
+  await productRepository.updateStock(productId, newStock);
+  
+  // Devolvemos el producto actualizado para confirmar el cambio.
+  return productRepository.getProductById(productId);
+};
+
 const updateProduct = async (id, productData) => {
     const product = await productRepository.getProductById(id);
     if (!product) {
@@ -98,4 +128,5 @@ module.exports = {
     deleteProduct,
     changeStateProduct,
     getProductsBySupplier,
+    adjustStock 
 };
