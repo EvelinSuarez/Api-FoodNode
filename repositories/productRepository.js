@@ -7,6 +7,14 @@ const createProduct = async (productData) => {
     return Product.create(productData);
 };
 
+const updateStock = async (productId, newStock) => {
+    const [numberOfAffectedRows] = await Product.update(
+        { currentStock: newStock },
+        { where: { idProduct: productId } }
+    );
+    return numberOfAffectedRows > 0;
+};
+
 const getAllProducts = async () => {
     // ESTA ES LA FUNCIÓN CORREGIDA
     return Product.findAll({
@@ -72,4 +80,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
     changeStateProduct,
+    updateStock
 };

@@ -5,6 +5,22 @@ const cors = require("cors");
 const app = express();
 require("dotenv").config();
 
+// --- PASO 1: INICIALIZAR LA BASE DE DATOS Y LOS MODELOS --- // <<< AÑADIR ESTO
+// Al hacer require('.../models'), se ejecuta el archivo index.js de esa carpeta.
+// Esto carga todos los modelos, define todas las asociaciones y nos devuelve
+// un objeto 'db' con todo lo que necesitamos para operar.
+const db = require('./models'); // Asegúrate que la ruta a tu carpeta 'models' sea correcta.
+
+// --- PASO 2: VERIFICAR LA CONEXIÓN (MUY RECOMENDADO) --- // <<< AÑADIR ESTO
+db.sequelize.authenticate()
+  .then(() => {
+    console.log('✅ Conexión a la base de datos establecida correctamente.');
+  })
+  .catch(err => {
+    console.error('❌ No se pudo conectar a la base de datos:', err);
+  });
+//-------------------------------------------------------------
+
 // --- CONFIGURACIÓN DE CORS PARA VERCEL ---
 const whitelist = [
   'https://food-in-production-react.vercel.app', // Tu frontend en producción
@@ -127,7 +143,7 @@ app.use((err, req, res, next) => {
 // ARRANQUE DEL SERVIDOR (CRÍTICO PARA VERCEL)
 // =================================================================
 
-const PORT = process.env.DB_PORT || 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });

@@ -16,5 +16,11 @@ router.patch('/:idOverallMonth/status', validations.changeStateValidation, month
 
 // Nuevas rutas para totales
 router.get('/total/by-month/:year/:month', validations.getTotalExpenseByMonthValidation, monthlyOverallExpenseController.getTotalExpenseByMonth);
+router.get(
+    '/total/by-type/:year/:month/:idExpenseType',
+    // Si tienes validaciones, añádelas aquí. Si no, puedes omitir esta línea.
+    // validations.getTotalExpenseByTypeValidation, 
+    monthlyOverallExpenseController.getTotalExpenseByTypeAndMonth
+);
 
 module.exports = router;

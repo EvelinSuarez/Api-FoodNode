@@ -14,6 +14,24 @@ const createProduct = async (req, res) => {
   }
 };
 
+const adjustStock = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const { id } = req.params;
+    const { quantity, type, reason } = req.body;
+
+    const updatedProduct = await productService.adjustStock(id, quantity, type, reason);
+    res.status(200).json({ message: "Stock ajustado exitosamente", product: updatedProduct });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+
 const getAllProducts = async (req, res) => {
   try {
     const products = await productService.getAllProducts();
@@ -99,4 +117,5 @@ module.exports = {
   deleteProduct,
   changeStateProduct,
   getProductsBySupplier,
+  adjustStock 
 };

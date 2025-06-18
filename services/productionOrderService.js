@@ -1,12 +1,14 @@
-// services/productionOrderService.js
+// Archivo: services/productionOrderService.js
 
 const productionOrderRepo = require('../repositories/productionOrderRepository');
 const {
     ProductionOrder,
     SpecSheet,
-    SpecSheetProcess,
-    Product, // <-- Asegúrate de que 'Product' esté importado
-    Employee,
+    SpecSheetProcess, // Modelo de unión Ficha-Proceso, necesario para la sincronización
+    SpecSheetSupply,  // Modelo de unión Ficha-Insumo
+    Supply,           // Modelo de Insumos
+    Product,          // Modelo de Productos
+    employee,
     Provider,
     Process,
     ProductionOrderDetail,
@@ -25,43 +27,13 @@ const createProductionOrder = async (orderData) => {
             status,
             idSpecSheet: providedSpecSheetId,
             idEmployeeRegistered,
-            initialAmount, // <-- La cantidad de insumo a descontar
+            initialAmount,
             inputInitialWeight,
             inputInitialWeightUnit,
             productNameSnapshot: providedProductNameSnapshot,
             observations,
             idProvider,
         } = orderData;
-        
-        // --- LÓGICA DE STOCK: INICIO ---
-        // Solo procedemos si se especifica un producto y una cantidad a utilizar.
-        if (idProduct && initialAmount > 0) {
-            // 1. Buscamos el producto CON BLOQUEO para evitar problemas de concurrencia.
-            // Esto asegura que ninguna otra transacción pueda modificar este producto hasta que esta termine.
-            const product = await Product.findByPk(idProduct, { 
-                transaction: t,
-                lock: t.LOCK.UPDATE 
-            });
-
-            if (!product) {
-                await t.rollback();
-                throw new NotFoundError(`El producto/insumo con ID ${idProduct} no fue encontrado.`);
-            }
-
-            // 2. Validamos si hay stock suficiente.
-            if (product.currentStock < initialAmount) {
-                await t.rollback();
-                throw new BadRequestError(`Stock insuficiente para '${product.productName}'. Stock actual: ${product.currentStock}, Cantidad requerida: ${initialAmount}.`);
-            }
-
-            // 3. Descontamos el stock. Sequelize maneja esto de forma atómica.
-            await product.decrement('currentStock', {
-                by: initialAmount,
-                transaction: t
-            });
-            console.log(`[SERVICE - Stock] Stock descontado para producto ID ${idProduct}. Cantidad: ${initialAmount}.`);
-        }
-        // --- LÓGICA DE STOCK: FIN ---
         
         if (idProduct && ['PENDING', 'SETUP'].includes(status)) {
              const conflictingOrder = await ProductionOrder.findOne({
@@ -73,7 +45,6 @@ const createProductionOrder = async (orderData) => {
             });
 
             if (conflictingOrder) {
-                // El rollback de la transacción se encargará de revertir el decremento de stock automáticamente.
                 await t.rollback();
                 throw new BadRequestError(`No se puede crear la orden. Ya existe una orden activa (ID: ${conflictingOrder.idProductionOrder}) para este producto.`);
             }
@@ -118,19 +89,15 @@ const createProductionOrder = async (orderData) => {
             newOrderPayload.inputInitialWeightUnit = null;
         }
         
-        console.log('[SERVICE - createProductionOrder] Payload para el repositorio (cabecera):', JSON.stringify(newOrderPayload, null, 2));
-        
         const createdOrder = await ProductionOrder.create(newOrderPayload, { transaction: t });
         
         await t.commit();
-        console.log('[SERVICE - createProductionOrder] Transacción committed.');
         
         return productionOrderRepo.findOrderByIdWithDetails(createdOrder.idProductionOrder);
 
     } catch (error) {
-        console.error("[SERVICE - createProductionOrder] Error capturado:", error.name, error.message);
         if (t && !t.finished) {
-             try { await t.rollback(); console.log('[SERVICE - createProductionOrder] Rollback ejecutado.'); }
+             try { await t.rollback(); }
              catch (rbError) { console.error('[SERVICE - createProductionOrder] Error en Rollback:', rbError);}
         }
         if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ApplicationError) throw error;
@@ -139,68 +106,83 @@ const createProductionOrder = async (orderData) => {
 };
 
 const finalizeProductionOrder = async (idProductionOrder, finalizeData) => {
+    // Iniciar una transacción es una excelente práctica para esta operación.
     const t = await sequelize.transaction();
     try {
-        const order = await productionOrderRepo.findOrderById(idProductionOrder, t);
+        // 1. OBTENER LA ORDEN CON TODA SU INFORMACIÓN
+        const order = await productionOrderRepo.findOrderByIdWithDetails(idProductionOrder, t);
         if (!order) {
-            await t.rollback();
             throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`);
         }
-        
+
         const {
-            finalQuantityProduct, // <-- Cantidad de producto terminado a añadir al stock
+            finalQuantityProduct,
             finishedProductWeight,
             finishedProductWeightUnit,
             inputFinalWeightUnused,
             inputFinalWeightUnusedUnit,
             observations
         } = finalizeData;
+
+        // Validaciones iniciales
+        if (!order.specSheet || !order.specSheet.specSheetSupplies || order.specSheet.specSheetSupplies.length === 0) {
+            throw new BadRequestError("No se puede finalizar: la orden no tiene una ficha técnica con insumos definidos para descontar del stock.");
+        }
         
-        // --- LÓGICA DE STOCK: INICIO ---
-        // Al finalizar, incrementamos el stock del producto que se fabricó.
-        if (order.idProduct && finalQuantityProduct > 0) {
-            await Product.increment('currentStock', {
-                by: finalQuantityProduct,
+        const productionQuantity = parseFloat(finalQuantityProduct);
+        if (isNaN(productionQuantity) || productionQuantity <= 0) {
+            throw new BadRequestError("La cantidad de producto final debe ser un número positivo para calcular el consumo de insumos.");
+        }
+
+        const specSheetBaseQuantity = parseFloat(order.specSheet.quantityBase);
+        if (isNaN(specSheetBaseQuantity) || specSheetBaseQuantity <= 0) {
+            throw new BadRequestError("La ficha técnica asociada no tiene una cantidad base válida.");
+        }
+
+        // 2. DESCONTAR STOCK DE CADA INSUMO
+        for (const supplyItem of order.specSheet.specSheetSupplies) {
+            const supplyId = supplyItem.idSupply;
+            const supply = await Supply.findByPk(supplyId, { transaction: t, lock: t.LOCK.UPDATE });
+            
+            if (!supply) {
+                const supplyName = supplyItem.supply?.supplyName || `ID ${supplyId}`;
+                throw new NotFoundError(`El insumo '${supplyName}' de la ficha técnica no fue encontrado en el catálogo de insumos.`);
+            }
+
+            const quantityPerBaseUnit = parseFloat(supplyItem.quantity);
+            const quantityToDecrease = (quantityPerBaseUnit / specSheetBaseQuantity) * productionQuantity;
+            
+            if (Number(supply.stock) < quantityToDecrease) {
+                throw new BadRequestError(`Stock insuficiente para el insumo '${supply.supplyName}'. Requerido: ${quantityToDecrease.toFixed(3)}, Actual: ${Number(supply.stock).toFixed(3)}.`);
+            }
+            
+            await supply.decrement('stock', { by: quantityToDecrease, transaction: t });
+            
+            console.log(`[SERVICE - Stock] Stock de INSUMO descontado para '${supply.supplyName}' (ID: ${supplyId}). Cantidad: ${quantityToDecrease.toFixed(3)}.`);
+        }
+
+        // 3. INCREMENTAR STOCK DEL PRODUCTO FINAL
+        if (order.idProduct && productionQuantity > 0) {
+            // Se usa la columna 'currentStock' para la tabla de Productos
+            await Product.increment('currentStock', { 
+                by: productionQuantity,
                 where: { idProduct: order.idProduct },
                 transaction: t
             });
-            console.log(`[SERVICE - Stock] Stock incrementado para producto final ID ${order.idProduct}. Cantidad: ${finalQuantityProduct}.`);
+            console.log(`[SERVICE - Stock] Stock de PRODUCTO FINAL incrementado para '${order.productNameSnapshot}' (ID ${order.idProduct}). Cantidad: ${productionQuantity}.`);
         }
-        // --- LÓGICA DE STOCK: FIN ---
-
+        
+        // 4. ACTUALIZAR EL ESTADO Y DATOS FINALES DE LA ORDEN DE PRODUCCIÓN
         const updateData = {
             status: 'COMPLETED',
-            observations: observations || order.observations 
+            finalQuantityProduct: productionQuantity,
+            finishedProductWeight: finishedProductWeight !== null ? parseFloat(finishedProductWeight) : null,
+            finishedProductWeightUnit: finishedProductWeight !== null ? finishedProductWeightUnit : null,
+            inputFinalWeightUnused: inputFinalWeightUnused !== null ? parseFloat(inputFinalWeightUnused) : null,
+            inputFinalWeightUnusedUnit: inputFinalWeightUnused !== null ? inputFinalWeightUnusedUnit : null,
+            observations: observations || order.observations
         };
 
-        if (finalQuantityProduct !== null && finalQuantityProduct !== undefined) {
-            updateData.finalQuantityProduct = parseFloat(finalQuantityProduct);
-        }
-
-        if (finishedProductWeight !== null && finishedProductWeight !== undefined && String(finishedProductWeight).trim() !== '') {
-            const weight = parseFloat(finishedProductWeight);
-            if (!isNaN(weight) && weight >= 0) {
-                updateData.finishedProductWeight = weight;
-                updateData.finishedProductWeightUnit = weight > 0 ? (finishedProductWeightUnit || 'kg') : null;
-            }
-        } else {
-             updateData.finishedProductWeight = null;
-             updateData.finishedProductWeightUnit = null;
-        }
-
-        if (inputFinalWeightUnused !== null && inputFinalWeightUnused !== undefined && String(inputFinalWeightUnused).trim() !== '') {
-            const unusedWeight = parseFloat(inputFinalWeightUnused);
-            if (!isNaN(unusedWeight) && unusedWeight >= 0) {
-                updateData.inputFinalWeightUnused = unusedWeight;
-                updateData.inputFinalWeightUnusedUnit = unusedWeight > 0 ? (inputFinalWeightUnusedUnit || 'kg') : null;
-            }
-        } else {
-            updateData.inputFinalWeightUnused = null;
-            updateData.inputFinalWeightUnusedUnit = null;
-        }
-
-        console.log(`[SERVICE - finalizeProductionOrder] Payload final para actualizar:`, updateData);
-        
         await productionOrderRepo.updateOrder(idProductionOrder, updateData, t);
         
         await t.commit();
@@ -211,7 +193,10 @@ const finalizeProductionOrder = async (idProductionOrder, finalizeData) => {
         if (t && !t.finished) {
             try { await t.rollback(); } catch (rbError) { console.error("Error en rollback de finalización:", rbError); }
         }
-        if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
+        
+        if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ApplicationError) {
+             throw error;
+        }
         throw new ApplicationError(`Error al finalizar la orden de producción: ${error.message}`);
     }
 };
@@ -221,27 +206,10 @@ const changeProductionOrderStatus = async (idProductionOrder, newStatus, observa
     try {
         const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
         if (!order) { await t.rollback(); throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`); }
-
-        // --- LÓGICA DE STOCK: INICIO ---
-        // Si la orden se CANCELA y no estaba ya completada/cancelada, devolvemos el stock inicial.
-        if (newStatus === 'CANCELLED' && !['COMPLETED', 'CANCELLED'].includes(order.status)) {
-            if (order.idProduct && order.initialAmount > 0) {
-                // Devolvemos (incrementamos) el stock del insumo que se había reservado.
-                await Product.increment('currentStock', {
-                    by: order.initialAmount,
-                    where: { idProduct: order.idProduct },
-                    transaction: t
-                });
-                console.log(`[SERVICE - Stock] Stock DEVUELTO por cancelación para producto ID ${order.idProduct}. Cantidad: ${order.initialAmount}.`);
-            }
-        }
-        // --- LÓGICA DE STOCK: FIN ---
-
         const updatePayload = { status: newStatus };
         if (observationsForChange) {
             updatePayload.observations = (order.observations || '') + `\n[Cambio a ${newStatus}]: ${observationsForChange}`;
         }
-
         await productionOrderRepo.updateOrder(idProductionOrder, updatePayload, t);
         await t.commit();
         return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
@@ -257,24 +225,10 @@ const deleteProductionOrder = async (idProductionOrder) => {
     try {
         const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
         if (!order) { await t.rollback(); throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`); }
-        
         if (['IN_PROGRESS', 'COMPLETED'].includes(order.status)) {
             await t.rollback();
             throw new BadRequestError(`No se puede eliminar una orden en estado: ${order.status}. Considere cancelarla.`);
         }
-
-        // --- LÓGICA DE STOCK: INICIO ---
-        // Si la orden que se elimina no estaba completada ni cancelada, devolvemos el stock.
-        if (!['COMPLETED', 'CANCELLED'].includes(order.status) && order.idProduct && order.initialAmount > 0) {
-            await Product.increment('currentStock', {
-               by: order.initialAmount,
-               where: { idProduct: order.idProduct },
-               transaction: t
-           });
-           console.log(`[SERVICE - Stock] Stock DEVUELTO por eliminación de orden para producto ID ${order.idProduct}. Cantidad: ${order.initialAmount}.`);
-        }
-       // --- LÓGICA DE STOCK: FIN ---
-
         await productionOrderRepo.deleteOrderById(idProductionOrder, t);
         await t.commit();
         return { message: "Orden de producción eliminada exitosamente." };
@@ -285,11 +239,7 @@ const deleteProductionOrder = async (idProductionOrder) => {
     }
 };
 
-
-// ----- El resto de tus funciones de servicio permanecen sin cambios -----
-
 const getAllProductionOrders = async (queryFilters = {}) => {
-    // ... (sin cambios)
     const { status, status_not_in, idProduct, idEmployeeRegistered, page, limit, sortBy, sortOrder } = queryFilters;
     let whereClause = {};
     if (status) {
@@ -302,7 +252,6 @@ const getAllProductionOrders = async (queryFilters = {}) => {
     }
     if (idProduct) whereClause.idProduct = parseInt(idProduct);
     if (idEmployeeRegistered) whereClause.idEmployeeRegistered = parseInt(idEmployeeRegistered);
-
     const queryOptions = { whereClause };
     if (limit && page) {
         queryOptions.limit = parseInt(limit);
@@ -315,7 +264,6 @@ const getAllProductionOrders = async (queryFilters = {}) => {
 };
 
 const getProductionOrderById = async (idProductionOrder) => {
-    // ... (sin cambios)
     const order = await productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
     if (!order) {
         throw new NotFoundError(`Orden de producción con ID ${idProductionOrder} no encontrada.`);
@@ -324,68 +272,33 @@ const getProductionOrderById = async (idProductionOrder) => {
 };
 
 const getActiveOrdersByProductId = async (productId) => {
-    // ... (sin cambios)
     if (!productId || isNaN(parseInt(productId))) {
         return [];
     }
     return ProductionOrder.findAll({
-        where: {
-            idProduct: parseInt(productId),
-            status: {
-                [Op.notIn]: ['COMPLETED', 'CANCELLED']
-            }
-        },
+        where: { idProduct: parseInt(productId), status: { [Op.notIn]: ['COMPLETED', 'CANCELLED'] } },
         attributes: ['idProductionOrder', 'status']
     });
 };
 
 const updateProductionOrder = async (idProductionOrder, dataToUpdate) => {
-    // Nota: Esta función no maneja el stock, ya que la creación/cancelación/finalización son los puntos clave.
-    // Si permitieras cambiar `initialAmount` en una orden activa, tendrías que añadir una lógica compleja aquí
-    // para ajustar la diferencia de stock, pero es más seguro y limpio manejarlo en los puntos de ciclo de vida.
-    
-    // ... (tu lógica de updateProductionOrder sin cambios)
-    console.log(`[SERVICE - updateProductionOrder] Iniciando para Orden ID: ${idProductionOrder}. Payload:`, JSON.stringify(dataToUpdate, null, 2));
     const t = await sequelize.transaction();
     try {
         const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
-        if (!order) {
-            await t.rollback();
-            throw new NotFoundError(`Orden de producción ID ${idProductionOrder} no encontrada.`);
-        }
-
+        if (!order) { await t.rollback(); throw new NotFoundError(`Orden de producción ID ${idProductionOrder} no encontrada.`); }
         const targetStatus = dataToUpdate.status || order.status;
         const targetProductId = dataToUpdate.hasOwnProperty('idProduct') ? dataToUpdate.idProduct : order.idProduct;
-
         if (['IN_PROGRESS', 'SETUP_COMPLETED', 'PAUSED'].includes(targetStatus) && targetProductId) {
-            const conflictingOrder = await ProductionOrder.findOne({
-                where: {
-                    idProduct: targetProductId,
-                    status: { [Op.notIn]: ['COMPLETED', 'CANCELLED'] },
-                    idProductionOrder: { [Op.ne]: idProductionOrder }
-                },
-                transaction: t
-            });
-
-            if (conflictingOrder) {
-                await t.rollback();
-                throw new BadRequestError(`Ya existe una orden activa (ID: ${conflictingOrder.idProductionOrder}) para este producto. No puede iniciar una nueva hasta que la anterior sea completada o cancelada.`);
-            }
+            const conflictingOrder = await ProductionOrder.findOne({ where: { idProduct: targetProductId, status: { [Op.notIn]: ['COMPLETED', 'CANCELLED'] }, idProductionOrder: { [Op.ne]: idProductionOrder } }, transaction: t });
+            if (conflictingOrder) { await t.rollback(); throw new BadRequestError(`Ya existe una orden activa (ID: ${conflictingOrder.idProductionOrder}) para este producto. No puede iniciar una nueva hasta que la anterior sea completada o cancelada.`); }
         }
-
-        if ((order.status === 'COMPLETED' || order.status === 'CANCELLED') &&
-            Object.keys(dataToUpdate).some(key => !['observations'].includes(key))) {
-            await t.rollback();
-            throw new BadRequestError('Solo se pueden modificar observaciones de una orden completada o cancelada.');
+        if ((order.status === 'COMPLETED' || order.status === 'CANCELLED') && Object.keys(dataToUpdate).some(key => !['observations'].includes(key))) {
+            await t.rollback(); throw new BadRequestError('Solo se pueden modificar observaciones de una orden completada o cancelada.');
         }
-
         const updatePayload = { ...dataToUpdate };
-
         if (dataToUpdate.idProduct !== undefined && String(dataToUpdate.idProduct) !== String(order.idProduct)) {
-            console.log(`[SERVICE] Producto cambiado. Anterior: ${order.idProduct}, Nuevo: ${dataToUpdate.idProduct}`);
             if (dataToUpdate.idProduct === null || dataToUpdate.idProduct === '') {
-                updatePayload.productNameSnapshot = "(Orden Pendiente de Producto)";
-                updatePayload.idSpecSheet = null;
+                updatePayload.productNameSnapshot = "(Orden Pendiente de Producto)"; updatePayload.idSpecSheet = null;
                 await productionOrderRepo.deleteOrderDetailsByOrderId(idProductionOrder, t);
             } else {
                 const product = await Product.findByPk(dataToUpdate.idProduct, { transaction: t });
@@ -395,146 +308,70 @@ const updateProductionOrder = async (idProductionOrder, dataToUpdate) => {
                 await productionOrderRepo.deleteOrderDetailsByOrderId(idProductionOrder, t);
             }
         }
-
-        const newSpecSheetId = dataToUpdate.idSpecSheet !== undefined
-            ? (dataToUpdate.idSpecSheet === '' || dataToUpdate.idSpecSheet === null ? null : parseInt(dataToUpdate.idSpecSheet))
-            : order.idSpecSheet;
-
+        const newSpecSheetId = dataToUpdate.idSpecSheet !== undefined ? (dataToUpdate.idSpecSheet === '' || dataToUpdate.idSpecSheet === null ? null : parseInt(dataToUpdate.idSpecSheet)) : order.idSpecSheet;
         const specSheetActuallyChanged = dataToUpdate.idSpecSheet !== undefined && newSpecSheetId !== order.idSpecSheet;
-        
         let shouldSyncProductionOrderDetails = specSheetActuallyChanged;
-        if (!shouldSyncProductionOrderDetails && newSpecSheetId &&
-            ['SETUP_COMPLETED', 'IN_PROGRESS'].includes(dataToUpdate.status || order.status) &&
-            !['SETUP_COMPLETED', 'IN_PROGRESS', 'PAUSED', 'ALL_STEPS_COMPLETED'].includes(order.status)
-        ) {
+        if (!shouldSyncProductionOrderDetails && newSpecSheetId && ['SETUP_COMPLETED', 'IN_PROGRESS'].includes(dataToUpdate.status || order.status) && !['SETUP_COMPLETED', 'IN_PROGRESS', 'PAUSED', 'ALL_STEPS_COMPLETED'].includes(order.status)) {
             shouldSyncProductionOrderDetails = true;
         }
-
         if (newSpecSheetId && shouldSyncProductionOrderDetails) {
             const currentTargetProductId = updatePayload.idProduct !== undefined ? (updatePayload.idProduct === '' ? null : updatePayload.idProduct) : order.idProduct;
             if (!currentTargetProductId) { await t.rollback(); throw new BadRequestError("Se requiere un producto para asignar una ficha técnica.");}
-            
-            const specSheet = await SpecSheet.findOne({
-                where: { idSpecSheet: newSpecSheetId, idProduct: currentTargetProductId, status: true },
-                transaction: t
-            });
+            const specSheet = await SpecSheet.findOne({ where: { idSpecSheet: newSpecSheetId, idProduct: currentTargetProductId, status: true }, include: [{model: SpecSheetProcess, as: 'specSheetProcesses', include:[{model: Process, as: 'masterProcessData'}]}], transaction: t });
             if (!specSheet) { await t.rollback(); throw new BadRequestError(`Ficha técnica ID ${newSpecSheetId} no es válida, no está activa o no pertenece al producto.`);}
             updatePayload.idSpecSheet = specSheet.idSpecSheet;
-
-            const specProcesses = await SpecSheetProcess.findAll({
-                where: { idSpecSheet: specSheet.idSpecSheet },
-                order: [['processOrder', 'ASC']],
-                include: [{ model: Process, as: 'masterProcessData' }],
-                transaction: t
-            });
-            
+            const specProcesses = specSheet.specSheetProcesses.sort((a,b) => a.processOrder - b.processOrder);
             await productionOrderRepo.deleteOrderDetailsByOrderId(idProductionOrder, t);
-            
             if (specProcesses && specProcesses.length > 0) {
-                const stepDetailsData = specProcesses.map(sp => ({
-                    idProductionOrder: parseInt(idProductionOrder),
-                    idProcess: (sp.idProcess || sp.masterProcessData?.idProcess) ? parseInt(sp.idProcess || sp.masterProcessData.idProcess) : null,
-                    processOrder: sp.processOrder,
-                    processNameSnapshot: sp.processNameOverride || sp.masterProcessData?.processName || 'Proceso Desconocido',
-                    processDescriptionSnapshot: sp.processDescriptionOverride || sp.masterProcessData?.description || 'Sin descripción.',
-                    estimatedTimeMinutes: sp.estimatedTimeMinutes ?? sp.masterProcessData?.estimatedTimeMinutes,
-                    status: 'PENDING'
-                }));
+                const stepDetailsData = specProcesses.map(sp => ({ idProductionOrder: parseInt(idProductionOrder), idProcess: (sp.idProcess || sp.masterProcessData?.idProcess) ? parseInt(sp.idProcess || sp.masterProcessData.idProcess) : null, processOrder: sp.processOrder, processNameSnapshot: sp.processNameOverride || sp.masterProcessData?.processName || 'Proceso Desconocido', processDescriptionSnapshot: sp.processDescriptionOverride || sp.masterProcessData?.description || 'Sin descripción.', estimatedTimeMinutes: sp.estimatedTimeMinutes ?? sp.masterProcessData?.estimatedTimeMinutes, status: 'PENDING' }));
                 await ProductionOrderDetail.bulkCreate(stepDetailsData, { transaction: t, validate: true });
             }
         } else if (newSpecSheetId === null && order.idSpecSheet !== null) {
-            await productionOrderRepo.deleteOrderDetailsByOrderId(idProductionOrder, t);
-            updatePayload.idSpecSheet = null;
+            await productionOrderRepo.deleteOrderDetailsByOrderId(idProductionOrder, t); updatePayload.idSpecSheet = null;
         }
-
         if (dataToUpdate.hasOwnProperty('inputInitialWeight')) {
             const newWeight = dataToUpdate.inputInitialWeight;
             if (newWeight !== null && newWeight !== '' && !isNaN(parseFloat(newWeight)) && parseFloat(newWeight) >= 0) {
                 updatePayload.inputInitialWeight = parseFloat(newWeight);
                 updatePayload.inputInitialWeightUnit = (parseFloat(newWeight) === 0) ? null : (dataToUpdate.inputInitialWeightUnit || order.inputInitialWeightUnit || 'kg');
-            } else {
-                updatePayload.inputInitialWeight = null;
-                updatePayload.inputInitialWeightUnit = null;
-            }
+            } else { updatePayload.inputInitialWeight = null; updatePayload.inputInitialWeightUnit = null; }
         }
-
-        Object.keys(updatePayload).forEach(key => {
-            if (key !== 'observations' && updatePayload[key] === '') updatePayload[key] = null;
-        });
+        Object.keys(updatePayload).forEach(key => { if (key !== 'observations' && updatePayload[key] === '') updatePayload[key] = null; });
         if (updatePayload.observations === '') updatePayload.observations = null;
-
         await productionOrderRepo.updateOrder(idProductionOrder, updatePayload, t);
-        
         await t.commit();
-        console.log(`[SERVICE - updateProductionOrder] Transacción committed para Orden ID: ${idProductionOrder}.`);
-
         return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
-
     } catch (error) {
-        console.error("[SERVICE - updateProductionOrder] Error capturado:", error.name, error.message);
-        if (t && !t.finished) {
-            try { await t.rollback(); console.log('[SERVICE - updateProductionOrder] Rollback ejecutado.'); }
-            catch (rbError) { console.error('[SERVICE - updateProductionOrder] Error en Rollback:', rbError); }
-        }
+        if (t && !t.finished) { try { await t.rollback(); } catch (rbError) { console.error('[SERVICE - updateProductionOrder] Error en Rollback:', rbError); } }
         if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ApplicationError) throw error;
         throw new ApplicationError(`Error al actualizar la orden de producción: ${error.message}`);
     }
 };
 
 const updateProductionOrderStep = async (idProductionOrder, idProductionOrderDetail, stepData) => {
-    // ... (sin cambios)
     const t = await sequelize.transaction();
     try {
         const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t });
         if (!order) { await t.rollback(); throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`); }
-        
-        if (['COMPLETED', 'CANCELLED'].includes(order.status)) {
-            await t.rollback();
-            throw new BadRequestError(`No se pueden actualizar pasos de una orden ${order.status}.`);
-        }
-        if (['PENDING', 'SETUP'].includes(order.status) && stepData.status !== 'SKIPPED') {
-            await t.rollback();
-            throw new BadRequestError(`La orden debe estar al menos en 'SETUP_COMPLETED' para gestionar pasos.`);
-        }
-
+        if (['COMPLETED', 'CANCELLED'].includes(order.status)) { await t.rollback(); throw new BadRequestError(`No se pueden actualizar pasos de una orden ${order.status}.`); }
+        if (['PENDING', 'SETUP'].includes(order.status) && stepData.status !== 'SKIPPED') { await t.rollback(); throw new BadRequestError(`La orden debe estar al menos en 'SETUP_COMPLETED' para gestionar pasos.`); }
         const step = await ProductionOrderDetail.findByPk(idProductionOrderDetail, { transaction: t });
-        if (!step || parseInt(step.idProductionOrder) !== parseInt(idProductionOrder)) {
-            await t.rollback();
-            throw new NotFoundError(`Paso ID ${idProductionOrderDetail} no encontrado o no pertenece a la orden.`);
-        }
-        
+        if (!step || parseInt(step.idProductionOrder) !== parseInt(idProductionOrder)) { await t.rollback(); throw new NotFoundError(`Paso ID ${idProductionOrderDetail} no encontrado o no pertenece a la orden.`); }
         const allowedFields = ['idEmployeeAssigned', 'startDate', 'endDate', 'status', 'observations'];
-        const filteredStepData = Object.keys(stepData)
-            .filter(key => allowedFields.includes(key))
-            .reduce((obj, key) => { obj[key] = stepData[key] === '' ? null : stepData[key]; return obj; }, {});
-        
-        if (Object.keys(filteredStepData).length === 0) {
-             await t.rollback();
-             throw new BadRequestError("No se proporcionaron datos válidos para actualizar.");
-        }
-        
+        const filteredStepData = Object.keys(stepData).filter(key => allowedFields.includes(key)).reduce((obj, key) => { obj[key] = stepData[key] === '' ? null : stepData[key]; return obj; }, {});
+        if (Object.keys(filteredStepData).length === 0) { await t.rollback(); throw new BadRequestError("No se proporcionaron datos válidos para actualizar."); }
         await productionOrderRepo.updateStep(idProductionOrderDetail, filteredStepData, t);
-
-        let orderStatusChanged = false;
-        let newOrderStatus = order.status;
-
+        let orderStatusChanged = false; let newOrderStatus = order.status;
         if (filteredStepData.status === 'IN_PROGRESS' && ['SETUP_COMPLETED', 'PAUSED'].includes(order.status)) {
-            newOrderStatus = 'IN_PROGRESS';
-            orderStatusChanged = true;
+            newOrderStatus = 'IN_PROGRESS'; orderStatusChanged = true;
         } else if (filteredStepData.status === 'COMPLETED') {
             const allSteps = await ProductionOrderDetail.findAll({ where: { idProductionOrder }, transaction: t });
             const allStepsNowCompletedOrSkipped = allSteps.every(s => (s.idProductionOrderDetail.toString() === idProductionOrderDetail.toString() ? filteredStepData.status === 'COMPLETED' : s.status === 'COMPLETED' || s.status === 'SKIPPED'));
-            
             if (allStepsNowCompletedOrSkipped && !['ALL_STEPS_COMPLETED', 'COMPLETED', 'CANCELLED'].includes(order.status)) {
-                newOrderStatus = 'ALL_STEPS_COMPLETED';
-                orderStatusChanged = true;
+                newOrderStatus = 'ALL_STEPS_COMPLETED'; orderStatusChanged = true;
             }
         }
-        
-        if (orderStatusChanged) {
-            await productionOrderRepo.updateOrder(idProductionOrder, { status: newOrderStatus }, t);
-        }
-        
+        if (orderStatusChanged) { await productionOrderRepo.updateOrder(idProductionOrder, { status: newOrderStatus }, t); }
         await t.commit();
         return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
     } catch (error) {

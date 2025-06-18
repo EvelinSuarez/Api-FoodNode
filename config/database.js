@@ -1,59 +1,58 @@
 // config/database.js (VERSIÓN FINAL PARA VERCEL)
 
 const { Sequelize } = require("sequelize");
-const mysql2 = require('mysql2'); // Importamos mysql2 explícitamente
-require("dotenv").config();
 
-// --- Verificación de variables de entorno ---
-const requiredEnvVars = [
-    'DB_HOST',
-    'DB_USER',
-    'DB_PASSWORD',
-    'DB_DATABASE',
-    'DB_PORT',
-    'AIVEN_DB_CA' // Añadimos la nueva variable del certificado
-];
+const path = require('path');
 
-for (const varName of requiredEnvVars) {
-    if (!process.env[varName]) {
-        // Este error solo se mostrará en local si falta algo en .env
-        // En Vercel, si falta una variable, el build fallará, lo cual es bueno.
-        throw new Error(`ERROR: La variable de entorno ${varName} no está definida.`);
-    }
+// Cargar variables desde .env.local si estamos en desarrollo
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 }
 
-// --- Configuración de Sequelize ---
-const sequelize = new Sequelize(
-    process.env.DB_DATABASE,
-    process.env.DB_USER,
-    process.env.DB_PASSWORD,
-    {
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
-        dialect: "mysql",
-        // SOLUCIÓN PARA MYSQL2: Pasamos el módulo directamente
-        dialectModule: mysql2,
-        logging: false,
+// Verificación de variables (reutilizamos la lógica)
+const requiredEnvVars = [
+  'DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_DATABASE', 'DB_PORT'
+];
+// En producción, también requerimos el certificado CA.
+if (process.env.NODE_ENV === 'production') {
+  requiredEnvVars.push('AIVEN_DB_CA');
+}
 
-        // Opciones específicas del dialecto para la conexión SSL
-        dialectOptions: {
-            ssl: {
-                // SOLUCIÓN PARA SSL: Usamos el certificado desde la variable de entorno
-                ca: process.env.AIVEN_DB_CA,
-                rejectUnauthorized: true, // Esto es correcto, mantenlo así.
-            },
-        },
-        
-        // Es buena práctica añadir configuración de pool en producción
-        pool: {
-            max: 5,
-            min: 0,
-            acquire: 30000,
-            idle: 10000
-        }
+for (const varName of requiredEnvVars) {
+  if (process.env[varName] === undefined) {
+    throw new Error(`config/database.js: La variable de entorno requerida '${varName}' no está definida.`);
+  }
+}
+
+// Configuración de SSL solo para producción
+const dialectOptions = process.env.NODE_ENV === 'production'
+  ? {
+      ssl: {
+        ca: process.env.AIVEN_DB_CA,
+        rejectUnauthorized: true,
+      },
     }
-);
+  : {}; // En desarrollo, es un objeto vacío
 
+const sequelize = new Sequelize(
+  process.env.DB_DATABASE,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    dialect: "mysql",
+    dialectModule: require('mysql2'), // Lo dejamos para ambos entornos por consistencia
+    logging: false,
+    dialectOptions, // Aplicamos las opciones de SSL
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  }
+);
 // --- Función para probar la conexión (Opcional en producción, pero útil) ---
 // La dejamos como está, si falla, se verá en los logs de Vercel.
 async function testConnection() {
