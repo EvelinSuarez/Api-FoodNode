@@ -1,9 +1,12 @@
 // services/productService.js
+
 const productRepository = require('../repositories/productRepository');
-const { Product, SpecSheet, Supplier, ProductSheet } = require('../models'); // Acceso directo para consultas complejas
+// Asegúrate de importar SpecSheet aquí para poder consultarlo.
+const { Product, SpecSheet, Supplier, ProductSheet } = require('../models'); 
+
+// ... tu función createProduct, adjustStock, etc., no cambian ...
 
 const createProduct = async (productData) => {
-    // Lógica para verificar si ya existe por nombre, etc.
     const existingProduct = await productRepository.findProductByName(productData.productName);
     if (existingProduct) {
         throw new Error('El nombre del producto ya existe.');
@@ -11,54 +14,83 @@ const createProduct = async (productData) => {
     return productRepository.createProduct(productData);
 };
 
-const getAllProducts = async () => {
-    return productRepository.getAllProducts();
+const adjustStock = async (productId, quantity, type, reason) => {
+  const product = await productRepository.getProductById(productId);
+  if (!product) {
+    throw new Error('Producto no encontrado para ajustar stock.');
+  }
+  const adjustmentAmount = parseFloat(quantity);
+  const currentStock = parseFloat(product.currentStock);
+  let newStock;
+  if (type === 'entrada') {
+    newStock = currentStock + adjustmentAmount;
+  } else {
+    newStock = currentStock - adjustmentAmount;
+    if (newStock < 0) {
+      throw new Error('El ajuste de salida no puede resultar en stock negativo.');
+    }
+  }
+  await productRepository.updateStock(productId, newStock);
+  return productRepository.getProductById(productId);
 };
+
+
+// ======================= ¡ESTA ES LA FUNCIÓN CLAVE A MODIFICAR! =======================
+const getAllProducts = async () => {
+    // 1. Obtenemos los productos desde el repositorio.
+    // La lista ya viene con el campo 'specSheetCount' gracias a tu subconsulta.
+    const productsFromRepo = await productRepository.getAllProducts();
+
+    if (!productsFromRepo || productsFromRepo.length === 0) {
+        return [];
+    }
+
+    // 2. Ahora, enriquecemos cada producto con 'activeSpecSheetId'.
+    // Usamos Promise.all para hacerlo de forma eficiente y en paralelo.
+    const enrichedProducts = await Promise.all(
+        productsFromRepo.map(async (product) => {
+            // Convertimos el objeto de Sequelize a un objeto JSON plano.
+            const productJSON = product.toJSON();
+
+            // 3. Buscamos la ficha técnica activa para este producto.
+            const activeSpecSheet = await SpecSheet.findOne({
+                where: {
+                    idProduct: product.idProduct,
+                    status: true // Asumimos que una ficha activa tiene `status: true`.
+                },
+                attributes: ['idSpecSheet'] // Solo necesitamos el ID para ser más rápidos.
+            });
+
+            // 4. Añadimos el nuevo campo 'activeSpecSheetId' al objeto.
+            // Si se encuentra una ficha activa, usamos su ID, si no, es null.
+            productJSON.activeSpecSheetId = activeSpecSheet ? activeSpecSheet.idSpecSheet : null;
+
+            return productJSON;
+        })
+    );
+
+    // 5. Devolvemos la lista de productos completamente enriquecida.
+    return enrichedProducts;
+};
+// ======================================================================================
 
 const getProductById = async (id) => {
     const product = await productRepository.getProductById(id);
     if (!product) {
         throw new Error('Producto no encontrado.');
     }
+    // NOTA: Si necesitas los detalles para una sola vista de producto,
+    // también deberías aplicar esta lógica de enriquecimiento aquí.
     return product;
 };
 
-
-const adjustStock = async (productId, quantity, type, reason) => {
-  // La validación del producto ya la hace el middleware, pero es buena práctica verificar de nuevo.
-  const product = await productRepository.getProductById(productId);
-  if (!product) {
-    throw new Error('Producto no encontrado para ajustar stock.');
-  }
-
-  const adjustmentAmount = parseFloat(quantity);
-  const currentStock = parseFloat(product.currentStock);
-  let newStock;
-
-  if (type === 'entrada') {
-    newStock = currentStock + adjustmentAmount;
-  } else { // 'salida'
-    newStock = currentStock - adjustmentAmount;
-    if (newStock < 0) {
-      throw new Error('El ajuste de salida no puede resultar en stock negativo.');
-    }
-  }
-
-  // Aquí podrías crear un log en una tabla 'StockMovements' si lo necesitaras en el futuro.
-  // await StockMovement.create({ idProduct: productId, quantity, type, reason, oldStock: currentStock, newStock });
-  
-  await productRepository.updateStock(productId, newStock);
-  
-  // Devolvemos el producto actualizado para confirmar el cambio.
-  return productRepository.getProductById(productId);
-};
+// ... el resto de tus funciones (update, delete, etc.) no necesitan cambios ...
 
 const updateProduct = async (id, productData) => {
     const product = await productRepository.getProductById(id);
     if (!product) {
         throw new Error('Producto no encontrado para actualizar.');
     }
-    // Lógica para verificar si el nuevo nombre ya existe en otro producto
     if (productData.productName && productData.productName !== product.productName) {
         const existingProduct = await productRepository.findProductByName(productData.productName);
         if (existingProduct && existingProduct.idProduct !== parseInt(id)) {
@@ -69,17 +101,10 @@ const updateProduct = async (id, productData) => {
 };
 
 const deleteProduct = async (id) => {
-    // Considerar validaciones: ¿El producto tiene fichas técnicas asociadas? ¿Órdenes de producción?
-    // Si es así, ¿se permite eliminar o se debe desactivar?
     const product = await productRepository.getProductById(id);
     if (!product) {
         throw new Error('Producto no encontrado para eliminar.');
     }
-    // Ejemplo de validación:
-    // const specSheets = await SpecSheet.count({ where: { idProduct: id } });
-    // if (specSheets > 0) {
-    //   throw new Error('No se puede eliminar el producto porque tiene fichas técnicas asociadas.');
-    // }
     return productRepository.deleteProduct(id);
 };
 
@@ -88,37 +113,34 @@ const changeStateProduct = async (id, state) => {
     if (!product) {
         throw new Error('Producto no encontrado para cambiar estado.');
     }
-    // Si state es undefined, podría ser un error de payload
     if (typeof state !== 'boolean') {
         throw new Error('El estado proporcionado no es válido.');
     }
     return productRepository.changeStateProduct(id, state);
 };
 
-// Esta función es la que necesita una lógica clara.
-// Asumiendo que quieres "Productos finales que usan un InsumoMaestro (Supplier) específico"
 const getProductsBySupplier = async (idInsumoMaestro) => {
-    // Esta es una consulta compleja que involucra Product -> SpecSheet -> ProductSheet -> Supplier (InsumoMaestro)
     const products = await Product.findAll({
         include: [{
             model: SpecSheet,
             as: 'specSheets',
-            required: true, // Solo productos que tengan fichas técnicas
+            required: true, 
             include: [{
-                model: Supplier, // Tu InsumoMaestro
+                model: Supplier, 
                 as: 'ingredients',
-                where: { idSupplier: idInsumoMaestro }, // Filtra por el InsumoMaestro específico
-                required: true, // Solo fichas que usen este insumo
+                where: { idSupplier: idInsumoMaestro }, 
+                required: true, 
                 through: {
                     model: ProductSheet,
-                    attributes: [] // No necesitamos atributos de ProductSheet para esta consulta particular
+                    attributes: [] 
                 }
             }]
         }],
-        distinct: true // Para evitar productos duplicados si múltiples fichas usan el mismo insumo
+        distinct: true 
     });
     return products;
 };
+
 
 module.exports = {
     createProduct,
