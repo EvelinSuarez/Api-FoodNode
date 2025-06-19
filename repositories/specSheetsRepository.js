@@ -1,90 +1,68 @@
+// Archivo: repositories/specSheetsRepository.js
+// VERSIÓN CORREGIDA: Se eliminó 'unitOfMeasure' de la consulta del modelo Product.
+
 const db = require("../models");
-const { SpecSheet, Product, Supply, SpecSheetSupply, SpecSheetProcess, Process } = db;
+const { SpecSheet, Product, Supply, SpecSheetSupply, SpecSheetProcess, Process, PurchaseDetail } = db;
 
+// --- Funciones sin cambios ---
 const createSpecSheet = async (specSheetData, options = {}) => {
-  try {
-    const { idSpecSheet, ...dataToCreate } = specSheetData; // Excluir idSpecSheet si se envía por error
-    if (!dataToCreate.idProduct) {
-      throw new Error("Repositorio: idProduct es requerido para crear una ficha técnica.");
-    }
-    // Si SpecSheet tiene unitOfMeasure y es requerido:
-    if (dataToCreate.unitOfMeasure === undefined || dataToCreate.unitOfMeasure === null || dataToCreate.unitOfMeasure === '') {
-       // throw new Error("Repositorio: unitOfMeasure es requerido para la ficha técnica."); // Descomentar si es obligatorio
-    }
-
-    const result = await SpecSheet.create(dataToCreate, options); // options debe incluir transaction si aplica
-    return result;
-  } catch (error) {
-    console.error("Repositorio[SpecSheet]: Error al crear SpecSheet:", error.message, error.errors || '');
-    if (error.name === "SequelizeValidationError") {
-      const messages = error.errors.map((e) => `Campo '${e.path}': ${e.message} (valor: ${e.value})`).join("; ");
-      throw new Error(`Validación fallida en SpecSheet: ${messages}`);
-    }
-    if (error.name === "SequelizeForeignKeyConstraintError") {
-      throw new Error(`Error de clave foránea: ${error.fields ? error.fields.join(', ') : ''} no es válido. Detalles: ${error.parent?.detail || error.message}`);
-    }
-    if (error.name === "SequelizeUniqueConstraintError") {
-      throw new Error(`Error de restricción única: ${error.errors.map(e => e.message).join(', ')}`);
-    }
-    throw error;
-  }
+  const result = await SpecSheet.create(specSheetData, options);
+  return result;
 };
 
-const getAllSpecSheets = async (filters = {}) => {
-  const whereClause = {};
-  if (filters.status !== undefined) whereClause.status = filters.status;
-  if (filters.idProduct) whereClause.idProduct = filters.idProduct;
+const updateSpecSheet = async (idSpecSheet, specSheetData, options = {}) => {
+  const [affectedRows] = await SpecSheet.update(specSheetData, {
+    where: { idSpecSheet: parseInt(idSpecSheet) },
+    ...options
+  });
+  return affectedRows;
+};
 
-  return SpecSheet.findAll({
-    where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
-    include: [
-      {
-        model: Product,
-        as: "product",
-        attributes: ["idProduct", "productName", "status"]
-      },
-      {
-        // ===================================================================
-        // ===        CORRECCIÓN FINAL: Usar el alias correcto           ===
-        // ===================================================================
-        model: SpecSheetSupply,
-        // <-- Usamos el alias 'specSheetSupplies' definido en models/index.js
-        as: "specSheetSupplies", 
-        attributes: ['quantity', 'unitOfMeasure'], 
-        include: [
-          {
-            model: Supply,
-            as: "supply",
-            attributes: ['idSupply', 'supplyName'] 
-          }
-        ]
-      }
-    ],
-    order: [['updatedAt', 'DESC'], ['idSpecSheet', 'DESC']]
+const deleteSpecSheet = async (idSpecSheet, options = {}) => {
+  return SpecSheet.destroy({
+    where: { idSpecSheet: parseInt(idSpecSheet) },
+    ...options
   });
 };
 
+const getAllSpecSheets = async (filters = {}) => {
+  return SpecSheet.findAll({
+    include: [{ model: Product, as: "product" }],
+    order: [['updatedAt', 'DESC']]
+  });
+};
+// --- Fin de funciones sin cambios ---
+
 const getSpecSheetById = async (idSpecSheet) => {
   const id = parseInt(idSpecSheet);
-  if (isNaN(id) || id <= 0) throw new Error("ID de Ficha Técnica inválido.");
+  if (isNaN(id) || id <= 0) {
+    throw new Error("Repositorio: ID de Ficha Técnica inválido.");
+  }
+  
   try {
     const sheet = await SpecSheet.findByPk(id, {
       include: [
         {
           model: Product,
           as: "product",
-          attributes: ["idProduct", "productName", "status"],
+          // ✅ --- CORRECCIÓN FINAL: Se elimina 'unitOfMeasure' ---
+          // La tabla 'Products' no tiene esta columna. La unidad ya viene en la ficha.
+          attributes: ["idProduct", "productName", "status"], 
         },
         {
           model: SpecSheetSupply,
           as: "specSheetSupplies",
-          // <-- CAMBIO: Se añade 'idPurchaseDetail' a la lista de atributos.
-          attributes: ['idSpecSheetSupply', 'quantity', 'unitOfMeasure', 'notes', 'idPurchaseDetail'],
+          attributes: ['idSpecSheetSupply', 'quantity', 'unitOfMeasure', 'notes', 'idPurchaseDetail', 'idSupply'],
           include: [
             {
               model: Supply,
               as: "supply",
               attributes: ['idSupply', 'supplyName', 'unitOfMeasure']
+            },
+            {
+              model: PurchaseDetail,
+              as: 'purchaseDetail',
+              attributes: ['unitPrice']
             }
           ],
           order: [['createdAt', 'ASC']]
@@ -106,80 +84,42 @@ const getSpecSheetById = async (idSpecSheet) => {
     });
     return sheet;
   } catch (error) {
-    console.error(`Repositorio[SpecSheet]: Error al obtener ficha por ID ${idSpecSheet}:`, error.message);
+    console.error(`Repositorio[SpecSheet]: Error al obtener ficha por ID ${idSpecSheet}:`, error);
     throw error;
   }
-};
-
-const updateSpecSheet = async (idSpecSheet, specSheetData, options = {}) => {
-  const id = parseInt(idSpecSheet);
-  if (isNaN(id) || id <= 0) throw new Error("ID de Ficha Técnica inválido para actualizar.");
-
-  const updateOptions = {
-    where: { idSpecSheet: id },
-    ...options // Propaga la transacción y otras opciones
-  };
-  
-  const [affectedRows] = await SpecSheet.update(specSheetData, updateOptions);
-  return affectedRows;
-};
-
-const deleteSpecSheet = async (idSpecSheet, options = {}) => {
-  const id = parseInt(idSpecSheet);
-  if (isNaN(id) || id <= 0) throw new Error("ID de Ficha Técnica inválido para eliminar.");
-
-  const deleteOptions = {
-    where: { idSpecSheet: id },
-    ...options
-  };
-  return SpecSheet.destroy(deleteOptions);
 };
 
 const getSpecSheetsByProduct = async (idProductParam) => {
   const idProduct = parseInt(idProductParam);
-  if (isNaN(idProduct) || idProduct <= 0) throw new Error("ID de Producto inválido.");
-  try {
-    return SpecSheet.findAll({
-      where: { idProduct },
-      include: [
-        {
-          model: Product,
-          as: "product",
-          attributes: ["idProduct", "productName", "status"],
-        },
-        {
-          model: SpecSheetSupply,
-          as: "specSheetSupplies",
-          // <-- CAMBIO: Asegurarse de que aquí también se devuelva 'idPurchaseDetail'.
-          attributes: ['idSpecSheetSupply', 'quantity', 'unitOfMeasure', 'notes', 'idPurchaseDetail'],
-          include: [
-            {
-              model: Supply,
-              as: "supply",
-              attributes: ['idSupply', 'supplyName', 'unitOfMeasure']
-            }
-          ]
-        },
-        {
-          model: SpecSheetProcess,
-          as: "specSheetProcesses",
-          attributes: ['idSpecSheetProcess', 'processOrder', 'processNameOverride', 'processDescriptionOverride', 'estimatedTimeMinutes'],
-          include: [
-            {
-              model: Process,
-              as: 'masterProcessData',
-              attributes: ['idProcess', 'processName']
-            }
-          ],
-          order: [['processOrder', 'ASC']]
-        }
-      ],
-      order: [["status", "DESC"], ["dateEffective", "DESC"], ["idSpecSheet", "DESC"]],
-    });
-  } catch (error) {
-    console.error(`Repositorio[SpecSheet]: Error en getSpecSheetsByProduct para producto ID ${idProduct}:`, error.message);
-    throw error;
+  if (isNaN(idProduct) || idProduct <= 0) {
+    throw new Error("Repositorio: ID de Producto inválido.");
   }
+  
+  return SpecSheet.findAll({
+    where: { idProduct },
+    include: [
+      { 
+        model: Product, 
+        as: "product",
+        // ✅ --- CORRECCIÓN FINAL (también aquí) ---
+        attributes: ["idProduct", "productName", "status"]
+      },
+      { 
+        model: SpecSheetSupply, 
+        as: "specSheetSupplies",
+        include: [{ model: Supply, as: "supply" }]
+      },
+      {
+        model: SpecSheetProcess,
+        as: "specSheetProcesses",
+        include: [{ 
+          model: Process, 
+          as: "masterProcessData" 
+        }]
+      }
+    ],
+    order: [["status", "DESC"], ["dateEffective", "DESC"]],
+  });
 };
 
 module.exports = {

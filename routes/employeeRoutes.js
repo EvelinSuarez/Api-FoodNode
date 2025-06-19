@@ -3,6 +3,7 @@ const router = express.Router();
 const employeeController = require('../controllers/employeeController');
 const employeeValidations = require('../middlewares/employeeValidations');
 
+router.get('/count', employeeController.getActiveEmployeeCount); 
 router.get('/', employeeController.getAllEmployees);
 router.get('/:idEmployee', employeeValidations.getEmployeeByIdValidation, employeeController.getEmployeeById);
 router.post('/', employeeValidations.createEmployeeValidation, employeeController.createEmployee);

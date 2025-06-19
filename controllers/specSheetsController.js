@@ -4,7 +4,7 @@
 const { validationResult } = require("express-validator");
 const specSheetService = require("../services/specSheetsService");
 // <<<--- ¡IMPORTANTE! Importamos los modelos necesarios para el 'include' --- >>>
-const { SpecSheet, Product, SpecSheetSupply, Supply, SpecSheetProcess, Process } = require('../models');
+const { SpecSheet, Product, SpecSheetSupply, Supply, SpecSheetProcess, Process, PurchaseDetail } = require('../models');
 
 const getAllSpecSheetsWithCosts = async (req, res) => {
   try {
