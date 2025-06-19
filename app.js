@@ -25,20 +25,13 @@ db.sequelize.authenticate()
 const whitelist = [
   'https://food-in-production-react.vercel.app', // Tu frontend en producción
   'http://localhost:3000', // Tu frontend en desarrollo local (si usas puerto 3000)
-  'http://localhost:5173'  // Tu frontend en desarrollo local con Vite (puerto común)
+  'http://localhost:5173',  // Tu frontend en desarrollo local con Vite (puerto común)
+  'http://10.0.2.2:3000'
 ];
 
 const corsOptions = {
   // La función origin comprueba si quien hace la petición está en nuestra lista blanca
-  origin: function (origin, callback) {
-    if (whitelist.indexOf(origin) !== -1 || !origin) {
-      // Si está en la lista (o es una petición sin origen como Postman), le damos permiso
-      callback(null, true);
-    } else {
-      // Si no está en la lista, denegamos el acceso
-      callback(new Error('Acceso denegado por la política de CORS'));
-    }
-  },
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Métodos HTTP permitidos
   allowedHeaders: ['Content-Type', 'Authorization'] // Cabeceras que permitimos en las peticiones
 };

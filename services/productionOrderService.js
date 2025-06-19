@@ -241,6 +241,7 @@ const deleteProductionOrder = async (idProductionOrder) => {
 
 const getAllProductionOrders = async (queryFilters = {}) => {
     const { status, status_not_in, idProduct, idEmployeeRegistered, page, limit, sortBy, sortOrder } = queryFilters;
+    
     let whereClause = {};
     if (status) {
         const statuses = status.split(',').map(s => s.trim().toUpperCase());
@@ -252,7 +253,20 @@ const getAllProductionOrders = async (queryFilters = {}) => {
     }
     if (idProduct) whereClause.idProduct = parseInt(idProduct);
     if (idEmployeeRegistered) whereClause.idEmployeeRegistered = parseInt(idEmployeeRegistered);
-    const queryOptions = { whereClause };
+    
+    // --- CORRECCIÓN PRECISA USANDO EL ALIAS CORRECTO ---
+    const queryOptions = {
+        whereClause,
+        include: [
+            {
+                model: employee, // El modelo Employee que ya importaste
+                as: 'employeeRegistered', // <-- EL ALIAS CORRECTO DE TU models/index.js
+                attributes: ['fullName'] // Solo queremos traer el nombre completo
+            }
+        ]
+    };
+    // --- FIN DE LA CORRECCIÓN ---
+
     if (limit && page) {
         queryOptions.limit = parseInt(limit);
         queryOptions.offset = (parseInt(page) - 1) * queryOptions.limit;
@@ -260,6 +274,7 @@ const getAllProductionOrders = async (queryFilters = {}) => {
     if (sortBy && sortOrder) {
         queryOptions.orderClause = [[sortBy, sortOrder.toUpperCase()]];
     }
+
     return productionOrderRepo.findAllOrders(queryOptions);
 };
 
