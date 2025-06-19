@@ -67,6 +67,13 @@ const getEmployeesWithOrderCounts = async () => {
         order: [['fullName', 'ASC']]
     });
 };
+const countActiveEmployeesByMonth = async ({ year, month }) => {
+    if (!year || !month) {
+        throw new Error("Año y mes son requeridos para contar empleados.");
+    }
+    // Llama a la nueva función del repositorio
+    return employeeRepository.countActiveEmployees({ year, month, status: 'activo' });
+};
 
 // ---- EXPORTACIONES ACTUALIZADAS ----
 module.exports = {
@@ -76,5 +83,6 @@ module.exports = {
     updateEmployee,
     deleteEmployee,
     changeStateEmployee,
-    getEmployeesWithOrderCounts, // <-- Exportamos la nueva función
+    getEmployeesWithOrderCounts, 
+    countActiveEmployeesByMonth// <-- Exportamos la nueva función
 };

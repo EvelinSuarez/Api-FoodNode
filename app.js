@@ -56,6 +56,7 @@ const roleRoutes = require("./routes/roleRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const privilegeRoutes = require("./routes/privilegeRoutes");
 const rolePrivilegesRoutes = require("./routes/rolePrivilegesRoutes");
+const dashboardRoutes = require('./routes/dashboardRoutes'); 
 
 // --- GRUPO: Gestión Interna / Empleados ---
 const employeeRoutes = require("./routes/employeeRoutes");
@@ -95,6 +96,7 @@ app.use("/role", roleRoutes);
 app.use("/permission", permissionRoutes);
 app.use("/privilege", privilegeRoutes);
 app.use("/rolePrivileges", rolePrivilegesRoutes);
+app.use('/dashboard', dashboardRoutes);
 app.use("/employee", employeeRoutes);
 app.use("/customers", customersRoutes);
 app.use("/aditionalServices", aditionalServicesRoutes);

@@ -126,6 +126,19 @@ const changeStateEmployee = async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 };
+const getActiveEmployeeCount = async (req, res) => {
+    try {
+        const { year, month } = req.query;
+        const count = await employeeService.countActiveEmployeesByMonth({ 
+            year: parseInt(year), 
+            month: parseInt(month) 
+        });
+        res.status(200).json({ count });
+    } catch (error) {
+        console.error("Error en getActiveEmployeeCount:", error);
+        res.status(500).json({ message: "Error al contar los empleados activos", error: error.message });
+    }
+};
 
 
 // ---- EXPORTACIONES ACTUALIZADAS ----
@@ -137,4 +150,5 @@ module.exports = {
     deleteEmployee,
     changeStateEmployee,
     getEmployeesWithOrderCounts, // <-- ¡Y la nueva función!
+    getActiveEmployeeCount,
 };
