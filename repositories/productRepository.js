@@ -1,35 +1,24 @@
-// repositories/productRepository.js
-const { Product, sequelize } = require('../models'); // <-- AÑADIMOS 'sequelize'
+// Archivo: repositories/productRepository.js
+// --- VERSIÓN CORREGIDA Y SIMPLIFICADA ---
 
-const { Op } = require('sequelize');
+const { Product, sequelize } = require('../models');
 
 const createProduct = async (productData) => {
     return Product.create(productData);
 };
 
 const updateStock = async (productId, newStock) => {
-    const [numberOfAffectedRows] = await Product.update(
-        { currentStock: newStock },
-        { where: { idProduct: productId } }
-    );
-    return numberOfAffectedRows > 0;
+    return Product.update({ currentStock: newStock }, { where: { idProduct: productId } });
 };
 
 const getAllProducts = async () => {
-    // ESTA ES LA FUNCIÓN CORREGIDA
+    // La función ahora es más simple. Solo trae los productos.
+    // El servicio se encargará de enriquecerlos.
     return Product.findAll({
         attributes: {
-            // Incluimos todos los atributos existentes del producto y añadimos uno nuevo
             include: [
                 [
-                    // Usamos una subconsulta SQL literal para contar las fichas técnicas
-                    sequelize.literal(`(
-                        SELECT COUNT(*)
-                        FROM SpecSheets AS ss
-                        WHERE
-                            ss.idProduct = Product.idProduct
-                    )`),
-                    // Nombramos a este nuevo campo 'specSheetCount'
+                    sequelize.literal(`(SELECT COUNT(*) FROM SpecSheets WHERE SpecSheets.idProduct = Product.idProduct)`),
                     'specSheetCount'
                 ]
             ]
@@ -47,30 +36,16 @@ const findProductByName = async (productName) => {
 };
 
 const updateProduct = async (id, productData) => {
-    // findByPk y luego save, o update directo. Update es más simple aquí.
-    const [numberOfAffectedRows] = await Product.update(productData, {
-        where: { idProduct: id },
-        // returning: true, // No soportado por defecto en MySQL para update masivo, necesitarías findByPk después si quieres el objeto actualizado
-    });
-    return numberOfAffectedRows > 0;
+    return Product.update(productData, { where: { idProduct: id } });
 };
 
 const deleteProduct = async (id) => {
-    const numberOfDeletedRows = await Product.destroy({
-        where: { idProduct: id },
-    });
-    return numberOfDeletedRows > 0;
+    return Product.destroy({ where: { idProduct: id } });
 };
 
 const changeStateProduct = async (id, state) => {
-    const [numberOfAffectedRows] = await Product.update({ status: state }, {
-        where: { idProduct: id },
-    });
-    return numberOfAffectedRows > 0;
+    return Product.update({ status: state }, { where: { idProduct: id } });
 };
-
-// Nota: getProductsBySupplier se movió al servicio porque requiere lógica de joins más compleja.
-// Si quisieras una versión simple aquí, sería diferente.
 
 module.exports = {
     createProduct,

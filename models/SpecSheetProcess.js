@@ -3,28 +3,46 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const SpecSheetProcess = sequelize.define('SpecSheetProcess', {
-    idSpecSheetProcess: { // PK
+    idSpecSheetProcess: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
         allowNull: false
     },
-    // idSpecSheet (FK) se añade por asociación
-    // idProcess (FK) se añade por asociación
-    processOrder: { // Orden de este proceso dentro de la ficha técnica
+    
+    // --- CAMBIO CRÍTICO: Definir las FK explícitamente ---
+    idSpecSheet: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'SpecSheets',
+            key: 'idSpecSheet'
+        }
+    },
+    idProcess: {
+        type: DataTypes.INTEGER,
+        allowNull: true, // Importante que sea 'true' para pasos personalizados
+        references: {
+            model: 'Processes',
+            key: 'idProcess'
+        }
+    },
+    // --- FIN DEL CAMBIO ---
+
+    processOrder: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    processNameOverride: { // Si se quiere un nombre específico para este paso en ESTA ficha
+    processNameOverride: {
         type: DataTypes.STRING(150),
         allowNull: true
     },
-    processDescriptionOverride: { // Descripción específica para este paso en ESTA ficha
+    processDescriptionOverride: {
         type: DataTypes.TEXT,
         allowNull: true
     },
-    estimatedTimeMinutes: { // Tiempo estimado para este paso en ESTA ficha
-        type: DataTypes.INTEGER, // en minutos
+    estimatedTimeMinutes: {
+        type: DataTypes.INTEGER,
         allowNull: true
     }
 }, {

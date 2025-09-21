@@ -1,10 +1,11 @@
+// Archivo: routes/productRoutes.js
+// --- VERSIÓN COMPLETA CON LA NUEVA RUTA PARA AJUSTE DE VENTA ---
+
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
 
-// --- ESTA ES LA CORRECCIÓN CLAVE ---
-// 1. La ruta ahora es '../middleware/productValidations.js'
-// 2. Usamos desestructuración para importar solo las validaciones que necesitamos.
+// Importamos las validaciones desde el archivo correspondiente
 const {
   createProductValidation,
   updateProductValidation,
@@ -12,7 +13,9 @@ const {
   getProductByIdValidation,
   changeStateValidation,
   getProductsBySupplierValidation,
-  adjustStockValidation // La nueva validación
+  adjustStockValidation,
+  // --- NUEVO: Importar la validación para el ajuste de venta ---
+  adjustSaleStockValidation // Asumimos que crearás esta validación
 } = require('../middlewares/productValidations'); 
 
 
@@ -24,8 +27,8 @@ router.get('/', productController.getAllProducts);
 // Obtener un producto/insumo por su ID
 router.get('/:id', getProductByIdValidation, productController.getProductById);
 
-// Obtener productos por proveedor
-router.get('/supplier/:idSupplier', getProductsBySupplierValidation, productController.getProductsBySupplier);
+// Obtener productos por proveedor (Ruta corregida para evitar conflictos con /:id)
+router.get('/by-supplier/:idSupplier', getProductsBySupplierValidation, productController.getProductsBySupplier);
 
 // Crear un nuevo producto/insumo
 router.post('/', createProductValidation, productController.createProduct);
@@ -37,11 +40,18 @@ router.put('/:id', updateProductValidation, productController.updateProduct);
 router.delete('/:id', deleteProductValidation, productController.deleteProduct);
 
 // Cambiar el estado (activar/desactivar) de un producto/insumo
-// NOTA: El frontend está enviando PATCH a /:id/status. Vamos a ajustar la ruta para que coincida.
 router.patch('/:id/status', changeStateValidation, productController.changeStateProduct);
 
-// Ajustar el stock manualmente (Añadir o quitar)
-// El frontend está enviando POST a /:id/adjust-stock. Usamos POST porque es una acción.
+// Ajustar el stock de INSUMOS (currentStock)
 router.post('/:id/adjust-stock', adjustStockValidation, productController.adjustStock);
+
+
+// --- NUEVA RUTA PARA AJUSTAR STOCK DE VENTA (stockForSale) ---
+router.post(
+    '/:id/adjust-sale-stock', 
+    adjustSaleStockValidation, // Usamos la nueva validación
+    productController.adjustStockBySale
+);
+
 
 module.exports = router;

@@ -1,12 +1,11 @@
-// routes/productionOrderRoutes.js
+// RUTA: /routes/productionOrderRoutes.js
+// VERSIÓN TOTALMENTE COMPLETA Y FINAL (Lógica por Peso)
+
 const express = require('express');
 const router = express.Router();
 
-// --- Importaciones de Middlewares y Controladores ---
-
-// ÚNICA importación de las validaciones y middlewares de productionOrderValidations
 const {
-    loadProductionOrder, // Middleware para cargar la orden
+    loadProductionOrder,
     createProductionOrderValidation,
     commonIdParamsValidation,
     updateProductionOrderValidation,
@@ -14,49 +13,67 @@ const {
     finalizeProductionOrderValidation,
     changeProductionOrderStatusValidation,
     deleteProductionOrderValidation,
-    getAllProductionOrdersQueryValidation
+    getAllProductionOrdersQueryValidation,
+    startProductionValidation
 } = require('../middlewares/productionOrderValidations');
 
-// Importación del controlador
 const productionOrderController = require('../controllers/productionOrderController');
 
-// router.use(authMiddleware.verifyToken); // Aplicar autenticación globalmente si es necesario
+// --- Rutas de Órdenes de Producción ---
 
+// --- RUTA PARA VERIFICAR STOCK ANTES DE CREAR (BASADO EN PESO) ---
+router.post('/check-stock',
+    productionOrderController.checkStockAvailability
+);
+
+// Crear una nueva orden
 router.post('/',
-    // authMiddleware.hasPermission('production_order_create'), // Ejemplo de permiso específico
     createProductionOrderValidation,
     productionOrderController.createProductionOrder
 );
 
-router.get('/check-active/:idProduct', productionOrderController.checkActiveOrderForProduct);
+// Iniciar producción y descontar insumos
+router.post('/:idProductionOrder/start',
+    commonIdParamsValidation,
+    loadProductionOrder,
+    startProductionValidation,
+    productionOrderController.startProductionAndDeductSupplies
+);
 
+// Verificar si un producto tiene una orden activa
+router.get('/check-active/:idProduct',
+    productionOrderController.checkActiveOrderForProduct
+);
+
+// Obtener todas las órdenes con filtros
 router.get('/',
-    getAllProductionOrdersQueryValidation, // Validar query params para el listado
+    getAllProductionOrdersQueryValidation,
     productionOrderController.getAllProductionOrders
 );
 
+// Obtener una orden por su ID
 router.get('/:idProductionOrder',
-    commonIdParamsValidation, // Valida el formato del ID
-    // loadProductionOrder no es necesario aquí si el controlador o servicio maneja la carga con detalles.
-    // Si getProductionOrderById solo devuelve el objeto, y necesitas la instancia para algo más en la cadena,
-    // podrías añadir loadProductionOrder aquí.
+    commonIdParamsValidation,
     productionOrderController.getProductionOrderById
 );
 
-router.put('/:idProductionOrder', // PUT para actualización general de la orden
+// Actualizar datos generales de una orden
+router.put('/:idProductionOrder',
     commonIdParamsValidation,
-    loadProductionOrder, // Carga la instancia de la orden en req.productionOrderInstance
+    loadProductionOrder,
     updateProductionOrderValidation,
     productionOrderController.updateProductionOrder
 );
 
-router.patch('/:idProductionOrder/steps/:idProductionOrderDetail', // PATCH para actualizar un paso específico
-    commonIdParamsValidation, // Para :idProductionOrder
-    loadProductionOrder, // Carga la orden principal
-    updateProductionOrderStepValidation, // Valida :idProductionOrderDetail y carga el paso en req.productionStepInstance
+// Actualizar un paso específico de la producción
+router.patch('/:idProductionOrder/steps/:idProductionOrderDetail',
+    commonIdParamsValidation,
+    loadProductionOrder,
+    updateProductionOrderStepValidation,
     productionOrderController.updateProductionOrderStep
 );
 
+// Finalizar una orden
 router.post('/:idProductionOrder/finalize',
     commonIdParamsValidation,
     loadProductionOrder,
@@ -64,13 +81,15 @@ router.post('/:idProductionOrder/finalize',
     productionOrderController.finalizeProductionOrder
 );
 
-router.patch('/:idProductionOrder/status', // PATCH para cambiar el estado de la orden
+// Cambiar el estado de una orden (Pausar, Cancelar, etc.)
+router.patch('/:idProductionOrder/status',
     commonIdParamsValidation,
     loadProductionOrder,
     changeProductionOrderStatusValidation,
     productionOrderController.changeProductionOrderStatus
 );
 
+// Eliminar una orden
 router.delete('/:idProductionOrder',
     commonIdParamsValidation,
     loadProductionOrder,
@@ -78,4 +97,4 @@ router.delete('/:idProductionOrder',
     productionOrderController.deleteProductionOrder
 );
 
-module.exports = router;
+module.exports = router;    
