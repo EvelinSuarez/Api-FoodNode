@@ -134,15 +134,24 @@ app.use((err, req, res, next) => {
   });
 });
 
-// =================================================================
-// ARRANQUE DEL SERVIDOR (CRÍTICO PARA VERCEL)
-// =================================================================
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
-});
+
+async function startServer() {
+  try {
+    await sequelize.sync({ alter: true }); 
+    // 'alter: true' actualiza las tablas para que coincidan con tus modelos, sin borrar datos
+
+    console.log('✅ Base de datos sincronizada correctamente.');
+
+    app.listen(PORT, () => {
+      console.log(`Servidor escuchando en el puerto ${PORT}`);
+    });
+  } catch (error) {
+    console.error('❌ Error sincronizando base de datos:', error);
+    process.exit(1); // Salir con error para que la plataforma sepa que algo falló
+  }
+}
 
 
-// AÑADE ESTA LÍNEA AL FINAL DEL ARCHIVO
-module.exports = app;
+startServer();
