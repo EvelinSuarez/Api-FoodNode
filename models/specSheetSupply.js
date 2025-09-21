@@ -1,40 +1,57 @@
-// models/specSheetSupply.js (ANTES productSheet.js)
+// models/specSheetSupply.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const SpecSheetSupply = sequelize.define('SpecSheetSupply', {
-    idSpecSheetSupply: { // PK para la tabla intermedia
+    idSpecSheetSupply: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
         allowNull: false
     },
-     idPurchaseDetail: {
+    
+    // --- CAMBIO: Definir FKs explícitamente ---
+    idSpecSheet: {
         type: DataTypes.INTEGER,
-        allowNull: true, // Puede ser nulo si es una ficha "teórica" o aún no se ha asignado un lote.
+        allowNull: false,
         references: {
-            model: 'PurchaseDetails', // Nombre de la tabla de detalles de compra
+            model: 'SpecSheets',
+            key: 'idSpecSheet'
+        }
+    },
+    idSupply: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'Supplies', // Asegúrate que el nombre de la tabla sea correcto
+            key: 'idSupply'
+        }
+    },
+    // --- FIN DEL CAMBIO ---
+
+    idPurchaseDetail: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'PurchaseDetails',
             key: 'idPurchaseDetail'
-        },
-        comment: 'FK al lote de compra específico que se usará para este insumo.'
+        }
     },
-    // idSpecSheet (FK) se añade por asociación
-    // idSupply (FK) se añade por asociación
-    quantity: { // Cantidad del insumo requerida por la ficha (para quantityBase del producto)
-        type: DataTypes.DECIMAL(10, 3), // Ej: 0.500 kg de harina
+    quantity: {
+        type: DataTypes.DECIMAL(10, 3),
         allowNull: false
     },
-    unitOfMeasure: { // Unidad del insumo en esta receta (puede ser diferente a la unidad base del insumo)
-        type: DataTypes.STRING(50), // Ej: "gramos", "ml", "cucharadas"
+    unitOfMeasure: {
+        type: DataTypes.STRING(50),
         allowNull: false
     },
-    notes: { // Notas adicionales sobre este ingrediente en la receta
+    notes: {
         type: DataTypes.TEXT,
         allowNull: true
     }
 }, {
     tableName: 'SpecSheetSupplies',
-    timestamps: true // Puede ser útil saber cuándo se añadió/modificó un ingrediente en la ficha
+    timestamps: true
 });
 
 module.exports = SpecSheetSupply;

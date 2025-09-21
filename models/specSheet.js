@@ -28,6 +28,17 @@ const SpecSheet = sequelize.define('SpecSheet', {
         type: DataTypes.STRING(50),
         allowNull: false // O true si puede ser opcional, pero generalmente es requerida
     },
+    portions: {
+        type: DataTypes.INTEGER,
+        allowNull: true, // o false si es obligatorio
+        comment: 'Número de porciones que rinde la receta.'
+    },
+    totalCost: {
+        type: DataTypes.DECIMAL(12, 2), // Espacio para costos más grandes
+        allowNull: true, // Puede ser nulo si no se ha calculado
+        defaultValue: 0.00,
+        comment: 'Costo total de todos los ingredientes de la receta.'
+    },
     // --- FIN NUEVO CAMPO ---
     dateEffective: {
         type: DataTypes.DATEONLY,

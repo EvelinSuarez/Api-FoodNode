@@ -36,6 +36,12 @@ module.exports = {
         type: Sequelize.STRING(50),
         allowNull: false
       },
+      portions: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        defaultValue: 1,
+        comment: 'Número de porciones que rinde la receta.'
+      },
       dateEffective: {
         type: Sequelize.DATEONLY,
         defaultValue: Sequelize.NOW

@@ -1,3 +1,6 @@
+// models/Product.js
+// --- VERSIÓN CORREGIDA SIN PROFIT MARGIN ---
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -12,19 +15,28 @@ const Product = sequelize.define('Product', {
         type: DataTypes.STRING(100), 
         allowNull: false 
     },
-    // NUEVO: Cantidad actual en inventario
-    currentStock: {
-        type: DataTypes.INTEGER,
-        allowNull: false, // Es importante que siempre tenga un valor
-        defaultValue: 0,
-        validate: {
-            min: 0 // El stock no puede ser negativo
-        }
-    },
-    stockForSale: { // Este es "Stock de Producto Terminado"
+    // Este campo ahora representa el COSTO POR UNIDAD del producto intermedio.
+    sellingPrice: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0, // Inicia en 0 como pediste
+        defaultValue: 0.00,
+        validate: {
+            min: 0
+        },
+        comment: 'Costo de producción por unidad de medida base (ej: costo por kg).'
+    },
+    currentStock: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        validate: {
+            min: 0
+        }
+    },
+    stockForSale: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0,
     },  
     minStock: {
         type: DataTypes.INTEGER,
@@ -46,6 +58,9 @@ const Product = sequelize.define('Product', {
         type: DataTypes.BOOLEAN, 
         defaultValue: true 
     },
+    // --- CAMPO ELIMINADO ---
+    // El campo profitMargin se elimina ya que el precio se basa en el costo directo.
+    
 }, {
     timestamps: true
 });

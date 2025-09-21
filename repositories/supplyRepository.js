@@ -1,20 +1,36 @@
-// repositories/supplyRepository.js
-const { Supply, sequelize } = require('../models'); // Importar Supply y Op si es necesario
-const { Op } = require('sequelize');
-const { BadRequestError } = require('../utils/customErrors'); // Para errores específicos del repo
+// RUTA: repositories/supplyRepository.js
 
-const create = async (supplyData) => {
+const { Supply, sequelize } = require('../models');
+const { Op } = require('sequelize');
+const { BadRequestError } = require('../utils/customErrors');
+
+/**
+ * Crea un nuevo insumo. Puede operar dentro de una transacción.
+ * @param {object} supplyData - Los datos del insumo a crear.
+ * @param {import('sequelize').Transaction} [transaction=null] - La transacción de Sequelize, si existe.
+ * @returns {Promise<Supply>}
+ */
+const create = async (supplyData, transaction = null) => {
     try {
-        return await Supply.create(supplyData);
+        const options = {};
+        if (transaction) {
+            options.transaction = transaction;
+        }
+        return await Supply.create(supplyData, options);
     } catch (error) {
         if (error.name === 'SequelizeUniqueConstraintError') {
             throw new BadRequestError('Ya existe un insumo con este nombre.');
         }
         console.error("Repo[Supply]: Error al crear insumo:", error);
-        throw error; // Re-lanzar para que el servicio lo maneje
+        throw error;
     }
 };
 
+/**
+ * Encuentra todos los insumos que coincidan con los filtros.
+ * @param {object} [filters={}] - Filtros para la búsqueda.
+ * @returns {Promise<Supply[]>}
+ */
 const findAll = async (filters = {}) => {
     const whereClause = {};
     if (filters.status !== undefined) {
@@ -23,31 +39,48 @@ const findAll = async (filters = {}) => {
     if (filters.supplyName) {
         whereClause.supplyName = { [Op.iLike]: `%${filters.supplyName}%` };
     }
-    // if (filters.idCategory) {
-    //     whereClause.idCategory = parseInt(filters.idCategory);
-    // }
     return Supply.findAll({
         where: whereClause,
         order: [['supplyName', 'ASC']]
-        // include: [{ model: SupplyCategory, as: 'category'}] // Si tienes categorías
     });
 };
 
+/**
+ * Busca un insumo por su ID (llave primaria).
+ * @param {number} idSupply - El ID del insumo.
+ * @returns {Promise<Supply|null>}
+ */
 const findById = async (idSupply) => {
-    return Supply.findByPk(parseInt(idSupply)
-        // ,{ include: [{ model: SupplyCategory, as: 'category'}]}
-    );
+    return Supply.findByPk(parseInt(idSupply));
 };
 
-const update = async (idSupply, supplyData) => {
-    // Filtrar campos que no deben ser actualizados directamente o que son PK
-    const { idSupply: _, ...dataToUpdate } = supplyData;
+/**
+ * Busca un insumo por su nombre exacto. Puede operar dentro de una transacción.
+ * @param {string} name - El nombre del insumo a buscar.
+ * @param {import('sequelize').Transaction} [transaction=null] - La transacción de Sequelize, si existe.
+ * @returns {Promise<Supply|null>}
+ */
+const findByName = async (name, transaction = null) => {
+    const options = { where: { supplyName: name } };
+    if (transaction) {
+        options.transaction = transaction;
+    }
+    return await Supply.findOne(options);
+};
 
+/**
+ * Actualiza un insumo.
+ * @param {number} idSupply - El ID del insumo a actualizar.
+ * @param {object} supplyData - Los nuevos datos para el insumo.
+ * @returns {Promise<number>} - El número de filas afectadas.
+ */
+const update = async (idSupply, supplyData) => {
+    const { idSupply: _, ...dataToUpdate } = supplyData;
     try {
         const [affectedRows] = await Supply.update(dataToUpdate, {
             where: { idSupply: parseInt(idSupply) }
         });
-        return affectedRows; // Devuelve el número de filas afectadas
+        return affectedRows;
     } catch (error) {
         if (error.name === 'SequelizeUniqueConstraintError') {
             throw new BadRequestError('Ya existe otro insumo con este nombre.');
@@ -57,21 +90,28 @@ const update = async (idSupply, supplyData) => {
     }
 };
 
+/**
+ * Elimina un insumo por su ID.
+ * @param {number} idSupply - El ID del insumo a eliminar.
+ * @returns {Promise<number>} - El número de filas eliminadas.
+ */
 const destroy = async (idSupply) => {
-    // La validación de si está en uso se hace en el middleware/servicio.
-    // Aquí solo intentamos eliminar.
     try {
         return await Supply.destroy({
             where: { idSupply: parseInt(idSupply) }
         });
     } catch (error) {
-        // Podría haber un SequelizeForeignKeyConstraintError si no se validó antes y hay onDelete: RESTRICT
         console.error("Repo[Supply]: Error al eliminar insumo:", error);
         throw error;
     }
 };
 
-// changeStatus es un caso particular de update, pero lo mantenemos separado por claridad si quieres.
+/**
+ * Cambia el estado de un insumo (activo/inactivo).
+ * @param {number} idSupply - El ID del insumo.
+ * @param {boolean} status - El nuevo estado.
+ * @returns {Promise<number>} - El número de filas afectadas.
+ */
 const changeStatus = async (idSupply, status) => {
     const [affectedRows] = await Supply.update({ status }, {
         where: { idSupply: parseInt(idSupply) }
@@ -83,6 +123,7 @@ module.exports = {
     create,
     findAll,
     findById,
+    findByName,
     update,
     destroy,
     changeStatus,

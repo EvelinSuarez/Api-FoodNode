@@ -12,7 +12,7 @@ module.exports = {
       document: '123456789',
       cellphone: '3001234567',
       full_name: 'Lina Marcela Rendon',
-      email: 'admin@gmail.com',
+      email: 'foodinproduction20@gmail.com',
       password: hashedPassword,
       idRole: 1,
       status: true,

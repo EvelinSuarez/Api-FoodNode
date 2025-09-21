@@ -1,5 +1,6 @@
+// ...-create-spec-sheet-processes.js
+// --- COPIA Y PEGA ESTE CONTENIDO COMPLETO ---
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('SpecSheetProcesses', {
@@ -9,26 +10,22 @@ module.exports = {
         autoIncrement: true,
         allowNull: false
       },
-      idSpecSheet: { // FK
+      idSpecSheet: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        references: {
-          model: 'SpecSheets',
-          key: 'idSpecSheet'
-        },
+        references: { model: 'SpecSheets', key: 'idSpecSheet' },
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      idProcess: { // FK
+      // ----- ¡EL CAMBIO MÁS IMPORTANTE ESTÁ AQUÍ! -----
+      idProcess: {
         type: Sequelize.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'Processes', // Tabla de la tanda anterior
-          key: 'idProcess'
-        },
+        allowNull: true, // ¡Permitimos nulos para pasos personalizados!
+        references: { model: 'Processes', key: 'idProcess' },
         onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
+        onDelete: 'SET NULL' // Si se borra el proceso maestro, el paso no se rompe, solo pierde la referencia.
       },
+      // ----- FIN DEL CAMBIO -----
       processOrder: {
         type: Sequelize.INTEGER,
         allowNull: false
@@ -55,7 +52,6 @@ module.exports = {
       }
     });
     
-    // Índice para asegurar que un proceso no se repita en el mismo orden para la misma ficha
     await queryInterface.addIndex('SpecSheetProcesses', ['idSpecSheet', 'processOrder'], {
       unique: true,
       name: 'uq_spec_sheet_process_order'
