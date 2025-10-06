@@ -23,6 +23,7 @@ const Permission = sequelize.define('permission', {
         defaultValue: true
     }
 }, {
+    tableName: 'permissions',
     timestamps: false,
     indexes: [
         {
