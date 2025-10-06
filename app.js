@@ -139,17 +139,15 @@ const PORT = process.env.PORT || 3001;
 
 async function startServer() {
   try {
-    await sequelize.sync({ alter: true }); 
-    // 'alter: true' actualiza las tablas para que coincidan con tus modelos, sin borrar datos
-
+    await db.sequelize.sync({ alter: true }); 
     console.log('✅ Base de datos sincronizada correctamente.');
 
     app.listen(PORT, () => {
-      console.log(`Servidor escuchando en el puerto ${PORT}`);
+      console.log(`🚀 Servidor escuchando en el puerto ${PORT}`);
     });
   } catch (error) {
     console.error('❌ Error sincronizando base de datos:', error);
-    process.exit(1); // Salir con error para que la plataforma sepa que algo falló
+    process.exit(1);
   }
 }
 
