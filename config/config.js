@@ -44,3 +44,5 @@ module.exports = {
     dialectOptions: {}, // Railway no requiere SSL
   },
 };
+
+
