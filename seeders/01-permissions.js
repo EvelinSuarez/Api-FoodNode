@@ -2,7 +2,6 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // 1. Define la lista completa de permisos que deberían existir.
     const permissionsToEnsure = [
       { permissionName: 'Dashboard', permissionKey: 'dashboard' },
       { permissionName: 'Roles', permissionKey: 'roles' },
@@ -19,35 +18,31 @@ module.exports = {
       { permissionName: 'Empleados', permissionKey: 'empleados' },
     ];
 
-    // 2. Consulta la base de datos para ver qué `permissionKey` ya existen.
-    // Usamos `permissionKey` porque es único y más fiable que el nombre.
+    // Consultar los permisos existentes en la base de datos
     const existingPermissions = await queryInterface.sequelize.query(
-      `SELECT "permissionKey" FROM permissions`, // Asegúrate que el nombre de la tabla 'permissions' sea correcto
+      `SELECT "permissionKey" FROM permissions`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
-    const existingPermissionKeys = existingPermissions.map(p => p.permissionKey);
+    const existingKeys = existingPermissions.map(p => p.permissionKey);
 
-    // 3. Filtra la lista para quedarte solo con los permisos que NO existen en la BD.
+    // Filtrar los nuevos permisos
     const newPermissions = permissionsToEnsure
-      .filter(p => !existingPermissionKeys.includes(p.permissionKey))
+      .filter(p => !existingKeys.includes(p.permissionKey))
       .map(p => ({
         ...p,
-        status: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        status: true, // este sí existe en tu modelo
       }));
 
-    // 4. Si hay algo nuevo que insertar, hazlo. De lo contrario, no hagas nada.
+    // Insertar los permisos que falten
     if (newPermissions.length > 0) {
       await queryInterface.bulkInsert('permissions', newPermissions, {});
-      console.log(`Seeder: Insertados ${newPermissions.length} nuevos permisos.`);
+      console.log(`✅ Insertados ${newPermissions.length} nuevos permisos.`);
     } else {
-      console.log('Seeder: No hay nuevos permisos para insertar. La tabla "permissions" ya está actualizada.');
+      console.log('🔸 No hay nuevos permisos para insertar.');
     }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // El 'down' puede borrar todo para pruebas, está bien.
     await queryInterface.bulkDelete('permissions', null, {});
   }
 };
