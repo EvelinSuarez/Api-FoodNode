@@ -115,8 +115,6 @@ module.exports = {
       idPrivilege: index + 1, // Asigna IDs autoincrementales desde 1
       ...privilege,
       status: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
     }));
 
     // Insertamos todos los datos preparados en la base de datos.

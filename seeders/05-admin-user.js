@@ -16,8 +16,6 @@ module.exports = {
       password: hashedPassword,
       idRole: 1,
       status: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
     }], {});
   },
   down: async (queryInterface, Sequelize) => {
