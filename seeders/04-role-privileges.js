@@ -9,8 +9,6 @@ module.exports = {
       rolePrivilegesData.push({
         idRole: 1, // ID del rol de Administrador
         idPrivilege: i,
-        createdAt: new Date(),
-        updatedAt: new Date()
       });
     }
     

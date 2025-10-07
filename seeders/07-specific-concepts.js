@@ -50,9 +50,7 @@ module.exports = {
       description: concept.description || null,
       requires_employee_calculation: concept.requires_employee_calculation || false,
       is_bimonthly: concept.is_bimonthly || false,
-      status: true,
-      created_at: new Date(),
-      updated_at: new Date()
+      status: true
     }));
 
     // Filtrar cualquier concepto que no haya encontrado una categoría (por si acaso)

@@ -15,8 +15,6 @@ module.exports = {
     const categoriesWithTimestamps = categories.map(cat => ({
       ...cat,
       status: true,
-      created_at: new Date(),
-      updated_at: new Date()
     }));
 
     await queryInterface.bulkInsert('expense_category', categoriesWithTimestamps, {});
