@@ -8,8 +8,7 @@
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "npx sequelize-cli db:seed:all",
     "setup": "npm run migrate && npm run seed",
-    "seed:prod": "npx sequelize-cli db:seed:all --env production",
-    "init-db": "npx sequelize-cli db:migrate --env production && npx sequelize-cli db:seed:all --env production"
+    "seed:prod": "npx sequelize-cli db:seed:all --env production"
   },
   "keywords": [],
   "author": "",
