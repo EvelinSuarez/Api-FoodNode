@@ -13,7 +13,7 @@ const Privilege = sequelize.define('privilege', {
     privilegeName: { // Nombre legible
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true // Podría ser único también
+        
     },
     privilegeKey: { // <--- ¡AÑADIR ESTO!
         type: DataTypes.STRING(50), // Ajusta longitud
