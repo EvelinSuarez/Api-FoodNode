@@ -23,7 +23,7 @@ const SpecSheetSupply = sequelize.define('SpecSheetSupply', {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: 'Supplies', // Asegúrate que el nombre de la tabla sea correcto
+            model: 'supplies', // Asegúrate que el nombre de la tabla sea correcto
             key: 'idSupply'
         }
     },
