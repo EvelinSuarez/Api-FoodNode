@@ -1,48 +1,24 @@
-// config/config.js - ADAPTADO PARA VARIABLES DE RAILWAY
-
 const path = require('path');
 
-// Cargar variables desde .env.local si estás en desarrollo
+// En desarrollo buscamos el .env.local
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 }
 
-// Usar las variables que expone Railway
-const requiredEnvVars = [
-  'MYSQLUSER',
-  'MYSQLPASSWORD',
-  'MYSQLDATABASE',
-  'MYSQLHOST',
-  'MYSQLPORT'
-];
-
-for (const varName of requiredEnvVars) {
-  if (process.env[varName] === undefined) {
-    throw new Error(`config/config.js: La variable de entorno '${varName}' no está definida.`);
+const config = {
+  use_env_variable: 'DATABASE_URL', // Render nos dará esta variable
+  dialect: 'mysql', // Cambia a 'postgres' si usas la DB nativa de Render
+  logging: false,
+  dialectModule: require('mysql2'),
+  dialectOptions: {
+    ssl: {
+      rejectUnauthorized: false // Requerido para conexiones seguras en la nube
+    }
   }
-}
-
-const baseConfig = {
-  username: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
-  host: process.env.MYSQLHOST,
-  port: process.env.MYSQLPORT,
-  dialect: "mysql",
 };
 
 module.exports = {
-  development: {
-    ...baseConfig,
-  },
-  test: {
-    ...baseConfig,
-  },
-  production: {
-    ...baseConfig,
-    dialectModule: require('mysql2'),
-    dialectOptions: {}, // Railway no requiere SSL
-  },
+  development: { ...config, use_env_variable: undefined, url: process.env.DATABASE_URL },
+  test: { ...config },
+  production: { ...config }
 };
-
-

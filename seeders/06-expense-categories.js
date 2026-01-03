@@ -1,4 +1,3 @@
-// seeders/YYYYMMDDHHMMSS-expense-categories.js
 'use strict';
 
 module.exports = {
@@ -12,16 +11,36 @@ module.exports = {
       { name: 'Publicidad y Marketing', description: 'Gastos destinados a la promoción del negocio y atracción de nuevos clientes.' },
     ];
 
-    const categoriesWithTimestamps = categories.map(cat => ({
-      ...cat,
-      status: true,
-    }));
+    try {
+      // 1. Verificar cuáles ya existen por nombre
+      const [existingCategories] = await queryInterface.sequelize.query(
+        'SELECT name FROM expense_category'
+      );
+      const existingNames = existingCategories.map(c => c.name);
 
-    await queryInterface.bulkInsert('expense_category', categoriesWithTimestamps, {});
+      // 2. Filtrar y agregar Timestamps (en snake_case por el 'underscored: true')
+      const categoriesToInsert = categories
+        .filter(cat => !existingNames.includes(cat.name))
+        .map(cat => ({
+          name: cat.name,
+          description: cat.description,
+          status: true,
+          created_at: new Date(), // Requerido por timestamps: true
+          updated_at: new Date()
+        }));
+
+      if (categoriesToInsert.length > 0) {
+        await queryInterface.bulkInsert('expense_category', categoriesToInsert, {});
+        console.log(`✅ Se insertaron ${categoriesToInsert.length} categorías de gastos.`);
+      } else {
+        console.log('🔸 Las categorías de gastos ya están al día.');
+      }
+    } catch (error) {
+      console.error('⚠️ Error en seeder de categorías de gastos:', error.message);
+    }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // Esto borrará TODAS las categorías. Útil para resetear.
     await queryInterface.bulkDelete('expense_category', null, {});
   }
 };

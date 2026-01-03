@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
+    "start": "node api/index.js",
+    "dev": "nodemon api/index.js", 
+    "build": "npm install",
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "npx sequelize-cli db:seed:all",
-    "setup": "npm run migrate && npm run seed",
-    "seed:prod": "npx sequelize-cli db:seed:all --env production"
+    "setup-db": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
   },
   "keywords": [],
   "author": "",

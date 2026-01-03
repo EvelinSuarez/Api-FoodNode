@@ -2,7 +2,17 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Definimos todos los privilegios base sin IDs, status ni timestamps
+    // 1. Obtenemos los permisos reales de la DB para usar sus IDs correctos
+    const [permissions] = await queryInterface.sequelize.query(
+      'SELECT idPermission, permissionKey FROM permissions'
+    );
+
+    // Creamos un mapa para buscar IDs por clave (ej: map['dashboard'] -> 1)
+    const pMap = {};
+    permissions.forEach(p => {
+      pMap[p.permissionKey] = p.idPermission;
+    });
+
     const basePrivileges = [
       // Dashboard (Permission ID: 1)
       { privilegeName: 'Ver Dashboard', privilegeKey: 'view', idPermission: 1 },
@@ -109,20 +119,36 @@ module.exports = {
       { privilegeName: 'Ver detalle Empleados', privilegeKey: 'view-detail', idPermission: 13 },
     ];
 
-    // Mapeamos el array base para añadir los campos faltantes a cada objeto.
-    // Esto hace que el código sea más limpio y fácil de mantener.
-    const dataToInsert = basePrivileges.map((privilege, index) => ({
-      idPrivilege: index + 1, // Asigna IDs autoincrementales desde 1
-      ...privilege,
-      status: true,
-    }));
+    // 2. Verificamos qué privilegios ya existen para no duplicar
+    const [existingPrivs] = await queryInterface.sequelize.query(
+      'SELECT privilegeName, idPermission FROM privileges'
+    );
 
-    // Insertamos todos los datos preparados en la base de datos.
-    await queryInterface.bulkInsert('privileges', dataToInsert, {});
+    const dataToInsert = basePrivileges
+      .filter(bp => {
+        // Solo insertamos si el permiso existe en la DB y el privilegio no existe aún
+        const permissionId = pMap[bp.pKey];
+        const alreadyExists = existingPrivs.some(ep => 
+          ep.privilegeName === bp.name && ep.idPermission === permissionId
+        );
+        return permissionId && !alreadyExists;
+      })
+      .map(bp => ({
+        privilegeName: bp.name,
+        privilegeKey: bp.key,
+        idPermission: pMap[bp.pKey],
+        status: true
+      }));
+
+    if (dataToInsert.length > 0) {
+      await queryInterface.bulkInsert('privileges', dataToInsert, {});
+      console.log(`✅ Insertados ${dataToInsert.length} privilegios nuevos.`);
+    } else {
+      console.log('🔸 No hay privilegios nuevos para insertar.');
+    }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // Elimina todos los registros de la tabla 'privileges'.
     await queryInterface.bulkDelete('privileges', null, {});
   }
 };
