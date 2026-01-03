@@ -39,7 +39,9 @@ module.exports = {
       email: adminEmail,
       password: hashedPassword,
       idRole: adminRoleId,
-      status: true
+      status: true,
+      createdAt: new Date(), // Añadir esto
+      updatedAt: new Date()  // Añadir esto
     }], {});
 
     console.log('✅ Usuario administrador creado exitosamente.');

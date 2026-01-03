@@ -29,7 +29,9 @@ module.exports = {
       .filter(p => !existingPrivIds.includes(p.idPrivilege))
       .map(p => ({
         idRole: adminRoleId,
-        idPrivilege: p.idPrivilege
+        idPrivilege: p.idPrivilege,
+        createdAt: new Date(), // Añadir esto
+        updatedAt: new Date()  // Añadir esto
         // No hay timestamps porque tu modelo tiene timestamps: false
       }));
 
