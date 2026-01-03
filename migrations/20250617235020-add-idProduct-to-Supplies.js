@@ -2,7 +2,7 @@
 module.exports = {
   async up (queryInterface, Sequelize) {
     await queryInterface.addColumn(
-      'Supplies',           // 1. Nombre EXACTO de tu tabla de insumos
+      'supplies',           // 1. Nombre EXACTO de tu tabla de insumos
       'idProduct',          // 2. Nombre de la nueva columna
       {
         type: Sequelize.INTEGER,
@@ -18,6 +18,6 @@ module.exports = {
   },
 
   async down (queryInterface, Sequelize) {
-    await queryInterface.removeColumn('Supplies', 'idProduct');
+    await queryInterface.removeColumn('supplies', 'idProduct');
   }
 };

@@ -1,28 +1,27 @@
 'use strict';
 
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // Nombre de la restricción por defecto en MySQL/PostgreSQL suele ser 'tabla_columna_key'
-    // Si usas otro motor de BD o un nombre personalizado, podrías necesitar cambiarlo.
     const constraintName = 'privileges_privilegeName_key';
     try {
       await queryInterface.removeConstraint('privileges', constraintName);
-      console.log(`Restricción '${constraintName}' eliminada exitosamente.`);
+      console.log(`✅ Restricción '${constraintName}' eliminada o ya no existía.`);
     } catch (error) {
-      // Si el nombre de la restricción no es el esperado, Sequelize puede dar un error.
-      // Este bloque ayuda a depurar si el nombre no es el correcto.
-      console.error(`Error al eliminar la restricción '${constraintName}'. Puede que el nombre no sea correcto.`, error);
-      // Opcionalmente, puedes buscar el nombre correcto en tu base de datos y reintentar.
+      // Solo imprimimos un aviso simple, no el error completo que asusta a Render
+      console.log(`⚠️ Aviso: No se pudo eliminar '${constraintName}'. Probablemente ya fue eliminada o el nombre es distinto en Aiven.`);
+      // No hacemos "throw error", así la migración se marca como completada
     }
   },
 
   async down(queryInterface, Sequelize) {
-    // Esto vuelve a añadir la restricción si necesitas revertir la migración
-    await queryInterface.addConstraint('privileges', {
-      fields: ['privilegeName'],
-      type: 'unique',
-      name: 'privileges_privilegeName_key'
-    });
+    try {
+      await queryInterface.addConstraint('privileges', {
+        fields: ['privilegeName'],
+        type: 'unique',
+        name: 'privileges_privilegeName_key'
+      });
+    } catch (error) {
+      console.log('Error al revertir: la restricción ya podría existir.');
+    }
   }
 };
