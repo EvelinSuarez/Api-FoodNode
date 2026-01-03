@@ -134,43 +134,26 @@ app.use((err, req, res, next) => {
   });
 });
 
-const { exec } = require('child_process');
-
-async function runSeedersIfNeeded() {
-  if (process.env.NODE_ENV === 'production') {
-    console.log('🌱 Ejecutando seeders en entorno de producción...');
-    exec('npx sequelize-cli db:seed:all --env production', (error, stdout, stderr) => {
-      if (error) {
-        console.error('❌ Error ejecutando seeders:', error.message);
-        return;
-      }
-      if (stderr) console.error('⚠️ Seeder stderr:', stderr);
-      console.log('✅ Seeders ejecutados correctamente:\n', stdout);
-    });
-  } else {
-    console.log('🧩 Entorno de desarrollo: los seeders no se ejecutan automáticamente.');
-  }
-}
-
-// Llama a la función justo antes de iniciar el servidor
-runSeedersIfNeeded();
-
-
 const PORT = process.env.PORT || 3001;
 
 async function startServer() {
   try {
-    await db.sequelize.sync({ alter: true }); 
-    console.log('✅ Base de datos sincronizada correctamente.');
+    // En Render, es mejor manejar la estructura con Migraciones, 
+    // pero mantenemos sync() para asegurar que los modelos existan.
+    await db.sequelize.authenticate();
+    console.log('✅ Conexión a la base de datos establecida.');
+
+    // sync() sin alter:true para evitar cambios accidentales en producción
+    await db.sequelize.sync(); 
+    console.log('✅ Base de datos sincronizada.');
 
     app.listen(PORT, () => {
       console.log(`🚀 Servidor escuchando en el puerto ${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Error sincronizando base de datos:', error);
+    console.error('❌ Error al iniciar el servidor:', error);
     process.exit(1);
   }
 }
-
 
 startServer();

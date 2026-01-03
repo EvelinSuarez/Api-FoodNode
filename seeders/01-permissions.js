@@ -18,31 +18,39 @@ module.exports = {
       { permissionName: 'Empleados', permissionKey: 'empleados' },
     ];
 
-    // Consultar los permisos existentes en la base de datos
-    const existingPermissions = await queryInterface.sequelize.query(
-      `SELECT "permissionKey" FROM permissions`,
-      { type: queryInterface.sequelize.QueryTypes.SELECT }
-    );
-    const existingKeys = existingPermissions.map(p => p.permissionKey);
+    try {
+      // 1. Buscamos qué llaves ya existen para no duplicar
+      const existingPermissions = await queryInterface.sequelize.query(
+        'SELECT permissionKey FROM permissions',
+        { type: queryInterface.sequelize.QueryTypes.SELECT }
+      );
+      
+      const existingKeys = existingPermissions.map(p => p.permissionKey);
 
-    // Filtrar los nuevos permisos
-    const newPermissions = permissionsToEnsure
-      .filter(p => !existingKeys.includes(p.permissionKey))
-      .map(p => ({
-        ...p,
-        status: true, // este sí existe en tu modelo
-      }));
+      // 2. Filtramos solo los que no están en la base de datos
+      const newPermissions = permissionsToEnsure
+        .filter(p => !existingKeys.includes(p.permissionKey))
+        .map(p => ({
+          permissionName: p.permissionName,
+          permissionKey: p.permissionKey,
+          status: true
+          // NO incluyas createdAt/updatedAt aquí porque tu modelo tiene timestamps: false
+        }));
 
-    // Insertar los permisos que falten
-    if (newPermissions.length > 0) {
-      await queryInterface.bulkInsert('permissions', newPermissions, {});
-      console.log(`✅ Insertados ${newPermissions.length} nuevos permisos.`);
-    } else {
-      console.log('🔸 No hay nuevos permisos para insertar.');
+      if (newPermissions.length > 0) {
+        await queryInterface.bulkInsert('permissions', newPermissions, {});
+        console.log(`✅ Se insertaron ${newPermissions.length} permisos nuevos.`);
+      } else {
+        console.log('🔸 Los permisos ya están actualizados.');
+      }
+    } catch (error) {
+      // Si la tabla no existe aún (porque la migración falló), el log nos avisará
+      console.error('⚠️ Error al sembrar permisos:', error.message);
     }
   },
 
   down: async (queryInterface, Sequelize) => {
+    // Esto limpia la tabla si decides revertir el seeder
     await queryInterface.bulkDelete('permissions', null, {});
   }
 };
