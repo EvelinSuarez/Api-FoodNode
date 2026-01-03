@@ -138,17 +138,18 @@ const PORT = process.env.PORT || 3001;
 
 async function startServer() {
   try {
-    // En Render, es mejor manejar la estructura con Migraciones, 
-    // pero mantenemos sync() para asegurar que los modelos existan.
+    // 1. Solo autenticamos, NO sincronizamos (porque ya usamos migraciones)
     await db.sequelize.authenticate();
-    console.log('✅ Conexión a la base de datos establecida.');
+    console.log('✅ Conexión a la base de datos establecida correctamente.');
 
-    // sync() sin alter:true para evitar cambios accidentales en producción
-    await db.sequelize.sync(); 
-    console.log('✅ Base de datos sincronizada.');
+    // COMENTADO O ELIMINADO: 
+    // await db.sequelize.sync(); 
+    // console.log('✅ Base de datos sincronizada.');
 
-    app.listen(PORT, () => {
+    // 2. Escuchar en el puerto definido por Render
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Servidor escuchando en el puerto ${PORT}`);
+      console.log(`🔗 URL de acceso: http://0.0.0.0:${PORT}`);
     });
   } catch (error) {
     console.error('❌ Error al iniciar el servidor:', error);
