@@ -19,22 +19,24 @@ module.exports = {
     ];
 
     try {
-      // 1. Buscamos qué llaves ya existen para no duplicar
+      // 1. Verificar qué llaves ya existen
       const existingPermissions = await queryInterface.sequelize.query(
         'SELECT permissionKey FROM permissions',
         { type: queryInterface.sequelize.QueryTypes.SELECT }
       );
       
-      const existingKeys = existingPermissions.map(p => p.permissionKey);
+      const existingKeys = existingPermissions.map(p => p.permissionKey || p.permissionkey);
 
-      // 2. Filtramos solo los que no están en la base de datos
+      // 2. Filtrar e incluir Timestamps manualmente
       const newPermissions = permissionsToEnsure
         .filter(p => !existingKeys.includes(p.permissionKey))
         .map(p => ({
           permissionName: p.permissionName,
           permissionKey: p.permissionKey,
-          status: true
-          // NO incluyas createdAt/updatedAt aquí porque tu modelo tiene timestamps: false
+          status: true,
+          // AÑADIMOS ESTO PARA SOLUCIONAR EL ERROR
+          createdAt: new Date(), 
+          updatedAt: new Date()
         }));
 
       if (newPermissions.length > 0) {
@@ -44,13 +46,11 @@ module.exports = {
         console.log('🔸 Los permisos ya están actualizados.');
       }
     } catch (error) {
-      // Si la tabla no existe aún (porque la migración falló), el log nos avisará
       console.error('⚠️ Error al sembrar permisos:', error.message);
     }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // Esto limpia la tabla si decides revertir el seeder
     await queryInterface.bulkDelete('permissions', null, {});
   }
 };
