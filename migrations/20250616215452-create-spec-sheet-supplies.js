@@ -12,7 +12,7 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Supplies', // <-- CORRECCIÓN: 'supplies' a 'Supplies' por convención
+          model: 'supplies', // <-- CORRECCIÓN: 'supplies' a 'Supplies' por convención
           key: 'idSupply'
         },
         onUpdate: 'CASCADE',
