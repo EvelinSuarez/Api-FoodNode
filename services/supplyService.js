@@ -32,16 +32,20 @@ const createSupply = async (supplyData) => {
         let productInventory = await Product.findOne({ where: { productName: trimmedSupplyName } }, { transaction: t });
 
         if (!productInventory) {
-            // 3. Si no existe, lo creamos.
-            console.log(`[SupplyService] El producto de inventario para '${trimmedSupplyName}' no existe. Creando automáticamente...`);
-            productInventory = await Product.create({
-                productName: trimmedSupplyName,
-                description: description || `Insumo de inventario: ${trimmedSupplyName}`,
-                isSellable: false,
-                currentStock: 0,
-                unitOfMeasure: unitOfMeasure || 'unidad',
-            }, { transaction: t });
-            console.log(`[SupplyService] Producto de inventario creado con ID: ${productInventory.idProduct}`);
+            // 3. Si no existe, solo lo creamos si el frontend/payload solicita creación automática.
+            if (supplyData && supplyData.autoCreateProduct) {
+                console.log(`[SupplyService] El producto de inventario para '${trimmedSupplyName}' no existe. Creando automáticamente...`);
+                productInventory = await Product.create({
+                    productName: trimmedSupplyName,
+                    description: description || `Insumo de inventario: ${trimmedSupplyName}`,
+                    isSellable: false,
+                    currentStock: 0,
+                    unitOfMeasure: unitOfMeasure || 'unidad',
+                }, { transaction: t });
+                console.log(`[SupplyService] Producto de inventario creado con ID: ${productInventory.idProduct}`);
+            } else {
+                console.log(`[SupplyService] No existe producto de inventario para '${trimmedSupplyName}' y no se solicitó creación automática.`);
+            }
         } else {
             console.log(`[SupplyService] Producto de inventario para '${trimmedSupplyName}' ya existía. Enlazando con ID: ${productInventory.idProduct}`);
         }
@@ -50,7 +54,7 @@ const createSupply = async (supplyData) => {
         const newSupplyPayload = {
             ...supplyData,
             supplyName: trimmedSupplyName,
-            idProduct: productInventory.idProduct
+            idProduct: productInventory ? productInventory.idProduct : null
         };
 
         const newSupply = await supplyRepository.create(newSupplyPayload, t);

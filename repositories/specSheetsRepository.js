@@ -2,11 +2,11 @@
 // VERSIÓN CORREGIDA Y CONSISTENTE
 
 const db = require("../models");
-const { SpecSheet, Product, Supply, SpecSheetSupply, SpecSheetProcess, Process, PurchaseDetail } = db;
+const { SpecSheet, Product, Supply, SpecSheetSupply, SpecSheetProcess, Process, PurchaseDetail, RegisterPurchase, Provider } = db;
 
 // --- Funciones sin cambios, ya estaban correctas ---
 const createSpecSheet = async (specSheetData, options = {}) => {
-  return SpecSheet.create(specSheetData, options);
+  return SpecSheet.create(specSheetData, options); 
 };
 
 const updateSpecSheet = async (idSpecSheet, specSheetData, options = {}) => {
@@ -47,7 +47,6 @@ const getSpecSheetById = async (idSpecSheet) => {
       {
         model: Product,
         as: "product",
-        // --- CAMBIO: 'profitMargin' eliminado de la consulta ---
         attributes: ["idProduct", "productName", "status", "sellingPrice"], 
       },
       {
@@ -58,20 +57,29 @@ const getSpecSheetById = async (idSpecSheet) => {
           {
             model: Supply,
             as: "supply",
-            attributes: ['idSupply', 'supplyName', 'unitOfMeasure']
+            attributes: ['idSupply', 'supplyName']
           },
           {
             model: PurchaseDetail,
             as: 'purchaseDetail',
-            attributes: ['unitPrice']
+            attributes: ['idPurchaseDetail', 'idRegisterPurchase'],
+            include: [{
+              model: RegisterPurchase,
+              as: 'registerPurchase',
+              attributes: ['idRegisterPurchase', 'idProvider'],
+              include: [{
+                model: Provider,
+                as: 'provider',
+                attributes: ['idProvider', 'company' ]
+              }]
+            }]
           }
-        ],
-        order: [['createdAt', 'ASC']]
+        ]
       },
       {
         model: SpecSheetProcess,
         as: "specSheetProcesses",
-        attributes: ['idSpecSheetProcess', 'processOrder', 'processNameOverride', 'processDescriptionOverride'],
+        attributes: ['idSpecSheetProcess', 'processOrder', 'processNameOverride', 'processDescriptionOverride', 'estimatedTimeMinutes'],
         include: [
           {
             model: Process,

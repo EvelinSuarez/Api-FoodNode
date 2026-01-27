@@ -39,6 +39,12 @@ const SpecSheet = sequelize.define('SpecSheet', {
         defaultValue: 0.00,
         comment: 'Costo total de todos los ingredientes de la receta.'
     },
+    totalEstimatedTime: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0,
+        comment: 'Tiempo total estimado de la ficha técnica (suma de sus procesos)'
+    },
     // --- FIN NUEVO CAMPO ---
     dateEffective: {
         type: DataTypes.DATEONLY,

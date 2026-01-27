@@ -60,6 +60,16 @@ const ProductionOrder = sequelize.define('ProductionOrder', {
         type: DataTypes.STRING(50),
         allowNull: true
     },
+     totalEstimatedTime: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        comment: 'Suma de los tiempos estimados de todos los pasos de esta orden'
+    },
+    totalActualTime: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        comment: 'Suma real de los minutos que tomó completar todos los pasos'
+    },
     // --- Fin Datos de finalización ---
     observations: {
         type: DataTypes.TEXT,

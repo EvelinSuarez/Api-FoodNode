@@ -40,21 +40,29 @@ module.exports = {
       }
     });
 
-    await queryInterface.addIndex(
-      'rolePrivileges',
-      ['idRole', 'idPrivilege'],
-      {
-        unique: true,
-        name: 'uq_role_privilege' // <-- Nombre del índice
-      }
-    );
+    // Añadir índice de forma segura (si no existe)
+    const existingIndexes = await queryInterface.showIndex('rolePrivileges');
+    const hasUq = existingIndexes && existingIndexes.some(ix => ix.name === 'uq_role_privilege');
+    if (!hasUq) {
+      await queryInterface.addIndex(
+        'rolePrivileges',
+        ['idRole', 'idPrivilege'],
+        {
+          unique: true,
+          name: 'uq_role_privilege' // <-- Nombre del índice
+        }
+      );
+    }
   },
 
   // ***** CAMBIO AQUÍ *****
   async down(queryInterface, Sequelize) {
-    // 1. Primero, elimina el índice que creaste.
-    //    Debes especificar la tabla y el nombre del índice.
-    await queryInterface.removeIndex('rolePrivileges', 'uq_role_privilege');
+    // 1. Primero, elimina el índice que creaste si existe.
+    const existingIndexes = await queryInterface.showIndex('rolePrivileges');
+    const hasUq = existingIndexes && existingIndexes.some(ix => ix.name === 'uq_role_privilege');
+    if (hasUq) {
+      await queryInterface.removeIndex('rolePrivileges', 'uq_role_privilege');
+    }
 
     // 2. Luego, elimina la tabla.
     await queryInterface.dropTable('rolePrivileges');

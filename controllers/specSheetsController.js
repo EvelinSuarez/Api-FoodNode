@@ -22,6 +22,10 @@ const createSpecSheet = async (req, res) => {
     return res.status(400).json({ message: "Errores de validación.", errors: errors.array() });
   }
   try {
+    if (req.body && Array.isArray(req.body.specSheetProcesses)) {
+      console.log(`[Controller][createSpecSheet] specSheetProcesses payload length: ${req.body.specSheetProcesses.length}`);
+      console.log(JSON.stringify(req.body.specSheetProcesses));
+    }
     const newSpecSheet = await specSheetService.createSpecSheet(req.body);
     res.status(201).json({ message: "Ficha técnica creada exitosamente.", specSheet: newSpecSheet });
   } catch (error) {

@@ -2,8 +2,8 @@
 const bcrypt = require('bcrypt');
 
 // --- MODIFICA ESTAS DOS LÍNEAS ---
-const miContrasenaPlana = 'Maria2025+'; // <-- PON AQUÍ LA CONTRASEÑA que estás intentando usar en el login
-const hashDeLaBaseDeDatos = '$2b$10$7qfw8LVFRgL9dDJN4ntOouA21YavhRn9EKbRrNj0k1cUoeKgD61py';   // <-- PEGA AQUÍ el hash de la BD (ej: '$2b$10$D3olbqfuPfHq5KQ5IVZ51O...')
+const miContrasenaPlana = '1234567Dd*'; // <-- PON AQUÍ LA CONTRASEÑA que estás intentando usar en el login
+const hashDeLaBaseDeDatos = '$2b$10$LhA47vN1oUElNDYJtNBef.psaSiSZPD5YHwnaUK84zhpY4lTzWrSa';   // <-- PEGA AQUÍ el hash de la BD (ej: '$2b$10$D3olbqfuPfHq5KQ5IVZ51O...')
 // ---------------------------------
 
 console.log("Comparando contraseña:", miContrasenaPlana);
