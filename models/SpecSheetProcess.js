@@ -45,9 +45,38 @@ const SpecSheetProcess = sequelize.define('SpecSheetProcess', {
         type: DataTypes.INTEGER,
         allowNull: true
     }
+    
 }, {
     tableName: 'SpecSheetProcesses',
     timestamps: true
+});
+
+const updateSpecSheetTotalTime = async (idSpecSheet) => {
+    const SpecSheet = sequelize.models.SpecSheet; // Acceder al modelo padre
+    
+    // Sumar todos los tiempos de los procesos de esta ficha
+    const totalTime = await SpecSheetProcess.sum('estimatedTimeMinutes', {
+        where: { idSpecSheet: idSpecSheet }
+    });
+
+    // Actualizar el campo en la cabecera (SpecSheet)
+    await SpecSheet.update(
+        { totalEstimatedTime: totalTime || 0 },
+        { where: { idSpecSheet: idSpecSheet } }
+    );
+};
+
+// Hooks: Se ejecutan después de crear, actualizar o eliminar un proceso
+SpecSheetProcess.afterCreate(async (process) => {
+    await updateSpecSheetTotalTime(process.idSpecSheet);
+});
+
+SpecSheetProcess.afterUpdate(async (process) => {
+    await updateSpecSheetTotalTime(process.idSpecSheet);
+});
+
+SpecSheetProcess.afterDestroy(async (process) => {
+    await updateSpecSheetTotalTime(process.idSpecSheet);
 });
 
 module.exports = SpecSheetProcess;

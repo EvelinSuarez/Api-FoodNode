@@ -23,9 +23,6 @@ const getUserById = async (id) => {
     });
 };
 
-// ==========================================================
-// ESTA ES LA FUNCIÓN CRÍTICA QUE DEBES REEMPLAZAR
-// ==========================================================
 const updateUser = async (id, userData) => {
     // 1. Encuentra el usuario para asegurarte de que existe.
     const userToUpdate = await User.findByPk(id);
@@ -49,25 +46,43 @@ const updateUser = async (id, userData) => {
     const { password, ...updatedUserWithoutPassword } = userToUpdate.get({ plain: true });
     return updatedUserWithoutPassword;
 };
-// ==========================================================
-// FIN DE LA FUNCIÓN CRÍTICA
-// ==========================================================
-
 
 const deleteUser = async (id) => {
     // .destroy devuelve el número de filas eliminadas.
     return User.destroy({ where: { idUser: id } });
 };
-
 const changeStateUser = async (id, status) => {
-    // .update devuelve un array con el número de filas afectadas.
-    const [rowsAffected] = await User.update({ status }, { where: { idUser: id } });
+    // 2. Buscamos al usuario incluyendo la información de su Rol
+    // Es vital usar 'include' para poder ver el estado del rol
+    const user = await User.findByPk(id, {
+        include: [{ 
+            model: Role, 
+            as: 'role' // <--- IMPORTANTE: Asegúrate de que este alias sea el mismo que definiste en tus asociaciones
+        }]
+    });
 
-    if (rowsAffected > 0) {
-        // Si se actualizó, devuelve el usuario actualizado para que el frontend pueda refrescar el estado.
-        return getUserById(id);
+    if (!user) {
+        return null;
     }
-    return null;
+
+    // 3. VALIDACIÓN LÓGICA:
+    // Si el 'status' que recibimos es TRUE (queremos activar al usuario)
+    if (status === true || status === "true") {
+        
+        // Verificamos si el rol existe y si su estado es falso (inactivo)
+        if (user.role && user.role.status === false) {
+            // Lanzamos un error que el controlador atrapará
+            // Este mensaje es el que llegará al toast.error del frontend
+            throw new Error("No se puede activar el usuario: El rol asignado está inactivo.");
+        }
+    }
+
+    // 4. Si pasó la validación o si estamos desactivando (status: false), procedemos
+    await user.update({ status });
+
+    // Devolvemos el usuario actualizado sin la contraseña
+    const { password, ...updatedUser } = user.get({ plain: true });
+    return updatedUser;
 };
 
 module.exports = {

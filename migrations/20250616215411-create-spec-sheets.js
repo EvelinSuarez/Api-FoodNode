@@ -9,15 +9,15 @@ module.exports = {
         autoIncrement: true,
         allowNull: false
       },
-      idProduct: { // FK
+      idProduct: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Products', // Tabla creada en la tanda anterior
+          model: 'Products',
           key: 'idProduct'
         },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE' // Si se borra el producto, se borra su ficha técnica
+        onDelete: 'CASCADE'
       },
       versionName: {
         type: Sequelize.STRING(100),
@@ -39,9 +39,20 @@ module.exports = {
       portions: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        defaultValue: 1,
-        comment: 'Número de porciones que rinde la receta.'
+        defaultValue: 1
       },
+      // --- ESTOS FALTABAN EN TU MIGRACIÓN ---
+      totalCost: {
+        type: Sequelize.DECIMAL(12, 2),
+        allowNull: true,
+        defaultValue: 0.00
+      },
+      totalEstimatedTime: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        defaultValue: 0
+      },
+      // ---------------------------------------
       dateEffective: {
         type: Sequelize.DATEONLY,
         defaultValue: Sequelize.NOW

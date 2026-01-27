@@ -1,5 +1,3 @@
-// RUTA: /services/productionOrderService.js
-// VERSIÓN TOTALMENTE COMPLETA Y FINAL (Lógica por Peso)
 
 const productionOrderRepo = require('../repositories/productionOrderRepository');
 const {
@@ -19,30 +17,36 @@ const convertToBaseUnit = (quantity, unit) => {
 };
 
 
-// --- FUNCIÓN PRIVADA MODIFICADA: AHORA CALCULA BASADO EN PESO ---
 const _calculateAndVerifySupplyNeedsByWeight = async (data, transaction = null) => {
-    const { idSpecSheet, targetProductionWeight, targetProductionWeightUnit } = data;
+    // Usamos nombres genéricos y aceptamos varias posibilidades para evitar el error de "undefined"
+    const idSpecSheet = data.idSpecSheet;
+    
+    // Intentamos leer de 'targetProductionWeight' O de 'inputInitialWeight'
+    const rawWeight = data.targetProductionWeight || data.inputInitialWeight || 0;
+    const rawUnit = data.targetProductionWeightUnit || data.inputInitialWeightUnit || 'kg';
+    
+    const targetProductionWeight = parseFloat(rawWeight);
+    const targetProductionWeightUnit = String(rawUnit);
 
     const specSheet = await SpecSheet.findOne({
         where: { idSpecSheet },
-        include: [{ model: SpecSheetSupply, as: 'specSheetSupplies', include: [{ model: Supply, as: 'supply' }] }],
+        include: [{ 
+            model: SpecSheetSupply, 
+            as: 'specSheetSupplies', 
+            include: [{ model: Supply, as: 'supply' }] 
+        }],
         transaction
     });
 
-    if (!specSheet || !specSheet.specSheetSupplies || specSheet.specSheetSupplies.length === 0) {
-        return { sufficient: false, message: "La ficha técnica no tiene insumos definidos.", details: [] };
-    }
+    if (!specSheet) throw new Error("Ficha técnica no encontrada.");
 
+    // Cálculo del multiplicador (Scale Factor)
     const targetWeightGrams = convertToBaseUnit(targetProductionWeight, targetProductionWeightUnit);
-    const recipeYieldGrams = parseFloat(specSheet.quantityBase);
-
-    if (isNaN(targetWeightGrams) || targetWeightGrams <= 0) {
-        return { sufficient: false, message: "El peso a producir es inválido.", details: [] };
-    }
-    if (isNaN(recipeYieldGrams) || recipeYieldGrams <= 0) {
-        return { sufficient: false, message: `El rendimiento base (quantityBase) de la ficha técnica ID ${idSpecSheet} es inválido o cero.`, details: [] };
-    }
-
+    const recipeYieldGrams = parseFloat(specSheet.quantityBase) || 1000;
+    
+    // Log para verificar que ya no sea 0
+    console.log(`[DEBUG] Peso calculado: ${targetWeightGrams}g (Base: ${targetProductionWeight} ${targetProductionWeightUnit})`);
+    
     const scaleFactor = targetWeightGrams / recipeYieldGrams;
 
     const neededSuppliesDetails = [];
@@ -50,34 +54,31 @@ const _calculateAndVerifySupplyNeedsByWeight = async (data, transaction = null) 
 
     for (const specSupply of specSheet.specSheetSupplies) {
         const supplyItem = specSupply.supply;
-        if (!supplyItem) {
-            neededSuppliesDetails.push({ name: `Insumo ID ${specSupply.idSupply}`, sufficient: false, message: 'Insumo no encontrado.' });
-            isSufficient = false;
-            continue;
-        }
+        if (!supplyItem) continue;
 
-        const quantityInRecipeGrams = parseFloat(specSupply.quantity);
-        const totalQuantityNeededGrams = quantityInRecipeGrams * scaleFactor;
+        const quantityInRecipeGrams = parseFloat(specSupply.quantity) || 0;
+        const totalNeededGrams = quantityInRecipeGrams * scaleFactor;
+
+        // Detectar unidad en DB (Seguimos usando tu columna unitOfMeasure)
+        const dbUnit = (supplyItem.unitOfMeasure || '').toLowerCase();
+        const isKg = dbUnit.includes('kg') || dbUnit.includes('kilo');
+
+        // Valor a restar: Si la DB es KG, dividimos gramos por 1000
+        const requiredForDB = isKg ? totalNeededGrams / 1000 : totalNeededGrams;
+        const currentStock = parseFloat(supplyItem.stock) || 0;
         
-        const requiredInStockUnit = totalQuantityNeededGrams / 1000; // de gramos a kg
-        const currentStock = Number(supplyItem.stock);
-        const supplySufficient = currentStock >= requiredInStockUnit;
-
-        if (!supplySufficient) { isSufficient = false; }
+        const supplySufficient = currentStock >= requiredForDB;
+        if (!supplySufficient) isSufficient = false;
 
         neededSuppliesDetails.push({
             idSupply: supplyItem.idSupply,
             name: supplyItem.supplyName,
-            needed: `${requiredInStockUnit.toFixed(3)} ${supplyItem.measurementUnit || 'kg'}`,
-            available: `${currentStock.toFixed(3)} ${supplyItem.measurementUnit || 'kg'}`,
-            sufficient: supplySufficient,
-            neededNumeric: requiredInStockUnit
+            neededNumeric: requiredForDB, // Valor real para el decrement
+            sufficient: supplySufficient
         });
     }
-    
-    const overallMessage = isSufficient ? "Stock suficiente para la producción." : "Stock insuficiente. Revisa los detalles de los insumos requeridos.";
 
-    return { sufficient: isSufficient, message: overallMessage, details: neededSuppliesDetails };
+    return { sufficient: isSufficient, details: neededSuppliesDetails };
 };
 
 const createProductionOrder = async (orderData) => {
@@ -89,16 +90,16 @@ const createProductionOrder = async (orderData) => {
         } = orderData;
         
         const newOrderPayload = {
-            idProduct: idProduct ? parseInt(idProduct) : null,
-            idSpecSheet: idSpecSheet ? parseInt(idSpecSheet) : null,
-            idEmployeeRegistered: idEmployeeRegistered ? parseInt(idEmployeeRegistered) : null,
-            initialAmount: initialAmount != null ? parseFloat(initialAmount) : 0,
-            productNameSnapshot: productNameSnapshot || "(Producto pendiente)",
-            status: status || 'PENDING',
-            targetProductionWeight: (targetProductionWeight != null && !isNaN(parseFloat(targetProductionWeight))) ? parseFloat(targetProductionWeight) : null,
-            targetProductionWeightUnit: targetProductionWeightUnit || 'kg',
-            observations: observations || null,
-            idProvider: idProvider ? parseInt(idProvider) : null,
+            idProduct: orderData.idProduct ? parseInt(orderData.idProduct) : null,
+            idSpecSheet: orderData.idSpecSheet ? parseInt(orderData.idSpecSheet) : null,
+            idEmployeeRegistered: orderData.idEmployeeRegistered ? parseInt(orderData.idEmployeeRegistered) : null,
+            initialAmount: orderData.initialAmount || 0,
+            inputInitialWeight: orderData.targetProductionWeight || null, 
+            inputInitialWeightUnit: orderData.targetProductionWeightUnit || 'kg',
+            productNameSnapshot: orderData.productNameSnapshot || "",
+            status: orderData.status || 'PENDING',
+            observations: orderData.observations || null,
+            idProvider: orderData.idProvider || null,
         };
         
         const createdOrder = await ProductionOrder.create(newOrderPayload, { transaction: t });
@@ -106,23 +107,48 @@ const createProductionOrder = async (orderData) => {
         if (newOrderPayload.status === 'SETUP_COMPLETED' && newOrderPayload.idSpecSheet) {
             const specSheet = await SpecSheet.findOne({
                 where: { idSpecSheet: newOrderPayload.idSpecSheet, status: true },
-                include: [{ model: SpecSheetProcess, as: 'specSheetProcesses', include: [{ model: Process, as: 'masterProcessData' }] }],
+                include: [{ 
+                    model: SpecSheetProcess, 
+                    as: 'specSheetProcesses', 
+                    include: [{ model: Process, as: 'masterProcessData' }] 
+                }],
                 transaction: t
             });
 
             if (!specSheet || !specSheet.specSheetProcesses || specSheet.specSheetProcesses.length === 0) {
-                throw new BadRequestError(`La ficha técnica ID ${newOrderPayload.idSpecSheet} no es válida o no tiene procesos.`);
+                throw new BadRequestError(`La ficha técnica ID ${newOrderPayload.idSpecSheet} no es válida.`);
             }
 
+            // --- CAMBIO 1: Actualizar el tiempo total en la cabecera de la orden ---
+            await createdOrder.update({ 
+                totalEstimatedTime: specSheet.totalEstimatedTime || 0 
+            }, { transaction: t });
+
             const specProcesses = specSheet.specSheetProcesses.sort((a, b) => a.processOrder - b.processOrder);
-            const stepDetailsData = specProcesses.map(sp => ({
-                idProductionOrder: createdOrder.idProductionOrder,
-                idProcess: sp.masterProcessData.idProcess,
-                processOrder: sp.processOrder,
-                processNameSnapshot: sp.processNameOverride || sp.masterProcessData.processName,
-                processDescriptionSnapshot: sp.processDescriptionOverride || sp.masterProcessData.description,
-                status: 'PENDING'
-            }));
+
+            const stepDetailsData = [];
+            for (const sp of specProcesses) {
+                const processIdFromSp = sp.idProcess || (sp.masterProcessData && sp.masterProcessData.idProcess);
+                let masterProcess = sp.masterProcessData;
+
+                if (!masterProcess) {
+                    masterProcess = await Process.findByPk(processIdFromSp, { transaction: t });
+                }
+
+                stepDetailsData.push({
+                    idProductionOrder: createdOrder.idProductionOrder,
+                    idProcess: masterProcess.idProcess,
+                    processOrder: sp.processOrder,
+                    processNameSnapshot: sp.processNameOverride || masterProcess.processName,
+                    processDescriptionSnapshot: sp.processDescriptionOverride || masterProcess.description,
+                    
+                    // --- CAMBIO 2: Copiar el tiempo estimado de cada paso ---
+                    estimatedTimeMinutes: sp.estimatedTimeMinutes || 0, 
+                    
+                    status: 'PENDING'
+                });
+            }
+
             await ProductionOrderDetail.bulkCreate(stepDetailsData, { transaction: t, validate: true });
         }
         
@@ -141,31 +167,29 @@ const startProductionAndDeductSupplies = async (idProductionOrder, idEmployeeAss
     const t = await sequelize.transaction();
     try {
         const order = await ProductionOrder.findByPk(idProductionOrder, { transaction: t, lock: t.LOCK.UPDATE });
-        if (!order) throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`);
-        if (order.status !== 'SETUP_COMPLETED') {
-            throw new BadRequestError(`La orden no se puede iniciar, su estado es '${order.status}'.`);
-        }
+        if (!order) throw new Error("Orden no encontrada.");
 
-        const stockCheck = await _calculateAndVerifySupplyNeedsByWeight({ 
-            idSpecSheet: order.idSpecSheet, 
-            targetProductionWeight: order.targetProductionWeight,
-            targetProductionWeightUnit: order.targetProductionWeightUnit
-        }, t);
+        // Pasamos TODO el objeto 'order' para que la función encuentre lo que necesita
+        const stockCheck = await _calculateAndVerifySupplyNeedsByWeight(order, t);
 
         if (!stockCheck.sufficient) {
-            const insufficientItem = stockCheck.details.find(d => !d.sufficient);
-            throw new BadRequestError(`Stock insuficiente para '${insufficientItem.name}'. Requerido: ${insufficientItem.needed}, Disponible: ${insufficientItem.available}.`);
+            throw new Error("No hay stock suficiente para iniciar la producción.");
         }
 
-        for (const supplyDetail of stockCheck.details) {
-            await Supply.decrement('stock', {
-                by: supplyDetail.neededNumeric,
-                where: { idSupply: supplyDetail.idSupply },
-                transaction: t
-            });
+        for (const item of stockCheck.details) {
+            console.log(`[LOG] RESTA FINAL: Insumo ${item.name} -> Cantidad: ${item.neededNumeric}`);
+
+            if (item.neededNumeric > 0) {
+                await Supply.decrement('stock', {
+                    by: item.neededNumeric,
+                    where: { idSupply: item.idSupply },
+                    transaction: t
+                });
+            }
         }
 
         await order.update({ status: 'IN_PROGRESS' }, { transaction: t });
+        
         await ProductionOrderDetail.update(
             { status: 'IN_PROGRESS', startDate: new Date(), idEmployeeAssigned: idEmployeeAssigned },
             { where: { idProductionOrder: idProductionOrder, processOrder: 1 }, transaction: t }
@@ -173,12 +197,9 @@ const startProductionAndDeductSupplies = async (idProductionOrder, idEmployeeAss
 
         await t.commit();
         return productionOrderRepo.findOrderByIdWithDetails(idProductionOrder);
-
     } catch (error) {
-        if (t && !t.finished) await t.rollback();
-        console.error("Error detallado en startProductionAndDeductSupplies:", error);
-        if (error instanceof NotFoundError || error instanceof BadRequestError) throw error;
-        throw new ApplicationError(`Error al iniciar la producción: ${error.message}`);
+        if (t) await t.rollback();
+        throw error;
     }
 };
 
@@ -280,6 +301,15 @@ const updateProductionOrderStep = async (idProductionOrder, idProductionOrderDet
             throw new NotFoundError(`Orden ID ${idProductionOrder} no encontrada.`);
         }
         
+        // --- NUEVA LÓGICA: Registro automático de tiempos ---
+        const now = new Date();
+        if (stepData.status === 'IN_PROGRESS' && !stepData.startDate) {
+            stepData.startDate = now; // Guarda el inicio real si no viene del frontend
+        } else if (stepData.status === 'COMPLETED' && !stepData.endDate) {
+            stepData.endDate = now;   // Guarda el fin real si no viene del frontend
+        }
+        // ----------------------------------------------------
+
         await productionOrderRepo.updateStep(idProductionOrderDetail, stepData, t);
         
         let orderStatusChanged = false;

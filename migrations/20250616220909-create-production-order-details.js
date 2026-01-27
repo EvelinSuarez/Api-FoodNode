@@ -9,7 +9,6 @@ module.exports = {
         autoIncrement: true,
         allowNull: false
       },
-      // --- CLAVES FORÁNEAS (FKs) ---
       idProductionOrder: {
         type: Sequelize.INTEGER,
         allowNull: false,
@@ -30,7 +29,18 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
-      // --- FIN DE FKs ---
+      // --- CAMBIO: Se agregó idEmployeeAssigned que faltaba ---
+      idEmployeeAssigned: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'Employees', // Asegúrate que la tabla se llame así
+          key: 'idEmployee'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      },
+      // -------------------------------------------------------
       processOrder: {
         type: Sequelize.INTEGER,
         allowNull: false
@@ -47,6 +57,13 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: true
       },
+      // --- CAMBIO: Se agregó actualTimeMinutes que faltaba ---
+      actualTimeMinutes: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        defaultValue: 0
+      },
+      // -------------------------------------------------------
       startDate: {
         type: Sequelize.DATE,
         allowNull: true

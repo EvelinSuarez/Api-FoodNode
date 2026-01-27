@@ -54,6 +54,11 @@ const ProductionOrderDetail = sequelize.define('ProductionOrderDetail', {
         type: DataTypes.INTEGER,
         allowNull: true
     },
+    actualTimeMinutes: { // AGREGAR ESTE
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        comment: 'Diferencia real calculada entre endDate y startDate'
+    },
     startDate: {
         type: DataTypes.DATE,
         allowNull: true
@@ -74,6 +79,48 @@ const ProductionOrderDetail = sequelize.define('ProductionOrderDetail', {
 }, {
     tableName: 'ProductionOrderDetails',
     timestamps: true
+});
+
+const updateOrderTotals = async (idProductionOrder) => {
+    const ProductionOrder = sequelize.models.ProductionOrder;
+    
+    // Obtenemos las sumas de los detalles
+    const totals = await ProductionOrderDetail.findOne({
+        where: { idProductionOrder: idProductionOrder },
+        attributes: [
+            [sequelize.fn('SUM', sequelize.col('estimatedTimeMinutes')), 'totalEst'],
+            [sequelize.fn('SUM', sequelize.col('actualTimeMinutes')), 'totalAct']
+        ],
+        raw: true
+    });
+
+    // Actualizamos la cabecera
+    await ProductionOrder.update({
+        totalEstimatedTime: totals.totalEst || 0,
+        totalActualTime: totals.totalAct || 0
+    }, {
+        where: { idProductionOrder: idProductionOrder }
+    });
+};
+
+// Hook ANTES de guardar: Calcular el tiempo real del paso
+ProductionOrderDetail.beforeSave((detail) => {
+    if (detail.startDate && detail.endDate) {
+        const start = new Date(detail.startDate);
+        const end = new Date(detail.endDate);
+        const diffMs = end - start;
+        // Convertimos a minutos y usamos Math.ceil para que 30 segundos cuenten como 1 minuto
+        detail.actualTimeMinutes = Math.max(1, Math.ceil(diffMs / 60000));
+    }
+});
+
+// Hooks DESPUÉS de guardar/actualizar: Sincronizar con la cabecera
+ProductionOrderDetail.afterSave(async (detail) => {
+    await updateOrderTotals(detail.idProductionOrder);
+});
+
+ProductionOrderDetail.afterUpdate(async (detail) => {
+    await updateOrderTotals(detail.idProductionOrder);
 });
 
 module.exports = ProductionOrderDetail;

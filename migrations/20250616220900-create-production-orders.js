@@ -97,6 +97,16 @@ module.exports = {
         type: Sequelize.STRING(50),
         allowNull: true
       },
+      totalEstimatedTime: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        defaultValue: 0
+      },
+      totalActualTime: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        defaultValue: 0
+      },
       observations: {
         type: Sequelize.TEXT,
         allowNull: true

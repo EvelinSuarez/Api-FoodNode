@@ -83,6 +83,7 @@ if (modelosExisten(Product, SpecSheet)) {
     Product.hasMany(SpecSheet, { foreignKey: 'idProduct', as: 'specSheets', onDelete: 'CASCADE' });
     SpecSheet.belongsTo(Product, { foreignKey: 'idProduct', as: 'product' });
 }
+
 if (modelosExisten(SpecSheet, Supply, SpecSheetSupply)) {
     SpecSheet.belongsToMany(Supply, { through: SpecSheetSupply, foreignKey: 'idSpecSheet', otherKey: 'idSupply', as: 'supplies' });
     Supply.belongsToMany(SpecSheet, { through: SpecSheetSupply, foreignKey: 'idSupply', otherKey: 'idSpecSheet', as: 'specSheetsThroughSupplies' });
