@@ -1,0 +1,257 @@
+[33medcc5d1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mproduccion[m[33m)[m chore: Remove .env.local from version control
+[33m42a584c[m elimine el archivo que habia subido gitignore
+[33m4f12b1b[m merging
+[33mfa120f7[m cambios en .env y confg
+[33mf171102[m[33m ([m[1;31morigin/produccion[m[33m, [m[1;31morigin/develop[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mdevelop[m[33m)[m Merge pull request #149 from EvelinSuarez/feat/roles-permissions
+[33ma8a8a3e[m migratin
+[33mc421111[m Merge pull request #147 from EvelinSuarez/feat/roles-permissions
+[33ma6627c6[m Merge pull request #146 from EvelinSuarez/feat/roles-permissions
+[33m82f38de[m fix: Corregir config de sequelize-cli para el entorno de Vercel
+[33m7687d81[m Merge pull request #145 from EvelinSuarez/main
+[33m3034f29[m postInstall
+[33m7c22e91[m nuevos cambios, eliminacion de build
+[33m6a33a7e[m Merge pull request #142 from EvelinSuarez/feat/roles-permissions
+[33m05d621b[m Merge branch 'main' of https://github.com/EvelinSuarez/Api-FoodNode into feat/roles-permissions
+[33m1cdcc6f[m nuevos cambios en package
+[33m0c2cd85[m Merge pull request #141 from EvelinSuarez/develop
+[33m1c83f74[m Merge pull request #140 from EvelinSuarez/feat/roles-permissions
+[33mdfd60b7[m Merge branch 'main' of https://github.com/EvelinSuarez/Api-FoodNode into feat/roles-permissions
+[33m53eaea2[m depliegue
+[33m0ccddcc[m Merge pull request #139 from EvelinSuarez/develop
+[33m863c9cf[m Merge pull request #138 from EvelinSuarez/feat/roles-permissions
+[33m9b80d0e[m feat: Refactorizar conexión a BD para Vercel con dialectModule y variables de entorno para SSL
+[33ma0cf6b8[m Merge pull request #137 from EvelinSuarez/develop
+[33m1c12e95[m Merge pull request #136 from EvelinSuarez/feat/roles-permissions
+[33mb187d5a[m Merge pull request #135 from EvelinSuarez/main
+[33m9c7ca2e[m nueva dependencia
+[33m32e5cd8[m Merge pull request #134 from EvelinSuarez/develop
+[33m1b0da8f[m Merge pull request #133 from EvelinSuarez/feat/roles-permissions
+[33m02b1471[m nueva estructura en app
+[33m887ecbd[m Merge pull request #132 from EvelinSuarez/develop
+[33m4a95276[m Merge pull request #131 from EvelinSuarez/feat/roles-permissions
+[33m38e85f5[m nueva migration
+[33m323d8bb[m Merge pull request #130 from EvelinSuarez/develop
+[33me3a940e[m Merge pull request #129 from EvelinSuarez/feat/roles-permissions
+[33m1d0cfd9[m cam
+[33m36c7b99[m Merge pull request #128 from EvelinSuarez/develop
+[33m353ad92[m Merge pull request #127 from EvelinSuarez/feat/roles-permissions
+[33meeea0f3[m Merge pull request #126 from EvelinSuarez/main
+[33mf5cf9f3[m ca.pem
+[33m6f305e1[m Merge pull request #125 from EvelinSuarez/develop
+[33m5b24b7d[m Merge pull request #124 from EvelinSuarez/feat/roles-permissions
+[33m704031f[m app reestructurado
+[33m47527fe[m Merge pull request #123 from EvelinSuarez/develop
+[33mda96587[m Merge pull request #122 from EvelinSuarez/feat/roles-permissions
+[33m1d2fb8c[m cambio de orden en archivis
+[33m0015f96[m Merge pull request #121 from EvelinSuarez/feat/roles-permissions
+[33md49f094[m migrations
+[33ma41e83c[m Merge pull request #120 from EvelinSuarez/develop
+[33ma883165[m Merge pull request #119 from EvelinSuarez/main
+[33m4213320[m Merge branch 'main' of https://github.com/EvelinSuarez/Api-FoodNode
+[33me40283c[m Merge branch 'feat/roles-permissions'
+[33mad0f573[m correccion en migrations
+[33med0142e[m Merge pull request #118 from EvelinSuarez/develop
+[33m32ca070[m Merge pull request #117 from EvelinSuarez/feat/roles-permissions
+[33m3994c97[m correccion migrations
+[33m136cf65[m Merge pull request #116 from EvelinSuarez/develop
+[33m390048d[m Merge pull request #115 from EvelinSuarez/main
+[33m71a59fe[m migrations
+[33m893c813[m Merge pull request #114 from EvelinSuarez/develop
+[33mb627c4f[m Merge pull request #113 from EvelinSuarez/feat/roles-permissions
+[33m7ce022b[m Merge pull request #112 from EvelinSuarez/main
+[33mf23ae4c[m nuevo orden en migrations
+[33m292ec43[m Merge pull request #111 from EvelinSuarez/develop
+[33mb05ef22[m Merge pull request #110 from EvelinSuarez/feat/roles-permissions
+[33m2426052[m migraciones de todos los archivis
+[33mce6fb1f[m Merge pull request #109 from EvelinSuarez/develop
+[33m2afb64d[m Merge pull request #108 from EvelinSuarez/feat/roles-permissions
+[33me6e32f4[m chore: eliminar vercel.json para usar la configuración de ui
+[33m01c6bf7[m Merge pull request #107 from EvelinSuarez/develop
+[33md934deb[m Merge pull request #106 from EvelinSuarez/feat/roles-permissions
+[33m53ab99a[m Merge pull request #105 from EvelinSuarez/main
+[33m00e73e8[m nueva confi de vercel
+[33m5edc516[m Merge pull request #104 from EvelinSuarez/feat/roles-permissions
+[33m3355d85[m {
+[33mf838224[m Merge pull request #103 from EvelinSuarez/main
+[33mf7494ea[m Merge pull request #102 from EvelinSuarez/develop
+[33mf7b7936[m Merge pull request #101 from EvelinSuarez/feat/roles-permissions
+[33m0cb6c78[m feat: reestructura completa para despliegue en Vercel
+[33m82dd76f[m Merge pull request #100 from EvelinSuarez/main
+[33m11750bc[m Merge pull request #99 from EvelinSuarez/develop
+[33m95fe83f[m Merge pull request #98 from EvelinSuarez/feat/roles-permissions
+[33ma5e5bf6[m cambio a aiven
+[33m9870a20[m Merge pull request #97 from EvelinSuarez/feat/roles-permissions
+[33m442a80c[m nuevo employee
+[33m00a5e85[m Merge pull request #96 from EvelinSuarez/feat/roles-permissions
+[33m0f96ec6[m nuevos cambios en config
+[33m75b45ca[m Merge pull request #95 from EvelinSuarez/feat/roles-permissions
+[33m074d3c9[m intento de railway
+[33m49cd24a[m Merge pull request #94 from EvelinSuarez/feat/roles-permissions
+[33m7fe53d0[m de nuevo al despliegue
+[33mf29ed9c[m Merge pull request #93 from EvelinSuarez/feat/roles-permissions
+[33md2919d7[m nn
+[33m231b95b[m Merge pull request #92 from EvelinSuarez/feat/roles-permissions
+[33m2a3cc44[m correccion para flutter
+[33mfa647a5[m Merge pull request #91 from EvelinSuarez/feat/roles-permissions
+[33me0aa1bf[m testeo y nuevas migraciones
+[33m181a805[m Merge pull request #90 from EvelinSuarez/feat/roles-permissions
+[33m1aee22e[m de nuevo a local
+[33m2807148[m Merge pull request #89 from EvelinSuarez/feat/roles-permissions
+[33m0480674[m intento de nuevo el back
+[33m0e5d4c2[m Merge pull request #88 from EvelinSuarez/main
+[33me196c73[m solucion de is
+[33mdd25f49[m feat(auth): Forzar actualización con log de depuración
+[33m641e58a[m Merge pull request #87 from EvelinSuarez/feat/roles-permissions
+[33mc5918b9[m nuevos arreglos para la autentucacion
+[33m613d0d6[m Merge pull request #86 from EvelinSuarez/feat/roles-permissions
+[33md9f5573[m nuevos nombres del seeders
+[33ma63d345[m Merge pull request #85 from EvelinSuarez/feat/roles-permissions
+[33m3e63e9d[m arreglo de permission
+[33m8118614[m Merge pull request #84 from EvelinSuarez/feat/roles-permissions
+[33m3208522[m Merge pull request #83 from EvelinSuarez/feat/roles-permissions
+[33me1c271b[m fix(db): Aceptar certificados autofirmados para conexión SSL
+[33md6ef2c3[m fix(db): Configurar SSL para conexión a MySQL en producción
+[33m2466ff9[m nueva logica en app
+[33m0fdf26e[m Merge pull request #82 from EvelinSuarez/feat/roles-permissions
+[33m5d55c56[m cambio en database
+[33mfcee5b8[m Merge pull request #81 from EvelinSuarez/feat/roles-permissions
+[33m5ec9b72[m nuevos cambios en rutas
+[33m16b0c39[m Merge pull request #80 from EvelinSuarez/feat/roles-permissions
+[33md876c23[m solucion de conficto en nombre de concepto
+[33mb3b7168[m Merge pull request #79 from EvelinSuarez/feat/roles-permissions
+[33maadfd3e[m Merge pull request #78 from EstebanHernandezFlorez/produccion
+[33m52cc635[m nuevos archivos de migraciones
+[33mce0eb27[m validacion insumos
+[33m5b21776[m Merge pull request #77 from EvelinSuarez/feat/roles-permissions
+[33m9c75cf2[m Merge pull request #76 from Anglasmac/Angela
+[33me4aa2be[m Merge pull request #75 from EstebanHernandezFlorez/produccion
+[33m523ab75[m merge con validation prouct
+[33m17e1885[m migraciones, terminacion de proyecto api
+[33m0a01945[m Arreglito
+[33m3fa2fd5[m confirmacion
+[33m4db5d83[m merging
+[33m5a24af1[m validaciones
+[33m90d4514[m Merge pull request #74 from Anglasmac/Angela
+[33mbcc88a4[m modificaciones modulos de reservas
+[33m1f2d586[m modificaciones modulos de reservas
+[33mf6f99d1[m Merge pull request #73 from Anglasmac/Angela
+[33m5598bc0[m modificacion en reserva
+[33m7cb597f[m Merge pull request #72 from Anglasmac/Angela
+[33mb3ee355[m Merge branch 'develop' of https://github.com/Anglasmac/Api-FoodNode into Angela
+[33mf265db9[m Merge branch 'develop' of https://github.com/Anglasmac/Api-FoodNode into Angela
+[33m8f9d1be[m Merge pull request #71 from Anglasmac/Angela
+[33m15efd7d[m Merge branch 'develop' of https://github.com/Anglasmac/Api-FoodNode into Angela
+[33m39ef632[m ...
+[33m22c5276[m Merge pull request #70 from EvelinSuarez/feat/roles-permissions
+[33m29f428e[m solucion de errores en index
+[33m40e9d95[m Merge pull request #69 from EvelinSuarez/feat/roles-permissions
+[33m8cfe364[m Merge pull request #68 from EstebanHernandezFlorez/produccion
+[33m005b7c9[m merge con employee
+[33m0a7b522[m proyecto casi listo, falta una parte de produccion
+[33mabc968b[m cambios al 27 de mayo
+[33m7e9fbfa[m Merge pull request #67 from EstebanHernandezFlorez/produccion
+[33mb2c8e96[m integracion de index
+[33ma66a593[m errores
+[33m6d5ad10[m Merge pull request #66 from EvelinSuarez/feat/roles-permissions
+[33m4412b71[m merge con index
+[33m6ea1c17[m intento de merge
+[33m89de12c[m mano de obra lista
+[33m2e57da2[m Merge pull request #65 from EstebanHernandezFlorez/produccion
+[33mb286251[m merging
+[33m2386eac[m prueba
+[33m29787bb[m relaciones organziadas como las reviso felipe
+[33m5863684[m avance ficha tecnica editar
+[33m9052b91[m Merge pull request #64 from EvelinSuarez/feat/roles-permissions
+[33m55c5ab0[m nuevos archivos en mano de obra y terminacion de roles
+[33ma2fe3a2[m Merge pull request #63 from EvelinSuarez/feat/roles-permissions
+[33m84b9a1b[m merge
+[33m0359aca[m Merge pull request #62 from EstebanHernandezFlorez/produccion
+[33ma6a301f[m avance en editar ficha tecnica
+[33m2ffbd9c[m nueva reestructuracion de roles
+[33m3c246d4[m Merge pull request #61 from EvelinSuarez/feat/roles-permissions
+[33mfe71559[m nuevos cambios
+[33m7be7b09[m Merge pull request #60 from EvelinSuarez/feat/roles-permissions
+[33me29783e[m solucuones de erroress
+[33m26de52c[m Merge pull request #59 from EvelinSuarez/feat/roles-permissions
+[33m6b936aa[m merge
+[33m92392c2[m Merge pull request #58 from EstebanHernandezFlorez/produccion
+[33ma2a8c30[m nuevos rolePrivileges
+[33m54996d9[m cambios prueba
+[33m1fe4ac1[m Merge pull request #57 from Anglasmac/Angela
+[33m0b59640[m cambios en ficha tecnica, producto insumo, orden de produccion
+[33mc7e082d[m modificaciones reservas
+[33mdd8ea61[m merge
+[33m234f3b1[m :v
+[33m786cfc3[m Merge pull request #56 from EvelinSuarez/feat/roles-permissions
+[33m4b23f6c[m Merge pull request #55 from EstebanHernandezFlorez/produccion
+[33mffb3b74[m resolve conflict
+[33m2ca0f2a[m nueva configuracion de roles
+[33mb64a4bd[m rutas
+[33m72f684f[m Merge pull request #54 from EstebanHernandezFlorez/produccion
+[33m634c29f[m Merge pull request #52 from Anglasmac/Angela
+[33m6d55419[m conflict
+[33mc7cfd5d[m Merge branch 'EvelinSuarez:develop' into develop
+[33me25116a[m merging
+[33mdce8e42[m Merge pull request #53 from EvelinSuarez/feat/roles-permissions
+[33m62b3244[m acceso, roles, usuarios
+[33me8263ac[m un cambio en modelo reservas
+[33mad75280[m merge
+[33m6aa1fd3[m ficha tecnica
+[33med00995[m app
+[33m109a44c[m n
+[33m4665f21[m hh
+[33mdde7504[m Merge pull request #49 from EvelinSuarez/feat/roles-permissions
+[33m8b51663[m rutas nuevas
+[33ma739a5e[m Merge pull request #48 from EstebanHernandezFlorez/produccion
+[33maf84803[m Merge branch 'EvelinSuarez:develop' into develop
+[33m40f9bea[m cambios en ficha tecnica
+[33m28a8f0d[m Merge pull request #47 from EvelinSuarez/Evelin
+[33mf0309db[m reestructuracion de purchase
+[33mbf980c4[m Merge pull request #46 from Atanarion/Ander
+[33m6cb3da7[m verifyToken
+[33m75d8d31[m Merge branch 'EvelinSuarez:develop' into develop
+[33meb514ac[m Merge pull request #45 from Atanarion/Ander
+[33m15998c5[m ruta esto rol
+[33mad00f3f[m Merge branch 'EvelinSuarez:develop' into develop
+[33m9b4d3f2[m Merge pull request #44 from EstebanHernandezFlorez/produccion
+[33m89dd815[m merging
+[33m1085a91[m orden de produccion, producto insumo, insumo
+[33m344ecf9[m produccion
+[33m641d973[m Merge branch 'EvelinSuarez:develop' into develop
+[33m2a27883[m Merge branch 'Angela' of https://github.com/Anglasmac/Api-FoodNode into develop
+[33m39a18db[m Create README.md
+[33m102b5b2[m clientes y reservas ajustes
+[33m15b3ec1[m cambios en produccion
+[33m73e271f[m cambios en insumos, producto insumo, ficha tecnica
+[33ma2079a5[m Merge pull request #39 from Atanarion/Ander
+[33m53d85f2[m correccion de state a status en usuarios
+[33m3f5f9ec[m Merge pull request #38 from Anglasmac/Angela
+[33mc043559[m creacion de tabla intermedia reservationServices
+[33m2d947cc[m Merge pull request #37 from EvelinSuarez/usuario
+[33m6f802ab[m validacion
+[33m8a893a1[m Merge branch 'develop' of https://github.com/EvelinSuarez/Api-FoodNode into usuario
+[33m2f4258a[m Merge branch 'develop' of https://github.com/EvelinSuarez/Api-FoodNode into usuario
+[33m2b175fd[m Merge pull request #36 from Atanarion/Ander
+[33ma898b35[m asociacion proceso detalle proceso
+[33mefe8997[m merging
+[33m9002bf8[m usuario listo
+[33mfd31903[m Merge pull request #35 from EvelinSuarez/Evelin
+[33me3a99ac[m modulos de empleados, proveedor, mano de obra completamente listo
+[33m7844326[m inicio produccion
+[33m2bfabe8[m merging
+[33mad21974[m Merge branch 'develop' of https://github.com/EvelinSuarez/Api-FoodNode into usuario
+[33m7ec21db[m usuarios conexion con permisos
+[33m16c9393[m Merge pull request #34 from EvelinSuarez/Evelin
+[33mf4f186c[m Nuevo endpoint de gasto mensual
+[33ma6b17bb[m Merge pull request #32 from Atanarion/Ander
+[33m840a02d[m tabla procesos y tabla detalle procesos
+[33mb2b7550[m Merge remote-tracking branch 'origin' into Ander
+[33m0cd56b8[m Merge pull request #33 from Anglasmac/Angela
+[33m7a2ae46[m validacion customers modificada
+[33m2f2d7b1[m tablas de dettale proceso, procesos, producto ficha
+[33me187cbb[m Merge pull request #31 from Atanarion/Ander
+[33m7fa880d[m agregar measurementUnit a insumos
+[33m5e2e03c[m mergin
+[33mf1573c9[m login
+[33m38518dc[m Merge pull request #30 from Atanarion/Ander
+[33m4838b98[m insumos
